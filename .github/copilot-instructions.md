@@ -44,7 +44,7 @@ docker/
 
 ## Key Domain Types
 
--   `Account` - Financial account (investment, banking, credit, property)
+-   `Account` - Financial account (investment, banking, credit, property) with `OpeningBalance` + `OpeningDate` for onboarding; `CurrentBalance` is computed/cached per account type (banking: from transactions, investment: from holdings × prices, property: from latest `Valuation`)
 -   `Transaction` - Individual financial transaction with category and tags
 -   `TransactionSplit` - Logical child split line of a Transaction (category + amount); splits must sum to parent
 -   `Money` - Value object: `decimal Amount` + `string CurrencyCode`

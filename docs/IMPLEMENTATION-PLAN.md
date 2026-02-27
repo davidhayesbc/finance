@@ -382,7 +382,9 @@ classDiagram
         string Currency
         string Institution
         bool IsShared
-        Money CurrentBalance
+        Money OpeningBalance
+        DateTime OpeningDate
+        Money CurrentBalance %%computed/cached%%
         User Owner
     }
 
@@ -682,6 +684,11 @@ public record AccountType(string Code, string DisplayName, string Category);
 ### Cross-Cutting Invariants
 
 - `Transaction` split invariant: sum of `TransactionSplit.Amount` equals parent `Transaction.Amount` in minor units.
+- `CurrentBalance` derivation: `CurrentBalance` is a **computed/cached** value, never directly edited by users. Derivation rules by `AccountType`:
+  - **Banking / Credit / Loan**: `OpeningBalance + Σ Transaction.Amount` (debits negative, credits positive).
+  - **Investment**: `Σ (Holding.Quantity × latest PriceHistory.Price by AsOfDate)` across all holdings.
+  - **Property / Other Assets**: latest `Valuation.EstimatedValue` by `EffectiveDate`. Transactions on property accounts track cash-flow expenses (taxes, insurance, maintenance) but do **not** affect the property's estimated value.
+  - **Mortgage**: `OpeningBalance − Σ AmortizationEntry.PrincipalAmount` for payments made to date.
 - Idempotency invariant: import and sync operations are replay-safe via stable operation IDs/fingerprints.
 - Transfer invariant: linked transfer entries remain balanced and immutable-linked.
 - Audit invariant: all mutations to transactions/splits/import batches/rules are append-only auditable events.

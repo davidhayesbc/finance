@@ -62,12 +62,14 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 
 ### 2.4 Property & Assets
 
+Property and other non-transactional asset accounts derive their `CurrentBalance` from the latest `Valuation` record (by `EffectiveDate`), not from transactions. Transactions on these accounts are optional and track cash-flow expenses (taxes, insurance, maintenance) without affecting the estimated value.
+
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **Real Estate** | Estimated value tracking via `Valuation` entity with `EffectiveDate` (when the valuation applies) and `RecordedAt` (when it was entered); supports accurate historical net worth even when valuations are back-dated | P0 |
-| **Property Expenses** | Taxes, insurance, maintenance, utilities | P1 |
-| **Vehicles** | Value depreciation tracking | P2 |
-| **Other Assets** | User-defined asset categories | P2 |
+| **Real Estate** | Estimated value tracking via `Valuation` entity with `EffectiveDate` (when the valuation applies) and `RecordedAt` (when it was entered); supports accurate historical net worth even when valuations are back-dated. Account balance is always derived from the latest valuation. | P0 |
+| **Property Expenses** | Taxes, insurance, maintenance, utilities tracked as transactions on the property account for cash-flow reporting; these do not affect the property's estimated value | P1 |
+| **Vehicles** | Value depreciation tracking via periodic `Valuation` entries | P2 |
+| **Other Assets** | User-defined asset categories with value tracked via `Valuation` entries | P2 |
 
 ---
 
