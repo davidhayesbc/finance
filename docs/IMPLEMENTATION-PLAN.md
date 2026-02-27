@@ -34,6 +34,8 @@
 
 | Library | Purpose |
 |---------|---------|
+| **MediatR** | CQRS pipeline: command/query dispatching with pipeline behaviors (validation, logging, transactions) |
+| **OneOf / FluentResults** | Option/Result discriminated union types for null-avoidance and explicit error handling |
 | **Microsoft.RulesEngine** | User-configurable business rules for transaction categorization |
 | **FluentValidation** | Input validation across API and domain layers |
 | **Serilog + OpenTelemetry** | Structured logging with distributed tracing |
@@ -46,6 +48,8 @@
 | **Microsoft.AspNetCore.DataProtection** | Application-level field encryption |
 | **Yarp** or Aspire built-in | Reverse proxy if needed |
 | **OllamaSharp** | .NET client for local Ollama LLM integration |
+| **Bogus** | Realistic test and seed data generation |
+| **Asp.Versioning** | API versioning for safe rolling upgrades between PWA and server |
 
 ### Infrastructure
 
@@ -177,7 +181,17 @@ finance/
 │   │   │   ├── Holding.cs
 │   │   │   ├── Lot.cs
 │   │   │   ├── ForecastScenario.cs           # Named growth rate scenario
-│   │   │   └── User.cs
+│   │   │   ├── User.cs
+│   │   │   ├── ImportBatch.cs                # Import tracking and rollback
+│   │   │   ├── AuditEvent.cs                 # Append-only audit trail
+│   │   │   ├── Category.cs                   # Hierarchical transaction category
+│   │   │   ├── Tag.cs                        # Managed tag entity
+│   │   │   ├── Payee.cs                      # Normalized payee with aliases
+│   │   │   ├── ExchangeRate.cs               # Historical FX rates
+│   │   │   ├── ContributionRoom.cs           # Registered account contribution tracking
+│   │   │   ├── ReconciliationPeriod.cs       # Statement reconciliation state
+│   │   │   ├── AmortizationEntry.cs          # Mortgage/loan payment schedule entry
+│   │   │   └── Notification.cs               # In-app notification/alert
 │   │   ├── ValueObjects/
 │   │   │   ├── Money.cs                     # Currency + amount value object
 │   │   │   ├── DateRange.cs
@@ -225,6 +239,10 @@ finance/
 │   │   │   ├── SinkingFundService.cs          # Monthly set-aside calculations
 │   │   │   ├── ReconciliationService.cs       # Statement reconcile/close process
 │   │   │   ├── ConflictResolutionService.cs   # Field-aware sync conflict handling
+│   │   │   ├── NotificationService.cs         # Alert generation and delivery
+│   │   │   ├── AmortizationService.cs         # Schedule generation for mortgages/loans
+│   │   │   ├── ContributionRoomService.cs     # Registered account room tracking
+│   │   │   ├── AuditService.cs                # Append-only audit event recording
 │   │   │   └── SyncService.cs
 │   │   ├── Interfaces/
 │   │   │   ├── IAccountRepository.cs
@@ -269,7 +287,11 @@ finance/
 │   │   │   ├── RuleEndpoints.cs
 │   │   │   ├── ReportEndpoints.cs
 │   │   │   ├── AuthEndpoints.cs
-│   │   │   └── SyncEndpoints.cs
+│   │   │   ├── SyncEndpoints.cs
+│   │   │   ├── CategoryEndpoints.cs
+│   │   │   ├── PayeeEndpoints.cs
+│   │   │   ├── TagEndpoints.cs
+│   │   │   └── NotificationEndpoints.cs
 │   │   ├── Middleware/
 │   │   │   ├── ErrorHandlingMiddleware.cs
 │   │   │   └── RequestLoggingMiddleware.cs
@@ -294,7 +316,9 @@ finance/
 │       │   ├── Budget/
 │       │   ├── Reports/
 │       │   ├── Settings/
-│       │   └── Auth/
+│       │   ├── Auth/
+│       │   ├── SyncConflicts/               # Conflict resolution UI
+│       │   └── Notifications/               # In-app notification center
 │       ├── Components/
 │       │   ├── Charts/
 │       │   ├── Forms/
@@ -448,6 +472,83 @@ finance/
                                │ IsEnabled           │
                                │ User                │
                                └─────────────────────┘
+
+┌─────────────────────┐        ┌─────────────────────┐
+│    ImportBatch      │        │     AuditEvent      │
+│─────────────────────│        │─────────────────────│
+│ Id                  │        │ Id                  │
+│ FileName            │        │ Timestamp           │
+│ ImportDate           │        │ UserId              │
+│ FileFormat          │        │ EntityType          │
+│ RowCount            │        │ EntityId            │
+│ SuccessCount        │        │ Action (Create/     │
+│ ErrorCount          │        │   Update/Delete)    │
+│ Status (Pending/    │        │ ChangedFields (JSON)│
+│  Complete/Rolled-   │        │ OldValues (JSON)    │
+│  back/Failed)       │        │ NewValues (JSON)    │
+│ MappingId           │        └─────────────────────┘
+│ User                │
+└─────────────────────┘
+
+┌─────────────────────┐        ┌─────────────────────┐
+│     Category        │        │       Tag           │
+│─────────────────────│        │─────────────────────│
+│ Id                  │        │ Id                  │
+│ Name                │        │ Name                │
+│ Icon                │        │ User                │
+│ Type (Income/       │        └─────────────────────┘
+│   Expense)          │
+│ ParentCategory?     │        ┌─────────────────────┐
+│ SortOrder           │        │      Payee          │
+│ IsSystem            │        │─────────────────────│
+│ User                │        │ Id                  │
+└─────────────────────┘        │ DisplayName         │
+                               │ Aliases[]           │
+┌─────────────────────┐        │ DefaultCategory     │
+│   ExchangeRate      │        │ User                │
+│─────────────────────│        └─────────────────────┘
+│ Id                  │
+│ FromCurrency        │        ┌─────────────────────┐
+│ ToCurrency          │        │  ContributionRoom   │
+│ Rate                │        │─────────────────────│
+│ Date                │        │ Id                  │
+│ Source (plugin/     │        │ Account             │
+│   manual)           │        │ Year                │
+└─────────────────────┘        │ AnnualLimit         │
+                               │ UsedAmount          │
+┌─────────────────────┐        │ CarryForward        │
+│ReconciliationPeriod │        │ AvailableRoom       │
+│─────────────────────│        │   (calculated)      │
+│ Id                  │        └─────────────────────┘
+│ Account             │
+│ StatementDate       │        ┌─────────────────────┐
+│ OpeningBalance      │        │  AmortizationEntry  │
+│ ClosingBalance      │        │─────────────────────│
+│ Status (Open/       │        │ Id                  │
+│  Reconciled/Locked) │        │ Account (mortgage/  │
+│ LockedAt            │        │   loan)             │
+│ LockedBy            │        │ PaymentNumber       │
+│ UnlockReason        │        │ PaymentDate         │
+│ User                │        │ PrincipalAmount     │
+└─────────────────────┘        │ InterestAmount      │
+                               │ RemainingBalance    │
+┌─────────────────────┐        │ CumulativeInterest  │
+│   Notification      │        └─────────────────────┘
+│─────────────────────│
+│ Id                  │
+│ Type (Budget/       │
+│  SinkingFund/Sync/  │
+│  Balance/Import)    │
+│ Severity (Info/     │
+│  Warning/Critical)  │
+│ Title               │
+│ Message             │
+│ RelatedEntityType   │
+│ RelatedEntityId     │
+│ IsRead              │
+│ CreatedAt           │
+│ User                │
+└─────────────────────┘
 ```
 
 ### Value Objects
@@ -466,38 +567,43 @@ public record AccountType(string Code, string DisplayName, string Category);
 - Idempotency invariant: import and sync operations are replay-safe via stable operation IDs/fingerprints.
 - Transfer invariant: linked transfer entries remain balanced and immutable-linked.
 - Audit invariant: all mutations to transactions/splits/import batches/rules are append-only auditable events.
+- Soft-delete invariant: financial records use `IsDeleted` + `DeletedAt` soft-delete; hard purge only via admin action after retention period. Soft-deletes propagate through sync to offline clients.
+- Category referential integrity: deleting a category requires reassignment of all linked transactions/splits/budgets/rules.
 
 ---
 
 ## 5. Phased Implementation
 
-### Phase 1: Foundation (Weeks 1–3)
+### Phase 1: Foundation (Weeks 1–4)
 
-**Goal:** Working .NET Aspire app with basic CRUD, auth, and data model.
+**Goal:** Working .NET Aspire app with basic CRUD, auth, data model, API versioning, pagination, seed data, and basic E2E smoke test.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
-| 1.1 | Create solution structure, all `.csproj` files, `Directory.Build.props` | 2h |
+| 1.1 | Create solution structure, all `.csproj` files, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig` | 3h |
 | 1.2 | Set up Aspire AppHost with PostgreSQL and API project | 2h |
-| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Money | 5h |
-| 1.4 | Set up EF Core with PostgreSQL, entity configurations, initial migration | 4h |
+| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Money, Category, CategoryGroup, Tag, Payee, ImportBatch, AuditEvent, Notification | 8h |
+| 1.4 | Set up EF Core with PostgreSQL, entity configurations, initial migration, soft-delete global query filters, and database indexing strategy (transaction fingerprints, account+date, category lookups) | 6h |
 | 1.5 | Implement local Identity auth (register, login, JWT tokens) | 4h |
 | 1.6 | Implement OpenID Connect (Google + Microsoft) | 3h |
-| 1.7 | Build Minimal API endpoints: Accounts CRUD, Transactions CRUD | 4h |
-| 1.8 | Scaffold Blazor WASM project with MudBlazor/Fluent UI | 3h |
+| 1.7 | Build Minimal API endpoints: Accounts CRUD, Transactions CRUD with cursor-based pagination, filtering, and sorting | 5h |
+| 1.7a | Set up API versioning (`/api/v1/...`) with Asp.Versioning | 2h |
+| 1.8 | Scaffold Blazor WASM project with MudBlazor/Fluent UI, ErrorBoundary components, and responsive layout | 4h |
 | 1.9 | Build basic pages: Login, Account List, Account Detail, Add Transaction | 6h |
 | 1.10 | Set up Docker multi-stage build for API | 2h |
 | 1.11 | Set up docker-compose.yml with PostgreSQL + API + Caddy (HTTPS) | 3h |
 | 1.12 | Write domain unit tests and API integration tests | 4h |
 | 1.13 | Set up GitHub Actions CI pipeline (build + test) | 2h |
+| 1.14 | Create Bogus-based seed data generators for dev mode (accounts, transactions, categories, tags) | 3h |
+| 1.15 | Basic Playwright E2E smoke test: login → create account → add transaction | 3h |
 
-**Deliverable:** Login, create accounts, manually add transactions, view account balances. Runs in dev mode via Aspire and in production via Docker Compose with HTTPS.
+**Deliverable:** Login, create accounts, manually add transactions, view account balances. Versioned API with pagination. Realistic seed data in dev mode. Basic Playwright smoke test. Runs in dev mode via Aspire and in production via Docker Compose with HTTPS.
 
 ---
 
-### Phase 2: Ingestion Pipeline (Weeks 4–6)
+### Phase 2: Ingestion Pipeline (Weeks 5–8)
 
-**Goal:** Import transactions from files with configurable mapping and rules.
+**Goal:** Import transactions from files with configurable mapping, rules, and full category/payee/tag management.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
@@ -516,15 +622,18 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 2.13 | Transaction splitting UI: add/edit logical split lines on a transaction, enforce sum-to-parent validation | 4h |
 | 2.14 | Rules engine split templates: rules can auto-split transactions (e.g., "Costco → 80% Groceries / 20% Household") | 3h |
 | 2.15 | Import history with undo/rollback support | 3h |
-| 2.16 | Tests for all importers, rules engine, split logic, and idempotency paths | 6h |
+| 2.16 | Category management UI: create, edit, reorder, group categories hierarchically | 4h |
+| 2.17 | Payee management: CRUD, alias mapping, default category assignment, merge duplicates | 4h |
+| 2.18 | Tag management: CRUD, rename, merge, bulk assign/remove | 2h |
+| 2.19 | Tests for all importers, rules engine, split logic, idempotency paths, and category/payee/tag management | 7h |
 
-**Deliverable:** Import CSV/QFX/QIF files, map columns, auto-categorize via rules, review & commit.
+**Deliverable:** Import CSV/QFX/QIF files, map columns, auto-categorize via rules, review & commit. Full category hierarchy, payee, and tag management.
 
 ---
 
-### Phase 3: Budgeting, Sinking Funds & Forecasting (Weeks 7–10)
+### Phase 3: Budgeting, Sinking Funds & Forecasting (Weeks 9–12)
 
-**Goal:** Budget management, sinking funds for lump-sum expenses, recurring transactions, and cash flow / net worth forecasting.
+**Goal:** Budget management, sinking funds for lump-sum expenses, recurring transactions, cash flow / net worth forecasting, and notification infrastructure.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
@@ -542,15 +651,16 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 3.12 | Cash flow forecasting engine (project balances including recurring, budgets, and sinking fund contributions) | 6h |
 | 3.13 | Forecast visualization (line chart with actual vs projected) | 4h |
 | 3.14 | Minimum balance alerts | 2h |
-| 3.15 | Tests for budgeting, sinking funds, and forecasting logic | 5h |
+| 3.15 | Notification infrastructure: Notification entity, in-app notification center component, alert generation service | 5h |
+| 3.16 | Tests for budgeting, sinking funds, forecasting logic, and notification delivery | 6h |
 
-**Deliverable:** Split-aware budgets, sinking funds, recurring transactions, and reliable cash flow forecasting.
+**Deliverable:** Split-aware budgets, sinking funds, recurring transactions, reliable cash flow forecasting, and in-app notification center.
 
 ---
 
-### Phase 4: Dashboards, Net Worth Forecasting & Offline-First (Weeks 11–15)
+### Phase 4: Dashboards, Net Worth Forecasting & Offline-First (Weeks 13–18)
 
-**Goal:** Rich dashboards, charts, and offline PWA capability.
+**Goal:** Rich dashboards, charts, offline PWA capability, conflict resolution UI, reconciliation, contribution room, and amortization schedules.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
@@ -565,18 +675,22 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 4.9 | Implement IndexedDB local store (account summaries, recent txns) | 6h |
 | 4.10 | Build sync engine: queue offline changes, sync on reconnect | 8h |
 | 4.11 | ConflictResolutionService: field-aware merge policies and explicit conflict queue for financial edits | 6h |
+| 4.11a | Conflict Resolution UI: dedicated page with side-by-side diff view (local vs server), per-field accept/merge actions | 5h |
 | 4.12 | Sync idempotency: client operation IDs and replay-safe server handlers | 3h |
 | 4.13 | Offline/online status indicator in UI | 2h |
 | 4.14 | PWA manifest and install prompt | 2h |
-| 4.15 | Tests for sync engine, conflict resolution, offline scenarios, and net worth forecasting | 6h |
+| 4.14a | ReconciliationPeriod entity, reconciliation workflow endpoints and UI (statement open/close/lock) | 5h |
+| 4.14b | ContributionRoom entity and tracking for registered accounts (RRSP, TFSA) with annual limit management | 4h |
+| 4.14c | AmortizationEntry entity and schedule generation for mortgages/loans (principal/interest split per payment) | 4h |
+| 4.15 | Tests for sync engine, conflict resolution, offline scenarios, net worth forecasting, reconciliation, and contribution room | 8h |
 
-**Deliverable:** Full dashboard suite. App works offline, syncs when back online.
+**Deliverable:** Full dashboard suite. App works offline, syncs when back online with conflict resolution UI. Statement reconciliation. Contribution room tracking. Mortgage/loan amortization schedules.
 
 ---
 
-### Phase 5: Investments & Advanced Features (Weeks 16–20)
+### Phase 5: Investments & Advanced Features (Weeks 19–24)
 
-**Goal:** Investment tracking, Ollama AI, plugin system, multi-user households.
+**Goal:** Investment tracking, Ollama AI, plugin system (with security sandboxing), multi-user households, FX history.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
@@ -585,8 +699,10 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 5.3 | Portfolio performance calculations (TWR, MWR) | 6h |
 | 5.4 | Price feed plugin interface and Yahoo Finance implementation | 4h |
 | 5.5 | Price history + FX history storage for accurate net worth and performance time-series | 4h |
+| 5.5a | ExchangeRate entity, historical rate storage, and FX conversion record linking on cross-currency transactions | 4h |
 | 5.6 | Investment dashboard: portfolio value, gain/loss, allocation | 6h |
 | 5.7 | Plugin loader: assembly scanning, registration, configuration | 6h |
+| 5.7a | Plugin security sandboxing: restricted permissions, no direct DB access, validated assembly loading, operation logging | 4h |
 | 5.8 | Ollama integration: transaction categorization service | 6h |
 | 5.9 | AI categorization UI: suggestions, confidence, batch processing | 4h |
 | 5.10 | Household entity and multi-user sharing | 4h |
@@ -598,13 +714,13 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 5.16 | Automated PostgreSQL backups in Docker Compose | 3h |
 | 5.17 | Tests for investments, permissions, plugins, and AI integration | 7h |
 
-**Deliverable:** Full investment tracking, AI categorization, plugin system, multi-user households.
+**Deliverable:** Full investment tracking, AI categorization, sandboxed plugin system, multi-user households, historical FX rates.
 
 ---
 
-### Phase 6: Polish & Hardening (Weeks 21–23)
+### Phase 6: Polish & Hardening (Weeks 25–28)
 
-**Goal:** Production readiness, security hardening, CI/CD publishing.
+**Goal:** Production readiness, security hardening, backup encryption, WCAG accessibility audit, CI/CD publishing.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
@@ -616,14 +732,20 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 6.6 | Encryption key lifecycle: rotation, secure backup, restore validation, compromised-key recovery playbook | 4h |
 | 6.7 | Session management and concurrent session handling | 2h |
 | 6.8 | Backup restore verification job (scheduled test restores + smoke checks) | 3h |
+| 6.8a | Backup encryption: encrypt automated and manual backups using DataProtection keys; passphrase option for portable exports | 3h |
+| 6.8b | Schema migration compatibility strategy: migration smoke tests, version compatibility matrix, rollback-safe migration patterns for self-hosted upgrades | 3h |
 | 6.9 | GitHub Actions: build & push container images to ghcr.io | 3h |
 | 6.10 | GitHub Actions: release workflow with semantic versioning | 3h |
 | 6.11 | Health checks for all services (DB, Ollama, etc.) | 2h |
+| 6.11a | Application metrics: Prometheus-compatible counters/histograms for request rates, sync latency, import throughput; Aspire dashboard integration | 3h |
+| 6.11b | Log retention and rotation policy configuration; default 30-day retention | 1h |
 | 6.12 | Documentation: README, deployment guide, development setup, RPO/RTO runbook | 5h |
-| 6.13 | End-to-end testing with Playwright | 6h |
+| 6.13 | End-to-end testing with Playwright (comprehensive suite beyond Phase 1 smoke tests) | 6h |
+| 6.13a | WCAG 2.1 AA accessibility audit and remediation: keyboard navigation, screen reader, color contrast, ARIA landmarks | 4h |
 | 6.14 | Performance testing and optimization | 4h |
+| 6.14a | Security testing: OWASP ZAP scan, dependency vulnerability audit, secrets scanning | 3h |
 
-**Deliverable:** Production-hardened, secure, documented, and CI/CD automated.
+**Deliverable:** Production-hardened, secure, documented, accessible, and CI/CD automated.
 
 ---
 
@@ -713,12 +835,14 @@ Push to main ──▶ Build ──▶ Test ──▶ Lint ──▶ Publish Ima
 ## Summary Timeline
 
 | Phase | Duration | Key Milestone |
-|-------|----------|--------------|
-| **Phase 1: Foundation** | Weeks 1–3 | Auth, accounts, transactions (with splits), Docker |
-| **Phase 2: Ingestion** | Weeks 4–6 | CSV/QFX/QIF import, idempotent ingestion, diagnostics, rules engine, auto-split rules |
-| **Phase 3: Budgeting & Sinking Funds** | Weeks 7–10 | Budgets (split-aware), sinking funds, recurring, cash flow forecast |
-| **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 11–15 | Charts, net worth forecast with growth scenarios, offline-first, conflict-safe sync |
-| **Phase 5: Investments & Advanced** | Weeks 16–20 | Portfolio, AI, plugins, multi-user, permissions matrix |
-| **Phase 6: Polish** | Weeks 21–23 | Security, key lifecycle, restore verification, CI/CD, documentation |
+|-------|----------|---------------|
+| **Phase 1: Foundation** | Weeks 1–4 | Auth, accounts, transactions (with splits), categories, tags, payees, API versioning, pagination, seed data, Playwright smoke test, Docker |
+| **Phase 2: Ingestion** | Weeks 5–8 | CSV/QFX/QIF import, idempotent ingestion, diagnostics, rules engine, auto-split rules, category/payee/tag management |
+| **Phase 3: Budgeting & Sinking Funds** | Weeks 9–12 | Budgets (split-aware), sinking funds, recurring, cash flow forecast, notification infrastructure |
+| **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 13–18 | Charts, net worth forecast with growth scenarios, offline-first, conflict-safe sync with resolution UI, reconciliation, contribution room, amortization |
+| **Phase 5: Investments & Advanced** | Weeks 19–24 | Portfolio, AI, plugins (with sandboxing), multi-user, permissions matrix, FX history |
+| **Phase 6: Polish** | Weeks 25–28 | Security, key lifecycle, restore verification, backup encryption, CI/CD, WCAG audit, security testing, documentation |
 
-> **Total estimated effort:** ~23 weeks of part-time development (assuming ~15-20 hours/week)
+> **Total estimated effort:** ~28 weeks of part-time development (assuming ~15-20 hours/week)
+>
+> **⚠️ Risk note:** The offline sync engine (Phase 4, tasks 4.8–4.12) is historically one of the hardest problems in application development. Budget extra time for edge cases in conflict resolution, partial sync failures, and multi-device scenarios. Consider a spike/prototype sprint before committing to the full implementation.

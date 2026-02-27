@@ -37,6 +37,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **RESP / LIRA / Other** | Extensible account types via configuration | P1 |
 | **Holdings-Level Detail** | Individual stocks, ETFs, mutual funds with quantities & book values | P0 |
 | **Lot-Level Tracking** | Per-purchase lots for ACB calculation (FIFO, ACB average, specific ID) | P1 |
+| **Contribution Room Tracking** | Track annual contribution room for registered accounts (RRSP, TFSA, RESP) with carry-forward, yearly limit updates, and over-contribution warnings | P0 |
 | **Automatic Price Updates** | Fetch market prices via plugin architecture (Yahoo Finance, etc.) | P1 |
 | **Performance Calculation** | Time-weighted & money-weighted returns per account/holding | P1 |
 | **Dividend Tracking** | Track dividend income, DRIP reinvestments | P1 |
@@ -55,6 +56,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 |---------|-------------|----------|
 | **Credit Cards** | Transaction-level tracking, statement periods, minimum payments | P0 |
 | **Mortgages** | Balance tracking, amortization schedules, payment tracking | P0 |
+| **Amortization Schedules** | Generate and store amortization schedules with principal/interest/balance breakdown per payment; support variable rates, lump-sum payments, and schedule recalculation | P0 |
 | **Lines of Credit** | Balance and interest tracking | P1 |
 | **Loans** | Auto loans, student loans, personal loans with amortization | P1 |
 
@@ -128,6 +130,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Price Feed Plugin Interface** | `IPriceFeedProvider` interface for market data sources | P1 |
 | **Plugin Discovery** | Automatic discovery of plugins from a designated directory | P1 |
 | **Plugin Configuration** | Per-plugin settings via the UI | P1 |
+| **Plugin Security Sandboxing** | Plugins run with restricted permissions (no direct DB access, no file system outside designated paths); validate plugin assemblies on load; log all plugin operations | P1 |
 | **Built-in Plugins** | CSV, QFX/QIF, Yahoo Finance price feed as reference implementations | P1 |
 
 ### 3.6 Import Quality Controls
@@ -137,6 +140,17 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Dead-Letter Import Rows** | Invalid rows are retained in an import exception queue for correction and replay | P1 |
 | **Import Replay** | Re-run a prior import batch after mapping/rule corrections while preserving auditability | P1 |
 | **Import Quality Metrics** | Track import success rate, duplicate rate, auto-categorization rate, and manual fix rate | P1 |
+
+### 3.7 Categories, Tags & Payees
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **Category Entity** | First-class `Category` entity with name, icon, type (income/expense), and parent reference for hierarchical grouping | P0 |
+| **Category Groups** | Hierarchical category groups (e.g., "Housing" → Rent, Utilities, Insurance) for roll-up reporting and budget views | P0 |
+| **Default Categories** | Seed a sensible set of default categories on first run; user can rename, reorder, or delete | P0 |
+| **Tag Management** | First-class `Tag` entity (not free-form strings); create, rename, merge, and delete tags; tag-based filtering and reporting | P1 |
+| **Payee Management** | First-class `Payee` entity with normalized display name, aliases, and default category; enables autocomplete, merge-duplicates UX, and payee-based reporting | P1 |
+| **Payee Aliases** | Map multiple raw payee strings (e.g., "AMZN*1A2B3C", "Amazon.ca") to a single canonical payee | P1 |
 
 ---
 
@@ -177,6 +191,16 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **What-If Scenarios** | Model changes (e.g., "what if I increase mortgage payments by $200?" or "what if markets return 4% instead of 7%?") | P1 |
 | **Minimum Balance Alerts** | Warn if projected balance drops below threshold | P1 |
 | **Sinking Fund Forecasting** | Project sinking fund accumulation and show when funds will be ready vs when payment is due | P0 |
+
+### 4.4 Notifications & Alerts
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **In-App Notification Center** | Persistent notification panel in the PWA showing alerts, warnings, and informational messages with read/unread state | P0 |
+| **Alert Types** | Budget exceeded, sinking fund behind schedule, minimum balance breach, recurring transaction variance, import errors, sync conflicts pending resolution | P0 |
+| **Notification Preferences** | Per-alert-type settings: enabled/disabled, threshold values, snooze/dismiss | P1 |
+| **PWA Push Notifications** | Browser push notifications for critical alerts when the app is backgrounded (requires service worker registration) | P2 |
+| **Notification Entity** | First-class `Notification` entity with type, severity, message, related entity reference, read state, and created timestamp | P0 |
 
 ---
 
@@ -266,6 +290,8 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Rate Limiting** | Protect API endpoints from abuse | P1 |
 | **Input Validation** | Server-side validation on all inputs using FluentValidation | P0 |
 | **Key Management Lifecycle** | Encryption key generation, rotation schedule, secure backup, restore validation, and compromised-key recovery runbook | P0 |
+| **Soft-Delete / Archival** | Financial records (accounts, transactions, rules) use soft-delete with `IsDeleted` + `DeletedAt` timestamps; hard-delete only via explicit admin purge after retention period. Soft-deletes propagate to offline clients via sync. | P0 |
+| **Backup Encryption** | Backup files are encrypted at rest using the application's data protection keys; encrypted backups are the default for both automated and manual exports | P1 |
 
 ---
 
@@ -279,6 +305,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Data Import (Restore)** | Restore from backup | P1 |
 | **Data Portability** | Complete data export in open format | P0 |
 | **Restore Verification** | Scheduled test restore job with checksum validation and smoke test to verify backup integrity | P0 |
+| **Encrypted Backups** | Backup files encrypted with application data protection keys; passphrase-based option for portable backups | P1 |
 | **Recovery Objectives** | Configurable and documented RPO/RTO targets for self-hosted operators | P1 |
 
 ---
@@ -291,6 +318,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **IndexedDB Local Store** | Store recent transactions and account summaries locally | P0 |
 | **Background Sync** | Queue changes made offline; sync when server is reachable | P0 |
 | **Conflict Resolution** | Field-aware merge policies for financial records (money/splits/categories are conflict-sensitive) plus explicit user conflict queue; avoid blind last-write-wins for critical fields | P0 |
+| **Conflict Resolution UI** | Dedicated page showing pending sync conflicts with side-by-side diff view (local vs server); user can accept local, accept server, or manually merge per field | P0 |
 | **Sync Idempotency** | Client-generated operation IDs guarantee exactly-once logical application of offline mutations | P0 |
 | **Offline Indicators** | Clear UI indicators for online/offline status and pending sync | P0 |
 | **Install Prompt** | PWA install prompt for desktop and mobile | P0 |
@@ -303,6 +331,8 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 |---------|-------------|----------|
 | **Multi-Currency** | Support multiple currencies with configurable base currency | P0 |
 | **Exchange Rates** | Fetch exchange rates via plugin (or manual entry) | P1 |
+| **Exchange Rate History** | Store historical exchange rates with date-stamped snapshots; use point-in-time rates for accurate historical net worth and multi-currency reporting | P1 |
+| **FX Conversion Records** | Explicit foreign exchange conversion records linking source/target currencies, rate, and date when transactions cross currency boundaries | P0 |
 | **Locale-Aware Formatting** | Date, number, and currency formatting based on user locale | P0 |
 | **Extensible Account Types** | Account types not hardcoded to Canadian system | P0 |
 | **Language Support** | English initially; architecture supports future i18n | P2 |
@@ -322,6 +352,10 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Automated Migrations** | EF Core migrations applied on startup | P0 |
 | **Container Registry** | GitHub Container Registry (ghcr.io) for published images | P1 |
 | **CI/CD** | GitHub Actions for build, test, publish images | P1 |
+| **API Versioning** | URL-prefix versioning (`/api/v1/...`) to support safe rolling upgrades when PWA clients and server may be at different versions; version negotiation during sync | P0 |
+| **Seed / Demo Data** | Realistic seed data generated with Bogus for dev mode: sample accounts, transactions, categories, rules, budgets, and holdings for rapid development and demos | P0 |
+| **Metrics & Observability** | Application-level metrics (Prometheus-compatible) for request rates, sync latency, import throughput, error rates; Aspire dashboard integration for development | P1 |
+| **Log Retention Policy** | Configurable structured log retention and rotation; default 30-day retention for self-hosted deployments | P1 |
 
 ---
 
@@ -343,6 +377,29 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Currency Invariant** | Parent and split currency consistency, or explicit FX conversion records when different | P0 |
 | **Transfer Invariant** | Inter-account transfer creates balanced linked entries with immutable linkage IDs | P0 |
 | **Audit Invariant** | Every mutation of transactions/splits/rules/import batches produces an auditable event trail | P0 |
+
+---
+
+## 13. Accessibility & Responsiveness
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **WCAG 2.1 AA Compliance** | All UI components meet WCAG 2.1 Level AA accessibility standards: keyboard navigation, screen reader support, sufficient color contrast, focus indicators | P1 |
+| **Responsive Design** | PWA is fully responsive across desktop, tablet, and mobile viewports; touch-friendly controls and gesture support for mobile users | P0 |
+| **Reduced Motion** | Respect `prefers-reduced-motion` media query; provide static alternatives to animated charts and transitions | P1 |
+| **Semantic HTML** | Use proper ARIA landmarks, heading hierarchy, and semantic elements throughout the Blazor component library | P1 |
+
+---
+
+## 14. API Design & Data Access
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **Cursor-Based Pagination** | All list endpoints support cursor-based pagination with configurable page size; no unbounded queries | P0 |
+| **Filtering & Sorting** | Transaction, account, and report endpoints support filtering (date range, category, account, tags, payee) and multi-field sorting | P0 |
+| **Search** | Full-text search across transaction descriptions, payee names, and notes | P1 |
+| **Bulk Operations** | Batch endpoints for categorize, tag, delete, and rule-apply operations to avoid N+1 API calls | P1 |
+| **Typed API Contracts** | Shared DTO/contract library between API and Blazor WASM client for compile-time safety | P0 |
 
 ---
 
