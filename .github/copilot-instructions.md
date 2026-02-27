@@ -46,12 +46,15 @@ docker/
 
 -   `Account` - Financial account (investment, banking, credit, property)
 -   `Transaction` - Individual financial transaction with category and tags
+-   `TransactionSplit` - Logical child split line of a Transaction (category + amount); splits must sum to parent
 -   `Money` - Value object: `decimal Amount` + `string CurrencyCode`
 -   `Holding` - Investment position (symbol, quantity, price)
 -   `Lot` - Purchase lot for cost basis tracking
--   `Budget` - Monthly budget per category
+-   `Budget` - Monthly budget per category (split-aware: uses split line categories)
+-   `SinkingFund` - Savings target for lump-sum expenses (target amount, due date, monthly set-aside)
 -   `RecurringTransaction` - Expected recurring income/expense pattern
--   `CategorizationRule` - User-defined rule (conditions + actions as JSON)
+-   `ForecastScenario` - Named net worth forecast with per-account/asset-class growth rate assumptions
+-   `CategorizationRule` - User-defined rule (conditions + actions as JSON); can include auto-split templates
 -   `ImportMapping` - Saved column mapping for a file format/institution
 
 ## Coding Standards

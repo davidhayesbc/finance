@@ -91,7 +91,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Quick-Add Transaction** | Fast single transaction entry with autocomplete | P0 |
 | **Batch Entry** | Enter multiple transactions at once | P1 |
 | **Transfer Between Accounts** | Create linked transfer transactions | P0 |
-| **Split Transactions** | Split a single transaction across multiple categories | P1 |
+| **Split Transactions** | Logical split: one parent transaction with child split lines, each assigned a category, amount, and optional tags. The parent retains the original amount and source data; child splits must sum to the parent. Splits are first-class in reporting, budgets, and rules. | P0 |
 
 ### 3.3 Rules Engine
 
@@ -99,7 +99,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 |---------|-------------|----------|
 | **Rule Builder UI** | Visual rule creation: IF condition(s) THEN action(s) | P0 |
 | **Condition Types** | Match on: description contains/regex, amount range, date range, payee, account | P0 |
-| **Action Types** | Set: category, tags, payee name (normalize), notes, split | P0 |
+| **Action Types** | Set: category, tags, payee name (normalize), notes. Auto-split: rules can define split templates (e.g., "Costco → 80% Groceries / 20% Household") applied as logical child splits. | P0 |
 | **Rule Priority/Ordering** | User-defined execution order with drag-and-drop | P0 |
 | **Auto-Apply on Import** | Rules execute automatically during file import | P0 |
 | **Batch Re-Apply** | Re-run rules against existing transactions | P1 |
@@ -138,10 +138,12 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Monthly Budgets** | Set budget amounts per category per month | P0 |
 | **Budget Templates** | Create templates and apply to future months | P1 |
 | **Rollover Budgets** | Unspent amounts roll to next month (configurable) | P1 |
-| **Budget vs Actual** | Visual comparison of budgeted vs actual spending | P0 |
-| **Budget Alerts** | Notifications when approaching or exceeding budget limits | P1 |
+| **Sinking Funds** | Save toward lump-sum expenses (e.g., annual insurance, property tax). Define the target amount and due date; the system calculates the required monthly set-aside and tracks accumulated vs target. Sinking fund balances are virtual — they don't require a separate account. Alerts when underfunded or due date approaching. | P0 |
+| **Budget vs Actual** | Visual comparison of budgeted vs actual spending, including sinking fund progress bars | P0 |
+| **Budget Alerts** | Notifications when approaching or exceeding budget limits, or when sinking fund contributions are behind schedule | P1 |
 | **Category Groups** | Group categories for higher-level budget views | P0 |
 | **Income Budgeting** | Track expected vs actual income | P1 |
+| **Split-Aware Budgets** | Budget tracking uses split line categories, not the parent transaction category, ensuring accurate per-category spend tracking | P0 |
 
 ### 4.2 Recurring Transactions
 
@@ -157,10 +159,13 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **Cash Flow Forecast** | Project account balances based on recurring transactions and budgets | P0 |
-| **Forecast Horizon** | Configurable: 1 month, 3 months, 6 months, 12 months | P0 |
-| **What-If Scenarios** | Model changes (e.g., "what if I increase mortgage payments by $200?") | P2 |
+| **Cash Flow Forecast** | Project account balances based on recurring transactions, budgets, and sinking fund contributions | P0 |
+| **Forecast Horizon** | Configurable: 1 month, 3 months, 6 months, 1 year, 5 years, 10 years | P0 |
+| **Growth Rate Assumptions** | Set per-account or per-asset-class annual growth rates for investment accounts and property appreciation | P0 |
+| **Named Scenarios** | Create and save named forecast scenarios (e.g., "Conservative", "Moderate", "Aggressive") with different growth rates, contribution levels, and payment schedules | P1 |
+| **What-If Scenarios** | Model changes (e.g., "what if I increase mortgage payments by $200?" or "what if markets return 4% instead of 7%?") | P1 |
 | **Minimum Balance Alerts** | Warn if projected balance drops below threshold | P1 |
+| **Sinking Fund Forecasting** | Project sinking fund accumulation and show when funds will be ready vs when payment is due | P0 |
 
 ---
 
@@ -174,6 +179,9 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Net Worth Over Time** | Line chart showing net worth history | P0 |
 | **Asset Allocation** | Pie/donut chart of asset categories | P0 |
 | **Account Summary Cards** | Quick-view cards for each account with balance and trend | P0 |
+| **Net Worth Forecast** | Project future net worth based on scheduled payments (recurring transactions, mortgage amortization, sinking funds) and user-defined growth rate assumptions per account/asset class | P0 |
+| **Growth Rate Scenarios** | Define multiple forecast scenarios (conservative / moderate / aggressive) with different growth rates per asset class. Compare scenarios side-by-side on the same chart. | P1 |
+| **Forecast Inputs** | Forecasting accounts for: recurring contributions/withdrawals, scheduled debt payments, investment growth rates, property appreciation rates, and inflation adjustment | P1 |
 
 ### 5.2 Spending Analysis
 

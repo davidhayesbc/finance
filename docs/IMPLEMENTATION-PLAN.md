@@ -170,10 +170,13 @@ finance/
 │   │   ├── Entities/
 │   │   │   ├── Account.cs                   # Base account entity
 │   │   │   ├── Transaction.cs
+│   │   │   ├── TransactionSplit.cs           # Logical split line (child of Transaction)
 │   │   │   ├── Budget.cs
+│   │   │   ├── SinkingFund.cs                # Lump-sum savings target
 │   │   │   ├── RecurringTransaction.cs
 │   │   │   ├── Holding.cs
 │   │   │   ├── Lot.cs
+│   │   │   ├── ForecastScenario.cs           # Named growth rate scenario
 │   │   │   └── User.cs
 │   │   ├── ValueObjects/
 │   │   │   ├── Money.cs                     # Currency + amount value object
@@ -200,11 +203,14 @@ finance/
 │   │   ├── Commands/
 │   │   │   ├── ImportTransactions/
 │   │   │   ├── CreateTransaction/
+│   │   │   ├── SplitTransaction/             # Create/update logical splits
 │   │   │   ├── CreateBudget/
+│   │   │   ├── ManageSinkingFund/            # Sinking fund CRUD & contributions
 │   │   │   ├── ApplyRules/
 │   │   │   └── SyncData/
 │   │   ├── Queries/
 │   │   │   ├── GetNetWorth/
+│   │   │   ├── GetNetWorthForecast/          # Projected net worth with growth scenarios
 │   │   │   ├── GetTransactions/
 │   │   │   ├── GetBudgetSummary/
 │   │   │   ├── GetCashFlowForecast/
@@ -213,6 +219,8 @@ finance/
 │   │   │   ├── RulesEngineService.cs
 │   │   │   ├── ImportOrchestrator.cs
 │   │   │   ├── ForecastingService.cs
+│   │   │   ├── NetWorthForecastingService.cs  # Growth rate projections & scenarios
+│   │   │   ├── SinkingFundService.cs          # Monthly set-aside calculations
 │   │   │   └── SyncService.cs
 │   │   ├── Interfaces/
 │   │   │   ├── IAccountRepository.cs
@@ -365,16 +373,19 @@ finance/
 │─────────────────────│        └─────────────────────┘
 │ Id                  │
 │ Date                │
-│ Amount: Money       │
-│ Description         │
-│ NormalizedPayee     │
-│ Category            │
-│ Tags[]              │
-│ Type (Debit/Credit) │
-│ IsReconciled        │
-│ ImportBatchId       │
-│ Notes               │
-└─────────────────────┘
+│ Amount: Money       │        ┌─────────────────────┐
+│ Description         │        │  TransactionSplit    │
+│ NormalizedPayee     │        │─────────────────────│
+│ Category            │───┐    │ Id                  │
+│ Tags[]              │   │    │ Transaction (parent)│
+│ Type (Debit/Credit) │   └───▶│ Amount: Money       │
+│ IsReconciled        │        │ Category            │
+│ IsSplit             │        │ Tags[]              │
+│ Splits[]            │        │ Notes               │
+│ ImportBatchId       │        │ Percentage?         │
+│ Notes               │        └─────────────────────┘
+└─────────────────────┘        (child splits must sum to
+                                parent Amount exactly)
 
 ┌─────────────────────┐        ┌─────────────────────┐
 │     Holding         │        │       Lot            │
@@ -402,6 +413,22 @@ finance/
 │ User                │        │ StartDate           │
 └─────────────────────┘        │ EndDate?            │
                                │ NextOccurrence      │
+┌─────────────────────┐        └─────────────────────┘
+│    SinkingFund      │
+│─────────────────────│        ┌─────────────────────┐
+│ Id                  │        │  ForecastScenario   │
+│ Name                │        │─────────────────────│
+│ TargetAmount: Money │        │ Id                  │
+│ DueDate             │        │ Name (Conservative, │
+│ Frequency (Annual,  │        │   Moderate, etc.)   │
+│   Quarterly, etc.)  │        │ GrowthAssumptions[] │
+│ MonthlySetAside     │        │   (per account or   │
+│   (calculated)      │        │    asset class)     │
+│ AccumulatedAmount   │        │ InflationRate       │
+│ Category            │        │ ForecastHorizon     │
+│ Account (funding)   │        │ User                │
+│ User                │        └─────────────────────┘
+└─────────────────────┘
 ┌─────────────────────┐        └─────────────────────┘
 │   ImportMapping     │
 │─────────────────────│        ┌─────────────────────┐
@@ -439,7 +466,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 |------|-------------|----------|
 | 1.1 | Create solution structure, all `.csproj` files, `Directory.Build.props` | 2h |
 | 1.2 | Set up Aspire AppHost with PostgreSQL and API project | 2h |
-| 1.3 | Implement domain entities: Account, Transaction, User, Money | 4h |
+| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Money | 5h |
 | 1.4 | Set up EF Core with PostgreSQL, entity configurations, initial migration | 4h |
 | 1.5 | Implement local Identity auth (register, login, JWT tokens) | 4h |
 | 1.6 | Implement OpenID Connect (Google + Microsoft) | 3h |
@@ -471,58 +498,67 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 2.8 | Build Rules UI: create/edit/order rules visually | 6h |
 | 2.9 | Implement auto-apply rules on import | 2h |
 | 2.10 | Transfer between accounts (linked transactions) | 3h |
-| 2.11 | Import history with undo/rollback support | 3h |
-| 2.12 | Tests for all importers and rules engine | 4h |
+| 2.11 | Transaction splitting UI: add/edit logical split lines on a transaction, enforce sum-to-parent validation | 4h |
+| 2.12 | Rules engine split templates: rules can auto-split transactions (e.g., "Costco → 80% Groceries / 20% Household") | 3h |
+| 2.13 | Import history with undo/rollback support | 3h |
+| 2.14 | Tests for all importers, rules engine, and split logic | 5h |
 
 **Deliverable:** Import CSV/QFX/QIF files, map columns, auto-categorize via rules, review & commit.
 
 ---
 
-### Phase 3: Budgeting & Recurring (Weeks 7–9)
+### Phase 3: Budgeting, Sinking Funds & Forecasting (Weeks 7–10)
 
-**Goal:** Budget management, recurring transactions, and cash flow forecasting.
+**Goal:** Budget management, sinking funds for lump-sum expenses, recurring transactions, and cash flow / net worth forecasting.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
 | 3.1 | Implement Budget entity and CRUD endpoints | 3h |
 | 3.2 | Build Budget UI: set budgets per category, monthly view | 4h |
-| 3.3 | Budget vs Actual calculations and display | 4h |
-| 3.4 | Category management (create, group, reorder categories) | 3h |
-| 3.5 | Implement RecurringTransaction entity and CRUD | 3h |
-| 3.6 | Build Recurring Transactions UI: define patterns, preview schedule | 4h |
-| 3.7 | Auto-generation of future expected transactions | 3h |
-| 3.8 | Cash flow forecasting engine (project balances forward) | 6h |
-| 3.9 | Forecast visualization (line chart with actual vs projected) | 4h |
-| 3.10 | Minimum balance alerts | 2h |
-| 3.11 | Tests for budgeting and forecasting logic | 4h |
+| 3.3 | Split-aware budget tracking: use split line categories (not parent) for accurate per-category spend | 3h |
+| 3.4 | Budget vs Actual calculations and display (including split-aware totals) | 4h |
+| 3.5 | Category management (create, group, reorder categories) | 3h |
+| 3.6 | Implement SinkingFund entity: target amount, due date, frequency, funding account | 3h |
+| 3.7 | Sinking fund calculation service: compute monthly set-aside, track accumulated vs target | 3h |
+| 3.8 | Sinking fund UI: create/edit funds, progress bars, alerts when behind schedule | 4h |
+| 3.9 | Implement RecurringTransaction entity and CRUD | 3h |
+| 3.10 | Build Recurring Transactions UI: define patterns, preview schedule | 4h |
+| 3.11 | Auto-generation of future expected transactions | 3h |
+| 3.12 | Cash flow forecasting engine (project balances including recurring, budgets, and sinking fund contributions) | 6h |
+| 3.13 | Forecast visualization (line chart with actual vs projected) | 4h |
+| 3.14 | Minimum balance alerts | 2h |
+| 3.15 | Tests for budgeting, sinking funds, and forecasting logic | 5h |
 
 **Deliverable:** Set budgets, define recurring transactions, see cash flow forecast.
 
 ---
 
-### Phase 4: Dashboards & Offline-First (Weeks 10–13)
+### Phase 4: Dashboards, Net Worth Forecasting & Offline-First (Weeks 11–15)
 
 **Goal:** Rich dashboards, charts, and offline PWA capability.
 
 | Task | Description | Estimate |
 |------|-------------|----------|
 | 4.1 | Net Worth dashboard: summary cards, time-series chart, asset allocation | 6h |
-| 4.2 | Spending analysis: category breakdown, trends, payee ranking | 6h |
-| 4.3 | Cash flow dashboard: income vs expenses, savings rate | 4h |
-| 4.4 | Debt overview: balances, rates, amortization charts | 4h |
-| 4.5 | Implement service worker for app shell caching | 4h |
-| 4.6 | Implement IndexedDB local store (account summaries, recent txns) | 6h |
-| 4.7 | Build sync engine: queue offline changes, sync on reconnect | 8h |
-| 4.8 | Conflict resolution strategy (last-write-wins + user review) | 4h |
-| 4.9 | Offline/online status indicator in UI | 2h |
-| 4.10 | PWA manifest and install prompt | 2h |
-| 4.11 | Tests for sync engine and offline scenarios | 4h |
+| 4.2 | Net Worth forecasting: ForecastScenario entity, growth rate assumptions per account/asset class | 4h |
+| 4.3 | NetWorthForecastingService: project future net worth using scheduled payments, growth rates, inflation | 6h |
+| 4.4 | Scenario comparison UI: define named scenarios (conservative/moderate/aggressive), overlay on chart | 4h |
+| 4.5 | Spending analysis: category breakdown (split-aware), trends, payee ranking | 6h |
+| 4.6 | Cash flow dashboard: income vs expenses, savings rate | 4h |
+| 4.7 | Debt overview: balances, rates, amortization charts | 4h |
+| 4.8 | Implement service worker for app shell caching | 4h |
+| 4.9 | Implement IndexedDB local store (account summaries, recent txns) | 6h |
+| 4.10 | Build sync engine: queue offline changes, sync on reconnect | 8h |
+| 4.11 | Conflict resolution strategy (last-write-wins + user review) | 4h |
+| 4.12 | Offline/online status indicator in UI | 2h |
+| 4.13 | PWA manifest and install prompt | 2h |
+| 4.14 | Tests for sync engine, offline scenarios, and net worth forecasting | 5h |
 
 **Deliverable:** Full dashboard suite. App works offline, syncs when back online.
 
 ---
 
-### Phase 5: Investments & Advanced Features (Weeks 14–18)
+### Phase 5: Investments & Advanced Features (Weeks 16–20)
 
 **Goal:** Investment tracking, Ollama AI, plugin system, multi-user households.
 
@@ -548,7 +584,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 ---
 
-### Phase 6: Polish & Hardening (Weeks 19–21)
+### Phase 6: Polish & Hardening (Weeks 21–23)
 
 **Goal:** Production readiness, security hardening, CI/CD publishing.
 
@@ -658,11 +694,11 @@ Push to main ──▶ Build ──▶ Test ──▶ Lint ──▶ Publish Ima
 
 | Phase | Duration | Key Milestone |
 |-------|----------|--------------|
-| **Phase 1: Foundation** | Weeks 1–3 | Auth, accounts, transactions, Docker |
-| **Phase 2: Ingestion** | Weeks 4–6 | CSV/QFX/QIF import, rules engine |
-| **Phase 3: Budgeting** | Weeks 7–9 | Budgets, recurring, forecasting |
-| **Phase 4: Dashboards & PWA** | Weeks 10–13 | Charts, offline-first, sync |
-| **Phase 5: Investments & Advanced** | Weeks 14–18 | Portfolio, AI, plugins, multi-user |
-| **Phase 6: Polish** | Weeks 19–21 | Security, CI/CD, documentation |
+| **Phase 1: Foundation** | Weeks 1–3 | Auth, accounts, transactions (with splits), Docker |
+| **Phase 2: Ingestion** | Weeks 4–6 | CSV/QFX/QIF import, rules engine, auto-split rules |
+| **Phase 3: Budgeting & Sinking Funds** | Weeks 7–10 | Budgets (split-aware), sinking funds, recurring, cash flow forecast |
+| **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 11–15 | Charts, net worth forecast with growth scenarios, offline-first, sync |
+| **Phase 5: Investments & Advanced** | Weeks 16–20 | Portfolio, AI, plugins, multi-user |
+| **Phase 6: Polish** | Weeks 21–23 | Security, CI/CD, documentation |
 
-> **Total estimated effort:** ~21 weeks of part-time development (assuming ~15-20 hours/week)
+> **Total estimated effort:** ~23 weeks of part-time development (assuming ~15-20 hours/week)
