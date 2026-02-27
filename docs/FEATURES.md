@@ -132,7 +132,7 @@ Property and other non-transactional asset accounts derive their `CurrentBalance
 | **Price Feed Plugin Interface** | `IPriceFeedProvider` interface for market data sources | P1 |
 | **Plugin Discovery** | Automatic discovery of plugins from a designated directory | P1 |
 | **Plugin Configuration** | Per-plugin settings via the UI | P1 |
-| **Plugin Security Sandboxing** | Plugins run with restricted permissions (no direct DB access, no file system outside designated paths); validate plugin assemblies on load; log all plugin operations | P1 |
+| **Trusted Plugin Runtime** | Plugins are assumed trusted and run in-process with explicit capability interfaces, startup validation, and operation logging | P1 |
 | **Built-in Plugins** | CSV, QFX/QIF, Yahoo Finance price feed as reference implementations | P1 |
 
 ### 3.6 Import Quality Controls
@@ -319,6 +319,9 @@ Property and other non-transactional asset accounts derive their `CurrentBalance
 | **Service Worker** | Cache app shell and static assets for offline access | P0 |
 | **IndexedDB Local Store** | Store recent transactions and account summaries locally | P0 |
 | **Background Sync** | Queue changes made offline; sync when server is reachable | P0 |
+| **Sync Versioning** | Syncable records include monotonic version metadata for optimistic concurrency and deterministic conflict detection | P0 |
+| **Tombstone Propagation** | Deletes propagate as tombstones to offline clients to prevent resurrection of removed records during sync | P0 |
+| **Incremental Change Feed** | Server exposes cursor/token-based incremental sync (`sinceToken`) to avoid full dataset syncs and reduce conflict windows | P0 |
 | **Conflict Resolution** | Field-aware merge policies for financial records (money/splits/categories are conflict-sensitive) plus explicit user conflict queue; avoid blind last-write-wins for critical fields | P0 |
 | **Conflict Resolution UI** | Dedicated page showing pending sync conflicts with side-by-side diff view (local vs server); user can accept local, accept server, or manually merge per field | P0 |
 | **Sync Idempotency** | Client-generated operation IDs guarantee exactly-once logical application of offline mutations | P0 |
@@ -409,6 +412,6 @@ Property and other non-transactional asset accounts derive their `CurrentBalance
 
 | Priority | Meaning | Phase Target |
 |----------|---------|-------------|
-| **P0** | Must-have for MVP and safe production operation | Phase 1–4 |
-| **P1** | Important enhancements after stable MVP | Phase 5–6 |
+| **P0** | Must-have for MVP and safe production operation | Phase 1–6 (dependency-ordered) |
+| **P1** | Important enhancements after MVP or when schedule permits | Phase 5+ |
 | **P2** | Nice-to-have, future | Post Phase 6 |

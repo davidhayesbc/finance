@@ -43,7 +43,7 @@
 | **CsvHelper** | CSV parsing with configurable column mapping |
 | **Microsoft.AspNetCore.Identity** | Local username/password authentication |
 | **Microsoft.AspNetCore.Authentication.OpenIdConnect** | Google/Microsoft SSO |
-| **Blazored.LocalStorage** | IndexedDB/localStorage access from Blazor WASM |
+| **IndexedDB abstraction (JS interop wrapper)** | Durable offline client storage for transactions, sync queue, and metadata |
 | **MudBlazor** or **Fluent UI Blazor** | Component library for the PWA UI |
 | **Microsoft.AspNetCore.DataProtection** | Application-level field encryption |
 | **Yarp** or Aspire built-in | Reverse proxy if needed |
@@ -166,12 +166,16 @@ finance/
 │   │   │   ├── Lot.cs
 │   │   │   ├── ForecastScenario.cs           # Named growth rate scenario
 │   │   │   ├── User.cs
+│   │   │   ├── Household.cs                  # Multi-user household grouping
 │   │   │   ├── ImportBatch.cs                # Import tracking and rollback
 │   │   │   ├── AuditEvent.cs                 # Append-only audit trail
 │   │   │   ├── Category.cs                   # Hierarchical transaction category
 │   │   │   ├── Tag.cs                        # Managed tag entity
+│   │   │   ├── TransactionTag.cs             # Many-to-many link for transaction tagging
+│   │   │   ├── TransactionSplitTag.cs        # Many-to-many link for split-line tagging
 │   │   │   ├── Payee.cs                      # Normalized payee with aliases
 │   │   │   ├── ExchangeRate.cs               # Historical FX rates
+│   │   │   ├── FxConversion.cs               # Explicit FX conversion records
 │   │   │   ├── PriceHistory.cs               # Point-in-time security prices (AsOfDate + RecordedAt)
 │   │   │   ├── Valuation.cs                  # Manual asset valuations (EffectiveDate + RecordedAt)
 │   │   │   ├── ContributionRoom.cs           # Registered account contribution tracking
@@ -311,7 +315,7 @@ finance/
 │       │   ├── Shared/
 │       │   └── OfflineIndicator.razor
 │       ├── Services/
-│       │   ├── LocalStorageService.cs        # IndexedDB wrapper
+│       │   ├── IndexedDbService.cs           # IndexedDB wrapper
 │       │   ├── SyncService.cs                # Offline sync orchestration
 │       │   ├── ApiClient.cs                  # Typed HTTP client
 │       │   └── AuthStateProvider.cs
@@ -416,9 +420,9 @@ classDiagram
         DateTime Date
         Money Amount
         string Description
-        string NormalizedPayee
-        string Category
-        string[] Tags
+        Payee? Payee
+        Category? Category
+        TransactionTag[] Tags
         TransactionType Type
         bool IsReconciled
         bool IsSplit
@@ -431,8 +435,8 @@ classDiagram
         Guid Id
         Transaction Transaction
         Money Amount
-        string Category
-        string[] Tags
+        Category Category
+        TransactionSplitTag[] Tags
         string Notes
         decimal? Percentage
     }
@@ -460,7 +464,7 @@ classDiagram
 
     class Budget {
         Guid Id
-        string Category
+        Category Category
         Money Amount
         int Month
         int Year
@@ -473,7 +477,7 @@ classDiagram
         Account Account
         Money Amount
         string Description
-        string Category
+        Category Category
         string Frequency
         DateTime StartDate
         DateTime? EndDate
@@ -488,7 +492,7 @@ classDiagram
         string Frequency
         Money MonthlySetAside
         Money AccumulatedAmount
-        string Category
+        Category Category
         Account Account
         User User
     }
@@ -563,6 +567,16 @@ classDiagram
         User User
     }
 
+    class TransactionTag {
+        Guid TransactionId
+        Guid TagId
+    }
+
+    class TransactionSplitTag {
+        Guid TransactionSplitId
+        Guid TagId
+    }
+
     class Payee {
         Guid Id
         string DisplayName
@@ -576,7 +590,8 @@ classDiagram
         string FromCurrency
         string ToCurrency
         decimal Rate
-        DateTime Date
+        DateTime AsOfDate
+        DateTime RecordedAt
         string Source
     }
 
@@ -646,10 +661,26 @@ classDiagram
         User User
     }
 
+    class FxConversion {
+        Guid Id
+        Transaction Transaction
+        string FromCurrency
+        string ToCurrency
+        decimal Rate
+        DateTime AsOfDate
+        DateTime RecordedAt
+        Money SourceAmount
+        Money ConvertedAmount
+    }
+
     User "1..*" --> "0..1" Household : member of
     User "1" --> "*" Account : owns
     Account "1" --> "*" Transaction : has
     Transaction "1" --> "*" TransactionSplit : splits into
+    Transaction "1" --> "*" TransactionTag : tagged by
+    TransactionSplit "1" --> "*" TransactionSplitTag : tagged by
+    Tag "1" --> "*" TransactionTag : linked by
+    Tag "1" --> "*" TransactionSplitTag : linked by
     Account "1" --> "*" Holding : contains
     Holding "1" --> "*" Lot : tracked by
     Account --> AccountType
@@ -667,6 +698,7 @@ classDiagram
     User "1" --> "*" ImportBatch : imports
     User "1" --> "*" Notification : receives
     Category "0..1" --> "*" Category : parent of
+    Transaction "1" --> "*" FxConversion : converts by
 ```
 
 > **Invariant:** child `TransactionSplit.Amount` values must sum to the parent `Transaction.Amount` exactly.
@@ -693,11 +725,14 @@ public record AccountType(string Code, string DisplayName, string Category);
 - Transfer invariant: linked transfer entries remain balanced and immutable-linked.
 - Audit invariant: all mutations to transactions/splits/import batches/rules are append-only auditable events.
 - Soft-delete invariant: financial records use `IsDeleted` + `DeletedAt` soft-delete; hard purge only via admin action after retention period. Soft-deletes propagate through sync to offline clients.
-- Category referential integrity: deleting a category requires reassignment of all linked transactions/splits/budgets/rules.
+- Category/tag referential integrity: category and tag deletes require explicit reassignment/remap of linked transactions/splits/budgets/rules.
+- Sync consistency invariant: each syncable record carries a monotonic version and supports tombstone propagation for delete reconciliation across offline clients.
 
 ---
 
 ## 5. Phased Implementation
+
+> **Execution rule:** Apply test-first delivery in every phase. For each feature task, write failing tests first, implement to green, then refactor. Phase-level "Tests for ..." tasks are for coverage expansion and regression hardening, not first-time test creation.
 
 ### Phase 1: Foundation (Weeks 1–4)
 
@@ -707,10 +742,12 @@ public record AccountType(string Code, string DisplayName, string Category);
 |------|-------------|----------|:----:|
 | 1.1 | Create solution structure, all `.csproj` files, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig` | 3h | [ ] |
 | 1.2 | Set up Aspire AppHost with PostgreSQL and API project | 2h | [ ] |
-| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Money, Category, CategoryGroup, Tag, Payee, ImportBatch, AuditEvent, Notification, PriceHistory, Valuation | 8h | [ ] |
+| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Household, Money, Category (hierarchical), Tag, TransactionTag, TransactionSplitTag, Payee, ImportBatch, AuditEvent, Notification, PriceHistory, Valuation | 8h | [ ] |
 | 1.4 | Set up EF Core with PostgreSQL, entity configurations, initial migration, soft-delete global query filters, and database indexing strategy (transaction fingerprints, account+date, category lookups) | 6h | [ ] |
+| 1.4a | Enforce normalized financial taxonomy from day 1 (`Category`, `Payee`, `Tag`, `TransactionTag`, `TransactionSplitTag` with FK constraints); no free-form category/tag strings in persisted model | 3h | [ ] |
 | 1.5 | Implement local Identity auth (register, login, JWT tokens) | 4h | [ ] |
 | 1.6 | Implement OpenID Connect (Google + Microsoft) | 3h | [ ] |
+| 1.6a | Implement password policy, lockout, and reset flows with configurable policy settings | 2h | [ ] |
 | 1.7 | Build Minimal API endpoints: Accounts CRUD, Transactions CRUD with cursor-based pagination, filtering, and sorting | 5h | [ ] |
 | 1.7a | Set up API versioning (`/api/v1/...`) with Asp.Versioning | 2h | [ ] |
 | 1.8 | Scaffold Blazor WASM project with MudBlazor/Fluent UI, ErrorBoundary components, and responsive layout | 4h | [ ] |
@@ -799,6 +836,9 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 4.8 | Implement service worker for app shell caching | 4h | [ ] |
 | 4.9 | Implement IndexedDB local store (account summaries, recent txns) | 6h | [ ] |
 | 4.10 | Build sync engine: queue offline changes, sync on reconnect | 8h | [ ] |
+| 4.10a | Add optimistic concurrency/version metadata (`RowVersion`/`Version`) to syncable entities and enforce conditional updates | 4h | [ ] |
+| 4.10b | Add tombstone model for soft-deleted records and sync propagation semantics | 4h | [ ] |
+| 4.10c | Implement incremental sync change feed with server cursors/checkpoints (`sinceToken`) | 4h | [ ] |
 | 4.11 | ConflictResolutionService: field-aware merge policies and explicit conflict queue for financial edits | 6h | [ ] |
 | 4.11a | Conflict Resolution UI: dedicated page with side-by-side diff view (local vs server), per-field accept/merge actions | 5h | [ ] |
 | 4.12 | Sync idempotency: client operation IDs and replay-safe server handlers | 3h | [ ] |
@@ -807,6 +847,9 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 4.14a | ReconciliationPeriod entity, reconciliation workflow endpoints and UI (statement open/close/lock) | 5h | [ ] |
 | 4.14b | ContributionRoom entity and tracking for registered accounts (RRSP, TFSA) with annual limit management | 4h | [ ] |
 | 4.14c | AmortizationEntry entity and schedule generation for mortgages/loans (principal/interest split per payment) | 4h | [ ] |
+| 4.14d | Multi-currency foundation: base currency settings, `ExchangeRate` dual-date model (`AsOfDate`, `RecordedAt`), and `FxConversion` records for cross-currency transactions | 5h | [ ] |
+| 4.14e | Resource-level permissions matrix baseline enforcement for `Account`, `Transaction`, `ImportBatch`, `Rule`, and `Report` | 5h | [ ] |
+| 4.14f | Core operations hardening: health checks, manual backup/export, and restore entry points for self-hosted operators | 4h | [ ] |
 | 4.15 | Tests for sync engine, conflict resolution, offline scenarios, net worth forecasting, reconciliation, and contribution room | 8h | [ ] |
 
 **Deliverable:** Full dashboard suite. App works offline, syncs when back online with conflict resolution UI. Statement reconciliation. Contribution room tracking. Mortgage/loan amortization schedules.
@@ -815,7 +858,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 ### Phase 5: Investments & Advanced Features (Weeks 19–24)
 
-**Goal:** Investment tracking, Ollama AI, plugin system (with security sandboxing), multi-user households, FX history.
+**Goal:** Investment tracking, Ollama AI, trusted plugin system, multi-user households, FX history.
 
 | Task | Description | Estimate | Done |
 |------|-------------|----------|:----:|
@@ -824,23 +867,23 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 5.3 | Portfolio performance calculations (TWR, MWR) | 6h | [ ] |
 | 5.4 | Price feed plugin interface and Yahoo Finance implementation | 4h | [ ] |
 | 5.5 | PriceHistory entity (`Symbol`, `Price`, `AsOfDate`, `RecordedAt`, `Source`) for point-in-time security prices; stale-price detection via AsOfDate vs RecordedAt gap | 4h | [ ] |
-| 5.5a | ExchangeRate entity, historical rate storage, and FX conversion record linking on cross-currency transactions | 4h | [ ] |
+| 5.5a | Exchange rate ingestion providers and historical FX backfill into `ExchangeRate(AsOfDate, RecordedAt)` with `FxConversion` linkage validation | 4h | [ ] |
 | 5.5b | Valuation entity (`Account`, `EstimatedValue`, `EffectiveDate`, `RecordedAt`, `Source`, `Notes`) for manual property/asset valuations with effective-date vs entry-date separation | 3h | [ ] |
 | 5.6 | Investment dashboard: portfolio value, gain/loss, allocation | 6h | [ ] |
 | 5.7 | Plugin loader: assembly scanning, registration, configuration | 6h | [ ] |
-| 5.7a | Plugin security sandboxing: restricted permissions, no direct DB access, validated assembly loading, operation logging | 4h | [ ] |
+| 5.7a | Trusted plugin runtime guardrails: contract validation, startup integrity checks, explicit capability interfaces, and operation logging | 3h | [ ] |
 | 5.8 | Ollama integration: transaction categorization service | 6h | [ ] |
 | 5.9 | AI categorization UI: suggestions, confidence, batch processing | 4h | [ ] |
 | 5.10 | Household entity and multi-user sharing | 4h | [ ] |
 | 5.11 | Shared vs private account visibility | 3h | [ ] |
-| 5.12 | Resource-level permissions matrix and enforcement (`Account`, `Transaction`, `ImportBatch`, `Rule`, `Report`) | 4h | [ ] |
+| 5.12 | Extend permissions matrix for household sharing roles and admin delegation paths | 4h | [ ] |
 | 5.13 | Role-based access control (Admin/Member) | 3h | [ ] |
 | 5.14 | Property tracking: value, expenses, mortgage amortization | 4h | [ ] |
-| 5.15 | Data export (CSV, JSON) and backup/restore | 4h | [ ] |
+| 5.15 | Extended data portability formats (including OFX) and recovery UX hardening | 4h | [ ] |
 | 5.16 | Automated PostgreSQL backups in Docker Compose | 3h | [ ] |
 | 5.17 | Tests for investments, permissions, plugins, and AI integration | 7h | [ ] |
 
-**Deliverable:** Full investment tracking, AI categorization, sandboxed plugin system, multi-user households, historical FX rates.
+**Deliverable:** Full investment tracking, AI categorization, trusted plugin system, multi-user households, historical FX rates.
 
 ---
 
@@ -855,14 +898,14 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 6.3 | Rate limiting on API endpoints | 2h | [ ] |
 | 6.4 | Security headers (CSP, HSTS, X-Content-Type-Options) | 2h | [ ] |
 | 6.5 | Two-factor authentication (TOTP) | 4h | [ ] |
-| 6.6 | Encryption key lifecycle: rotation, secure backup, restore validation, compromised-key recovery playbook | 4h | [ ] |
+| 6.6 | Encryption key lifecycle hardening: rotation automation, secure backup, restore validation, compromised-key recovery playbook | 4h | [ ] |
 | 6.7 | Session management and concurrent session handling | 2h | [ ] |
 | 6.8 | Backup restore verification job (scheduled test restores + smoke checks) | 3h | [ ] |
 | 6.8a | Backup encryption: encrypt automated and manual backups using DataProtection keys; passphrase option for portable exports | 3h | [ ] |
 | 6.8b | Schema migration compatibility strategy: migration smoke tests, version compatibility matrix, rollback-safe migration patterns for self-hosted upgrades | 3h | [ ] |
 | 6.9 | GitHub Actions: build & push container images to ghcr.io | 3h | [ ] |
 | 6.10 | GitHub Actions: release workflow with semantic versioning | 3h | [ ] |
-| 6.11 | Health checks for all services (DB, Ollama, etc.) | 2h | [ ] |
+| 6.11 | Health checks deepening: dependency-specific checks (DB, Ollama, plugin host) and SLO alert thresholds | 2h | [ ] |
 | 6.11a | Application metrics: Prometheus-compatible counters/histograms for request rates, sync latency, import throughput; Aspire dashboard integration | 3h | [ ] |
 | 6.11b | Log retention and rotation policy configuration; default 30-day retention | 1h | [ ] |
 | 6.12 | Documentation: README, deployment guide, development setup, RPO/RTO runbook | 5h | [ ] |
@@ -966,9 +1009,11 @@ graph LR
 | **Phase 2: Ingestion** | Weeks 5–8 | CSV/QFX/QIF import, idempotent ingestion, diagnostics, rules engine, auto-split rules, category/payee/tag management |
 | **Phase 3: Budgeting & Sinking Funds** | Weeks 9–12 | Budgets (split-aware), sinking funds, recurring, cash flow forecast, notification infrastructure |
 | **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 13–18 | Charts, net worth forecast with growth scenarios, offline-first, conflict-safe sync with resolution UI, reconciliation, contribution room, amortization |
-| **Phase 5: Investments & Advanced** | Weeks 19–24 | Portfolio, AI, plugins (with sandboxing), multi-user, permissions matrix, FX history |
+| **Phase 5: Investments & Advanced** | Weeks 19–24 | Portfolio, AI, trusted plugins, multi-user, permissions matrix, FX history |
 | **Phase 6: Polish** | Weeks 25–28 | Security, key lifecycle, restore verification, backup encryption, CI/CD, WCAG audit, security testing, documentation |
 
 > **Total estimated effort:** ~28 weeks of part-time development (assuming ~15-20 hours/week)
+>
+> **Milestone:** MVP target is end of Phase 6 (all phases complete).
 >
 > **⚠️ Risk note:** The offline sync engine (Phase 4, tasks 4.8–4.12) is historically one of the hardest problems in application development. Budget extra time for edge cases in conflict resolution, partial sync failures, and multi-device scenarios. Consider a spike/prototype sprint before committing to the full implementation.
