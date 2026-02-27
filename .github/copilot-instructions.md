@@ -173,6 +173,16 @@ return Results.Problem("Account not found", statusCode: 404);
 
 ## Testing Conventions
 
+### Test-First Development (Critical)
+
+-   **Always write tests before implementation code.** For every new entity, service, handler, or endpoint:
+    1. Write failing unit/integration tests that define the expected behavior
+    2. Implement the minimum code to make the tests pass
+    3. Refactor while keeping tests green
+-   Do not consider a task complete until tests exist and pass
+
+### General Conventions
+
 -   Use xUnit with `[Fact]` and `[Theory]` attributes
 -   Test file naming: `{ClassName}Tests.cs`
 -   Follow Arrange-Act-Assert pattern
@@ -212,3 +222,12 @@ return Results.Problem("Account not found", statusCode: 404);
 -   Handlers: `{Command/Query}Handler` (e.g., `CreateAccountCommandHandler`)
 -   Endpoints: `{Resource}Endpoints` (e.g., `AccountEndpoints`, `TransactionEndpoints`)
 -   Plugin interfaces: `I{Noun}{Verb}er` (e.g., `ITransactionImporter`, `IPriceFeedProvider`)
+
+## Implementation Tracking
+
+-   All implementation tasks are tracked in `docs/IMPLEMENTATION-PLAN.md` with checkboxes in the **Done** column
+-   When a task is completed, **immediately** mark it as done by changing `[ ]` to `[x]` in the corresponding row
+-   A task is only considered complete when:
+    1. Tests are written and passing
+    2. Implementation code satisfies the tests
+    3. The checkbox in the implementation plan is checked off
