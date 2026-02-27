@@ -184,6 +184,13 @@ return Results.Problem("Account not found", statusCode: 404);
 -   Use CSharpier for formatting
 -   Do not manually format code — let the tool handle it
 
+## Diagrams
+
+-   **Always use Mermaid** for diagrams in Markdown files (architecture, data flow, entity relationships, sequence diagrams, CI/CD pipelines, etc.)
+-   Do not use ASCII art or box-drawing characters for diagrams
+-   Use appropriate Mermaid diagram types: `graph`/`flowchart` for architecture and flows, `classDiagram` for domain models, `sequenceDiagram` for interaction flows, `erDiagram` for database schemas
+-   Wrap Mermaid diagrams in fenced code blocks with the `mermaid` language identifier
+
 ## File Organization
 
 -   One primary type per file

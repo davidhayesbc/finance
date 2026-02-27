@@ -68,87 +68,71 @@
 
 ### High-Level Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Docker Compose                           │
-│                                                                 │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐   │
-│  │   Caddy /    │   │  Prospero    │   │    PostgreSQL     │   │
-│  │   Traefik    │──▶│  API Server  │──▶│    (encrypted)    │   │
-│  │  (TLS/HTTPS) │   │  (ASP.NET)   │   │                  │   │
-│  └──────┬───────┘   └──────┬───────┘   └──────────────────┘   │
-│         │                  │                                    │
-│         │           ┌──────┴───────┐   ┌──────────────────┐   │
-│         │           │   Aspire     │   │     Ollama       │   │
-│         │           │  Dashboard   │   │   (optional)     │   │
-│         │           │  (dev only)  │   │                  │   │
-│         │           └──────────────┘   └──────────────────┘   │
-│         │                                                      │
-│  ┌──────┴───────────────────────────────────────────────────┐  │
-│  │              Static Files (Blazor WASM)                   │  │
-│  │              Served by API Server or Caddy                │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Docker["Docker Compose"]
+        Caddy["Caddy / Traefik<br/>(TLS/HTTPS)"]
+        API["Prospero API Server<br/>(ASP.NET)"]
+        PG["PostgreSQL<br/>(encrypted)"]
+        Aspire["Aspire Dashboard<br/>(dev only)"]
+        Ollama["Ollama<br/>(optional)"]
+        Static["Static Files (Blazor WASM)<br/>Served by API Server or Caddy"]
 
-┌─────────────────────────────────────────────────────────────────┐
-│                      Client (Browser)                           │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              Blazor WASM PWA                              │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌────────────────────┐     │  │
-│  │  │ Service  │  │ IndexedDB│  │  Sync Engine       │     │  │
-│  │  │ Worker   │  │ (offline │  │  (queue changes,   │     │  │
-│  │  │ (cache)  │  │  store)  │  │   resolve conflicts)│     │  │
-│  │  └──────────┘  └──────────┘  └────────────────────┘     │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+        Caddy -->|HTTPS| API
+        API --> PG
+        API --- Aspire
+        API -.-> Ollama
+        Caddy --> Static
+    end
+
+    subgraph Browser["Client (Browser)"]
+        subgraph PWA["Blazor WASM PWA"]
+            SW["Service Worker<br/>(cache)"]
+            IDB["IndexedDB<br/>(offline store)"]
+            Sync["Sync Engine<br/>(queue changes,<br/>resolve conflicts)"]
+        end
+    end
+
+    Browser <-->|HTTPS| Caddy
 ```
 
 ### Backend Layered Architecture
 
-```
-┌──────────────────────────────────────────┐
-│              API Layer                    │  Minimal API endpoints
-│          (Presentation)                  │  DTOs, Validation, Auth
-├──────────────────────────────────────────┤
-│           Application Layer              │  Use cases, orchestration
-│         (CQRS with MediatR)             │  Commands, Queries, Handlers
-├──────────────────────────────────────────┤
-│            Domain Layer                  │  Entities, Value Objects
-│         (Pure C#, no deps)              │  Domain Events, Rules
-├──────────────────────────────────────────┤
-│         Infrastructure Layer             │  EF Core, File parsing
-│       (Data Access, Plugins)            │  External integrations
-└──────────────────────────────────────────┘
+```mermaid
+graph TB
+    A["API Layer (Presentation)<br/>Minimal API endpoints, DTOs, Validation, Auth"]
+    B["Application Layer (CQRS with MediatR)<br/>Use cases, orchestration, Commands, Queries, Handlers"]
+    C["Domain Layer (Pure C#, no deps)<br/>Entities, Value Objects, Domain Events, Rules"]
+    D["Infrastructure Layer (Data Access, Plugins)<br/>EF Core, File parsing, External integrations"]
+
+    A --> B
+    B --> C
+    D --> C
+    A -.-> D
 ```
 
 ### Offline-First Data Flow
 
-```
-User Action (offline)
-    │
-    ▼
-┌──────────────┐     ┌──────────────┐
-│  Blazor WASM │────▶│  IndexedDB   │  (write to local store)
-│  Component   │     │  Local Store │
-└──────────────┘     └──────┬───────┘
-                            │
-                     ┌──────▼───────┐
-                     │  Sync Queue  │  (track pending changes)
-                     └──────┬───────┘
-                            │  (when online)
-                     ┌──────▼───────┐
-                     │  Sync Engine │──▶ POST /api/sync
-                     └──────┬───────┘
-                            │
-                     ┌──────▼───────┐
-                     │  Server API  │──▶ PostgreSQL
-                     └──────┬───────┘
-                            │
-                     ┌──────▼───────┐
-                     │  Sync        │  (return server changes)
-                     │  Response    │──▶ Update IndexedDB
-                     └──────────────┘
+```mermaid
+sequenceDiagram
+    participant User as User Action (offline)
+    participant Blazor as Blazor WASM Component
+    participant IDB as IndexedDB Local Store
+    participant Queue as Sync Queue
+    participant Engine as Sync Engine
+    participant API as Server API
+    participant DB as PostgreSQL
+
+    User->>Blazor: Perform action
+    Blazor->>IDB: Write to local store
+    IDB->>Queue: Track pending changes
+    Note over Queue: Waits until online
+    Queue->>Engine: Trigger sync
+    Engine->>API: POST /api/sync
+    API->>DB: Persist changes
+    DB-->>API: Confirm
+    API-->>Engine: Return server changes
+    Engine-->>IDB: Update IndexedDB
 ```
 
 ---
@@ -371,185 +355,296 @@ finance/
 
 ### Core Entities
 
+```mermaid
+classDiagram
+    direction TB
+
+    class User {
+        Guid Id
+        string Email
+        string DisplayName
+        Preferences Preferences
+    }
+
+    class Household {
+        Guid Id
+        string Name
+        User[] Members
+    }
+
+    class Account {
+        Guid Id
+        string Name
+        AccountType AccountType
+        AccountSubType AccountSubType
+        string Currency
+        string Institution
+        bool IsShared
+        Money CurrentBalance
+        User Owner
+    }
+
+    class AccountType {
+        <<enumeration>>
+        Investment
+        Banking
+        Credit
+        Property
+        Loan
+    }
+
+    class AccountSubType {
+        <<enumeration>>
+        RRSP
+        TFSA
+        NonRegistered
+        RESP
+        Chequing
+        Savings
+        CreditCard
+        Mortgage
+        LineOfCredit
+        Property
+    }
+
+    class Transaction {
+        Guid Id
+        DateTime Date
+        Money Amount
+        string Description
+        string NormalizedPayee
+        string Category
+        string[] Tags
+        TransactionType Type
+        bool IsReconciled
+        bool IsSplit
+        TransactionSplit[] Splits
+        Guid ImportBatchId
+        string Notes
+    }
+
+    class TransactionSplit {
+        Guid Id
+        Transaction Transaction
+        Money Amount
+        string Category
+        string[] Tags
+        string Notes
+        decimal? Percentage
+    }
+
+    class Holding {
+        Guid Id
+        Account Account
+        string Symbol
+        string Name
+        decimal Quantity
+        Money CurrentPrice
+        Money MarketValue
+        Money BookValue
+        Lot[] Lots
+    }
+
+    class Lot {
+        Guid Id
+        Holding Holding
+        DateTime PurchaseDate
+        decimal Quantity
+        Money CostPerUnit
+        Money TotalCost
+    }
+
+    class Budget {
+        Guid Id
+        string Category
+        Money Amount
+        int Month
+        int Year
+        bool RolloverEnabled
+        User User
+    }
+
+    class RecurringTransaction {
+        Guid Id
+        Account Account
+        Money Amount
+        string Description
+        string Category
+        string Frequency
+        DateTime StartDate
+        DateTime? EndDate
+        DateTime NextOccurrence
+    }
+
+    class SinkingFund {
+        Guid Id
+        string Name
+        Money TargetAmount
+        DateTime DueDate
+        string Frequency
+        Money MonthlySetAside
+        Money AccumulatedAmount
+        string Category
+        Account Account
+        User User
+    }
+
+    class ForecastScenario {
+        Guid Id
+        string Name
+        GrowthAssumption[] GrowthAssumptions
+        decimal InflationRate
+        string ForecastHorizon
+        User User
+    }
+
+    class ImportMapping {
+        Guid Id
+        string Name
+        string FileFormat
+        Map ColumnMappings
+        string Institution
+        User User
+    }
+
+    class CategorizationRule {
+        Guid Id
+        string Name
+        int Priority
+        JSON Conditions
+        JSON Actions
+        bool IsEnabled
+        User User
+    }
+
+    class ImportBatch {
+        Guid Id
+        string FileName
+        DateTime ImportDate
+        string FileFormat
+        int RowCount
+        int SuccessCount
+        int ErrorCount
+        string Status
+        Guid MappingId
+        User User
+    }
+
+    class AuditEvent {
+        Guid Id
+        DateTime Timestamp
+        Guid UserId
+        string EntityType
+        Guid EntityId
+        string Action
+        JSON ChangedFields
+        JSON OldValues
+        JSON NewValues
+    }
+
+    class Category {
+        Guid Id
+        string Name
+        string Icon
+        string Type
+        Category? ParentCategory
+        int SortOrder
+        bool IsSystem
+        User User
+    }
+
+    class Tag {
+        Guid Id
+        string Name
+        User User
+    }
+
+    class Payee {
+        Guid Id
+        string DisplayName
+        string[] Aliases
+        Category DefaultCategory
+        User User
+    }
+
+    class ExchangeRate {
+        Guid Id
+        string FromCurrency
+        string ToCurrency
+        decimal Rate
+        DateTime Date
+        string Source
+    }
+
+    class ContributionRoom {
+        Guid Id
+        Account Account
+        int Year
+        Money AnnualLimit
+        Money UsedAmount
+        Money CarryForward
+        Money AvailableRoom
+    }
+
+    class ReconciliationPeriod {
+        Guid Id
+        Account Account
+        DateTime StatementDate
+        Money OpeningBalance
+        Money ClosingBalance
+        string Status
+        DateTime? LockedAt
+        User? LockedBy
+        string? UnlockReason
+        User User
+    }
+
+    class AmortizationEntry {
+        Guid Id
+        Account Account
+        int PaymentNumber
+        DateTime PaymentDate
+        Money PrincipalAmount
+        Money InterestAmount
+        Money RemainingBalance
+        Money CumulativeInterest
+    }
+
+    class Notification {
+        Guid Id
+        string Type
+        string Severity
+        string Title
+        string Message
+        string RelatedEntityType
+        Guid RelatedEntityId
+        bool IsRead
+        DateTime CreatedAt
+        User User
+    }
+
+    User "1..*" --> "0..1" Household : member of
+    User "1" --> "*" Account : owns
+    Account "1" --> "*" Transaction : has
+    Transaction "1" --> "*" TransactionSplit : splits into
+    Account "1" --> "*" Holding : contains
+    Holding "1" --> "*" Lot : tracked by
+    Account --> AccountType
+    Account --> AccountSubType
+    Account "1" --> "*" ReconciliationPeriod : reconciled by
+    Account "1" --> "*" AmortizationEntry : amortized by
+    Account "1" --> "*" ContributionRoom : tracked by
+    User "1" --> "*" Budget : sets
+    User "1" --> "*" SinkingFund : manages
+    User "1" --> "*" ForecastScenario : defines
+    User "1" --> "*" CategorizationRule : creates
+    User "1" --> "*" ImportMapping : saves
+    User "1" --> "*" ImportBatch : imports
+    User "1" --> "*" Notification : receives
+    Category "0..1" --> "*" Category : parent of
 ```
-┌─────────────────────┐        ┌─────────────────────┐
-│       User          │        │     Household        │
-│─────────────────────│        │─────────────────────│
-│ Id                  │───┐    │ Id                  │
-│ Email               │   │    │ Name                │
-│ DisplayName         │   └───▶│ Members: User[]     │
-│ Preferences         │        └─────────────────────┘
-└──────────┬──────────┘
-           │ owns
-           ▼
-┌─────────────────────┐        ┌─────────────────────┐
-│      Account        │        │    AccountType       │
-│─────────────────────│        │─────────────────────│
-│ Id                  │───────▶│ Investment           │
-│ Name                │        │ Banking              │
-│ AccountType         │        │ Credit               │
-│ AccountSubType      │        │ Property             │
-│ Currency            │        │ Loan                 │
-│ Institution         │        └─────────────────────┘
-│ IsShared            │
-│ CurrentBalance      │        ┌─────────────────────┐
-│ Owner: User         │        │  AccountSubType      │
-└──────────┬──────────┘        │─────────────────────│
-           │                   │ RRSP, TFSA,          │
-           │ has               │ NonRegistered, RESP,  │
-           ▼                   │ Chequing, Savings,    │
-┌─────────────────────┐        │ CreditCard, Mortgage, │
-│    Transaction      │        │ LineOfCredit, Property │
-│─────────────────────│        └─────────────────────┘
-│ Id                  │
-│ Date                │
-│ Amount: Money       │        ┌─────────────────────┐
-│ Description         │        │  TransactionSplit    │
-│ NormalizedPayee     │        │─────────────────────│
-│ Category            │───┐    │ Id                  │
-│ Tags[]              │   │    │ Transaction (parent)│
-│ Type (Debit/Credit) │   └───▶│ Amount: Money       │
-│ IsReconciled        │        │ Category            │
-│ IsSplit             │        │ Tags[]              │
-│ Splits[]            │        │ Notes               │
-│ ImportBatchId       │        │ Percentage?         │
-│ Notes               │        └─────────────────────┘
-└─────────────────────┘        (child splits must sum to
-                                parent Amount exactly)
 
-┌─────────────────────┐        ┌─────────────────────┐
-│     Holding         │        │       Lot            │
-│─────────────────────│        │─────────────────────│
-│ Id                  │        │ Id                  │
-│ Account             │───────▶│ Holding             │
-│ Symbol              │        │ PurchaseDate        │
-│ Name                │        │ Quantity            │
-│ Quantity            │        │ CostPerUnit: Money  │
-│ CurrentPrice: Money │        │ TotalCost: Money    │
-│ MarketValue: Money  │        └─────────────────────┘
-│ BookValue: Money    │
-│ Lots: Lot[]         │
-└─────────────────────┘
-
-┌─────────────────────┐        ┌─────────────────────┐
-│      Budget         │        │  RecurringTxn       │
-│─────────────────────│        │─────────────────────│
-│ Id                  │        │ Id                  │
-│ Category            │        │ Account             │
-│ Amount: Money       │        │ Amount: Money       │
-│ Month               │        │ Description         │
-│ Year                │        │ Category            │
-│ RolloverEnabled     │        │ Frequency           │
-│ User                │        │ StartDate           │
-└─────────────────────┘        │ EndDate?            │
-                               │ NextOccurrence      │
-┌─────────────────────┐        └─────────────────────┘
-│    SinkingFund      │
-│─────────────────────│        ┌─────────────────────┐
-│ Id                  │        │  ForecastScenario   │
-│ Name                │        │─────────────────────│
-│ TargetAmount: Money │        │ Id                  │
-│ DueDate             │        │ Name (Conservative, │
-│ Frequency (Annual,  │        │   Moderate, etc.)   │
-│   Quarterly, etc.)  │        │ GrowthAssumptions[] │
-│ MonthlySetAside     │        │   (per account or   │
-│   (calculated)      │        │    asset class)     │
-│ AccumulatedAmount   │        │ InflationRate       │
-│ Category            │        │ ForecastHorizon     │
-│ Account (funding)   │        │ User                │
-│ User                │        └─────────────────────┘
-└─────────────────────┘
-┌─────────────────────┐
-│   ImportMapping     │
-│─────────────────────│        ┌─────────────────────┐
-│ Id                  │        │ CategorizationRule  │
-│ Name                │        │─────────────────────│
-│ FileFormat          │        │ Id                  │
-│ ColumnMappings{}    │        │ Name                │
-│ Institution         │        │ Priority (order)    │
-│ User                │        │ Conditions (JSON)   │
-└─────────────────────┘        │ Actions (JSON)      │
-                               │ IsEnabled           │
-                               │ User                │
-                               └─────────────────────┘
-
-┌─────────────────────┐        ┌─────────────────────┐
-│    ImportBatch      │        │     AuditEvent      │
-│─────────────────────│        │─────────────────────│
-│ Id                  │        │ Id                  │
-│ FileName            │        │ Timestamp           │
-│ ImportDate           │        │ UserId              │
-│ FileFormat          │        │ EntityType          │
-│ RowCount            │        │ EntityId            │
-│ SuccessCount        │        │ Action (Create/     │
-│ ErrorCount          │        │   Update/Delete)    │
-│ Status (Pending/    │        │ ChangedFields (JSON)│
-│  Complete/Rolled-   │        │ OldValues (JSON)    │
-│  back/Failed)       │        │ NewValues (JSON)    │
-│ MappingId           │        └─────────────────────┘
-│ User                │
-└─────────────────────┘
-
-┌─────────────────────┐        ┌─────────────────────┐
-│     Category        │        │       Tag           │
-│─────────────────────│        │─────────────────────│
-│ Id                  │        │ Id                  │
-│ Name                │        │ Name                │
-│ Icon                │        │ User                │
-│ Type (Income/       │        └─────────────────────┘
-│   Expense)          │
-│ ParentCategory?     │        ┌─────────────────────┐
-│ SortOrder           │        │      Payee          │
-│ IsSystem            │        │─────────────────────│
-│ User                │        │ Id                  │
-└─────────────────────┘        │ DisplayName         │
-                               │ Aliases[]           │
-┌─────────────────────┐        │ DefaultCategory     │
-│   ExchangeRate      │        │ User                │
-│─────────────────────│        └─────────────────────┘
-│ Id                  │
-│ FromCurrency        │        ┌─────────────────────┐
-│ ToCurrency          │        │  ContributionRoom   │
-│ Rate                │        │─────────────────────│
-│ Date                │        │ Id                  │
-│ Source (plugin/     │        │ Account             │
-│   manual)           │        │ Year                │
-└─────────────────────┘        │ AnnualLimit         │
-                               │ UsedAmount          │
-┌─────────────────────┐        │ CarryForward        │
-│ReconciliationPeriod │        │ AvailableRoom       │
-│─────────────────────│        │   (calculated)      │
-│ Id                  │        └─────────────────────┘
-│ Account             │
-│ StatementDate       │        ┌─────────────────────┐
-│ OpeningBalance      │        │  AmortizationEntry  │
-│ ClosingBalance      │        │─────────────────────│
-│ Status (Open/       │        │ Id                  │
-│  Reconciled/Locked) │        │ Account (mortgage/  │
-│ LockedAt            │        │   loan)             │
-│ LockedBy            │        │ PaymentNumber       │
-│ UnlockReason        │        │ PaymentDate         │
-│ User                │        │ PrincipalAmount     │
-└─────────────────────┘        │ InterestAmount      │
-                               │ RemainingBalance    │
-┌─────────────────────┐        │ CumulativeInterest  │
-│   Notification      │        └─────────────────────┘
-│─────────────────────│
-│ Id                  │
-│ Type (Budget/       │
-│  SinkingFund/Sync/  │
-│  Balance/Import)    │
-│ Severity (Info/     │
-│  Warning/Critical)  │
-│ Title               │
-│ Message             │
-│ RelatedEntityType   │
-│ RelatedEntityId     │
-│ IsRead              │
-│ CreatedAt           │
-│ User                │
-└─────────────────────┘
-```
+> **Invariant:** child `TransactionSplit.Amount` values must sum to the parent `Transaction.Amount` exactly.
 
 ### Value Objects
 
@@ -821,13 +916,13 @@ volumes:
 
 ### CI/CD Pipeline
 
-```
-Push to main ──▶ Build ──▶ Test ──▶ Lint ──▶ Publish Image ──▶ Release
-                  │          │        │         │
-                  │          │        │         └─▶ ghcr.io/davidhayesbc/prospero-api:sha
-                  │          │        └─▶ dotnet format --verify-no-changes
-                  │          └─▶ dotnet test (unit + integration)
-                  └─▶ dotnet build --configuration Release
+```mermaid
+graph LR
+    Push["Push to main"] --> Build["Build<br/><code>dotnet build --configuration Release</code>"]
+    Build --> Test["Test<br/><code>dotnet test</code><br/>(unit + integration)"]
+    Test --> Lint["Lint<br/><code>dotnet format --verify-no-changes</code>"]
+    Lint --> Publish["Publish Image<br/><code>ghcr.io/davidhayesbc/prospero-api:sha</code>"]
+    Publish --> Release["Release"]
 ```
 
 ---
