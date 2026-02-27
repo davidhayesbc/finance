@@ -50,6 +50,8 @@ docker/
 -   `Money` - Value object: `decimal Amount` + `string CurrencyCode`
 -   `Holding` - Investment position (symbol, quantity, price)
 -   `Lot` - Purchase lot for cost basis tracking
+-   `PriceHistory` - Point-in-time security price: `AsOfDate` (market date) + `RecordedAt` (fetch time) + `Source`
+-   `Valuation` - Manual asset/property valuation: `EffectiveDate` (when valuation applies) + `RecordedAt` (when entered) + `Source`
 -   `Budget` - Monthly budget per category (split-aware: uses split line categories)
 -   `SinkingFund` - Savings target for lump-sum expenses (target amount, due date, monthly set-aside)
 -   `RecurringTransaction` - Expected recurring income/expense pattern

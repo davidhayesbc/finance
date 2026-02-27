@@ -172,6 +172,8 @@ finance/
 │   │   │   ├── Tag.cs                        # Managed tag entity
 │   │   │   ├── Payee.cs                      # Normalized payee with aliases
 │   │   │   ├── ExchangeRate.cs               # Historical FX rates
+│   │   │   ├── PriceHistory.cs               # Point-in-time security prices (AsOfDate + RecordedAt)
+│   │   │   ├── Valuation.cs                  # Manual asset valuations (EffectiveDate + RecordedAt)
 │   │   │   ├── ContributionRoom.cs           # Registered account contribution tracking
 │   │   │   ├── ReconciliationPeriod.cs       # Statement reconciliation state
 │   │   │   ├── AmortizationEntry.cs          # Mortgage/loan payment schedule entry
@@ -576,6 +578,25 @@ classDiagram
         string Source
     }
 
+    class PriceHistory {
+        Guid Id
+        string Symbol
+        Money Price
+        DateTime AsOfDate
+        DateTime RecordedAt
+        string Source
+    }
+
+    class Valuation {
+        Guid Id
+        Account Account
+        Money EstimatedValue
+        DateTime EffectiveDate
+        DateTime RecordedAt
+        string Source
+        string Notes
+    }
+
     class ContributionRoom {
         Guid Id
         Account Account
@@ -634,6 +655,8 @@ classDiagram
     Account "1" --> "*" ReconciliationPeriod : reconciled by
     Account "1" --> "*" AmortizationEntry : amortized by
     Account "1" --> "*" ContributionRoom : tracked by
+    Account "1" --> "*" Valuation : valued by
+    Holding --> PriceHistory : priced by
     User "1" --> "*" Budget : sets
     User "1" --> "*" SinkingFund : manages
     User "1" --> "*" ForecastScenario : defines
@@ -677,7 +700,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 |------|-------------|----------|
 | 1.1 | Create solution structure, all `.csproj` files, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig` | 3h |
 | 1.2 | Set up Aspire AppHost with PostgreSQL and API project | 2h |
-| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Money, Category, CategoryGroup, Tag, Payee, ImportBatch, AuditEvent, Notification | 8h |
+| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Money, Category, CategoryGroup, Tag, Payee, ImportBatch, AuditEvent, Notification, PriceHistory, Valuation | 8h |
 | 1.4 | Set up EF Core with PostgreSQL, entity configurations, initial migration, soft-delete global query filters, and database indexing strategy (transaction fingerprints, account+date, category lookups) | 6h |
 | 1.5 | Implement local Identity auth (register, login, JWT tokens) | 4h |
 | 1.6 | Implement OpenID Connect (Google + Microsoft) | 3h |
@@ -793,8 +816,9 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 5.2 | Investment account UI: holdings list, lot details | 4h |
 | 5.3 | Portfolio performance calculations (TWR, MWR) | 6h |
 | 5.4 | Price feed plugin interface and Yahoo Finance implementation | 4h |
-| 5.5 | Price history + FX history storage for accurate net worth and performance time-series | 4h |
+| 5.5 | PriceHistory entity (`Symbol`, `Price`, `AsOfDate`, `RecordedAt`, `Source`) for point-in-time security prices; stale-price detection via AsOfDate vs RecordedAt gap | 4h |
 | 5.5a | ExchangeRate entity, historical rate storage, and FX conversion record linking on cross-currency transactions | 4h |
+| 5.5b | Valuation entity (`Account`, `EstimatedValue`, `EffectiveDate`, `RecordedAt`, `Source`, `Notes`) for manual property/asset valuations with effective-date vs entry-date separation | 3h |
 | 5.6 | Investment dashboard: portfolio value, gain/loss, allocation | 6h |
 | 5.7 | Plugin loader: assembly scanning, registration, configuration | 6h |
 | 5.7a | Plugin security sandboxing: restricted permissions, no direct DB access, validated assembly loading, operation logging | 4h |

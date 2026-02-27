@@ -38,7 +38,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Holdings-Level Detail** | Individual stocks, ETFs, mutual funds with quantities & book values | P0 |
 | **Lot-Level Tracking** | Per-purchase lots for ACB calculation (FIFO, ACB average, specific ID) | P1 |
 | **Contribution Room Tracking** | Track annual contribution room for registered accounts (RRSP, TFSA, RESP) with carry-forward, yearly limit updates, and over-contribution warnings | P0 |
-| **Automatic Price Updates** | Fetch market prices via plugin architecture (Yahoo Finance, etc.) | P1 |
+| **Automatic Price Updates** | Fetch market prices via plugin architecture (Yahoo Finance, etc.); stored as `PriceHistory` with `AsOfDate` (market date the price represents) and `RecordedAt` (when the price was fetched) for stale-price detection and accurate historical net worth | P1 |
 | **Performance Calculation** | Time-weighted & money-weighted returns per account/holding | P1 |
 | **Dividend Tracking** | Track dividend income, DRIP reinvestments | P1 |
 
@@ -64,7 +64,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **Real Estate** | Estimated value tracking (manual or automated) | P0 |
+| **Real Estate** | Estimated value tracking via `Valuation` entity with `EffectiveDate` (when the valuation applies) and `RecordedAt` (when it was entered); supports accurate historical net worth even when valuations are back-dated | P0 |
 | **Property Expenses** | Taxes, insurance, maintenance, utilities | P1 |
 | **Vehicles** | Value depreciation tracking | P2 |
 | **Other Assets** | User-defined asset categories | P2 |
@@ -331,7 +331,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 |---------|-------------|----------|
 | **Multi-Currency** | Support multiple currencies with configurable base currency | P0 |
 | **Exchange Rates** | Fetch exchange rates via plugin (or manual entry) | P1 |
-| **Exchange Rate History** | Store historical exchange rates with date-stamped snapshots; use point-in-time rates for accurate historical net worth and multi-currency reporting | P1 |
+| **Exchange Rate History** | Store historical exchange rates with date-stamped snapshots; use point-in-time rates for accurate historical net worth and multi-currency reporting. Follows the same dual-date pattern as `PriceHistory` (`AsOfDate` + `RecordedAt`) | P1 |
 | **FX Conversion Records** | Explicit foreign exchange conversion records linking source/target currencies, rate, and date when transactions cross currency boundaries | P0 |
 | **Locale-Aware Formatting** | Date, number, and currency formatting based on user locale | P0 |
 | **Extensible Account Types** | Account types not hardcoded to Canadian system | P0 |
