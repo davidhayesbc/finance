@@ -82,6 +82,9 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Saved Mappings** | Save and reuse column mappings per institution/file format | P0 |
 | **Preview & Validation** | Preview parsed transactions before committing import | P0 |
 | **Duplicate Detection** | Detect and flag potential duplicate transactions during import | P0 |
+| **Idempotent Import Keys** | Use stable transaction fingerprints (`institution + account + posted date + amount + normalized memo + external reference`) to prevent duplicate inserts across repeated imports | P0 |
+| **Import Diagnostics** | Row-level error reporting with actionable reasons (parse error, missing mapping, invalid date/amount, duplicate) and downloadable error CSV | P1 |
+| **Partial Import Policy** | Configurable behavior: fail-fast, skip-invalid-and-continue, or preview-only with no commit | P1 |
 | **Import History** | Track all imports with ability to undo/rollback | P1 |
 
 ### 3.2 Manual Entry
@@ -126,6 +129,14 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Plugin Discovery** | Automatic discovery of plugins from a designated directory | P1 |
 | **Plugin Configuration** | Per-plugin settings via the UI | P1 |
 | **Built-in Plugins** | CSV, QFX/QIF, Yahoo Finance price feed as reference implementations | P1 |
+
+### 3.6 Import Quality Controls
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **Dead-Letter Import Rows** | Invalid rows are retained in an import exception queue for correction and replay | P1 |
+| **Import Replay** | Re-run a prior import batch after mapping/rule corrections while preserving auditability | P1 |
+| **Import Quality Metrics** | Track import success rate, duplicate rate, auto-categorization rate, and manual fix rate | P1 |
 
 ---
 
@@ -240,6 +251,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Shared Accounts** | Mark accounts as visible to all household members | P1 |
 | **Private Accounts** | Keep certain accounts visible only to the owner | P1 |
 | **Role-Based Access** | Admin (manage users, settings) vs Member (view/edit own data) | P1 |
+| **Permissions Matrix** | Resource-level permissions for `Account`, `Transaction`, `ImportBatch`, `Rule`, and `Report` at user/household scope | P0 |
 
 ---
 
@@ -253,6 +265,7 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Audit Logging** | Track data changes (who, what, when) | P1 |
 | **Rate Limiting** | Protect API endpoints from abuse | P1 |
 | **Input Validation** | Server-side validation on all inputs using FluentValidation | P0 |
+| **Key Management Lifecycle** | Encryption key generation, rotation schedule, secure backup, restore validation, and compromised-key recovery runbook | P0 |
 
 ---
 
@@ -265,6 +278,8 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Data Export** | Export all data as CSV, JSON, or OFX | P0 |
 | **Data Import (Restore)** | Restore from backup | P1 |
 | **Data Portability** | Complete data export in open format | P0 |
+| **Restore Verification** | Scheduled test restore job with checksum validation and smoke test to verify backup integrity | P0 |
+| **Recovery Objectives** | Configurable and documented RPO/RTO targets for self-hosted operators | P1 |
 
 ---
 
@@ -275,7 +290,8 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 | **Service Worker** | Cache app shell and static assets for offline access | P0 |
 | **IndexedDB Local Store** | Store recent transactions and account summaries locally | P0 |
 | **Background Sync** | Queue changes made offline; sync when server is reachable | P0 |
-| **Conflict Resolution** | Handle sync conflicts (last-write-wins with user override) | P1 |
+| **Conflict Resolution** | Field-aware merge policies for financial records (money/splits/categories are conflict-sensitive) plus explicit user conflict queue; avoid blind last-write-wins for critical fields | P0 |
+| **Sync Idempotency** | Client-generated operation IDs guarantee exactly-once logical application of offline mutations | P0 |
 | **Offline Indicators** | Clear UI indicators for online/offline status and pending sync | P0 |
 | **Install Prompt** | PWA install prompt for desktop and mobile | P0 |
 
@@ -309,10 +325,31 @@ Prospero is an **offline-first, self-hosted personal finance tracker** built on 
 
 ---
 
+## 12. Reconciliation & Data Integrity
+
+### 12.1 Reconciliation Workflow
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **Statement Reconciliation** | Reconcile accounts by statement period (opening/closing balance, cleared vs uncleared transactions) | P0 |
+| **Reconciliation Report** | Show mismatches, missing transactions, and balance delta with exportable report | P1 |
+| **Statement Close Lock** | Optional period lock after reconciliation to prevent accidental edits without explicit unlock/audit reason | P1 |
+
+### 12.2 Financial Invariants
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **Split Sum Invariant** | Enforce exact equality of parent amount and sum of split amounts in minor units after rounding | P0 |
+| **Currency Invariant** | Parent and split currency consistency, or explicit FX conversion records when different | P0 |
+| **Transfer Invariant** | Inter-account transfer creates balanced linked entries with immutable linkage IDs | P0 |
+| **Audit Invariant** | Every mutation of transactions/splits/rules/import batches produces an auditable event trail | P0 |
+
+---
+
 ## Priority Legend
 
 | Priority | Meaning | Phase Target |
 |----------|---------|-------------|
-| **P0** | Must-have for MVP | Phase 1–2 |
-| **P1** | Important, next iteration | Phase 3–4 |
-| **P2** | Nice-to-have, future | Phase 5+ |
+| **P0** | Must-have for MVP and safe production operation | Phase 1–4 |
+| **P1** | Important enhancements after stable MVP | Phase 5–6 |
+| **P2** | Nice-to-have, future | Post Phase 6 |

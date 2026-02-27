@@ -204,6 +204,7 @@ finance/
 │   │   │   ├── ImportTransactions/
 │   │   │   ├── CreateTransaction/
 │   │   │   ├── SplitTransaction/             # Create/update logical splits
+│   │   │   ├── ReconcileStatement/           # Statement-based reconciliation workflow
 │   │   │   ├── CreateBudget/
 │   │   │   ├── ManageSinkingFund/            # Sinking fund CRUD & contributions
 │   │   │   ├── ApplyRules/
@@ -218,9 +219,12 @@ finance/
 │   │   ├── Services/
 │   │   │   ├── RulesEngineService.cs
 │   │   │   ├── ImportOrchestrator.cs
+│   │   │   ├── TransactionFingerprintService.cs # Stable import idempotency keys
 │   │   │   ├── ForecastingService.cs
 │   │   │   ├── NetWorthForecastingService.cs  # Growth rate projections & scenarios
 │   │   │   ├── SinkingFundService.cs          # Monthly set-aside calculations
+│   │   │   ├── ReconciliationService.cs       # Statement reconcile/close process
+│   │   │   ├── ConflictResolutionService.cs   # Field-aware sync conflict handling
 │   │   │   └── SyncService.cs
 │   │   ├── Interfaces/
 │   │   │   ├── IAccountRepository.cs
@@ -236,6 +240,8 @@ finance/
 │   │   │   ├── Configurations/              # EF Core entity configurations
 │   │   │   ├── Migrations/
 │   │   │   └── Repositories/
+│   │   ├── Recovery/
+│   │   │   └── BackupRestoreVerification.cs  # Automated backup restore checks
 │   │   ├── Identity/
 │   │   │   ├── IdentityService.cs
 │   │   │   └── TokenService.cs
@@ -429,7 +435,7 @@ finance/
 │ Account (funding)   │        │ User                │
 │ User                │        └─────────────────────┘
 └─────────────────────┘
-┌─────────────────────┐        └─────────────────────┘
+┌─────────────────────┐
 │   ImportMapping     │
 │─────────────────────│        ┌─────────────────────┐
 │ Id                  │        │ CategorizationRule  │
@@ -453,6 +459,13 @@ public readonly record struct Money(decimal Amount, string CurrencyCode = "CAD")
 // Smart enum for account types - extensible per locale
 public record AccountType(string Code, string DisplayName, string Category);
 ```
+
+### Cross-Cutting Invariants
+
+- `Transaction` split invariant: sum of `TransactionSplit.Amount` equals parent `Transaction.Amount` in minor units.
+- Idempotency invariant: import and sync operations are replay-safe via stable operation IDs/fingerprints.
+- Transfer invariant: linked transfer entries remain balanced and immutable-linked.
+- Audit invariant: all mutations to transactions/splits/import batches/rules are append-only auditable events.
 
 ---
 
@@ -493,15 +506,17 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 2.3 | Implement QIF parser | 3h |
 | 2.4 | Build Column Mapping UI: preview file, assign columns, save mapping | 6h |
 | 2.5 | Implement duplicate detection (hash-based + fuzzy date/amount match) | 4h |
-| 2.6 | Build import preview page (review before commit) | 4h |
-| 2.7 | Integrate Microsoft.RulesEngine for transaction categorization | 4h |
-| 2.8 | Build Rules UI: create/edit/order rules visually | 6h |
-| 2.9 | Implement auto-apply rules on import | 2h |
-| 2.10 | Transfer between accounts (linked transactions) | 3h |
-| 2.11 | Transaction splitting UI: add/edit logical split lines on a transaction, enforce sum-to-parent validation | 4h |
-| 2.12 | Rules engine split templates: rules can auto-split transactions (e.g., "Costco → 80% Groceries / 20% Household") | 3h |
-| 2.13 | Import history with undo/rollback support | 3h |
-| 2.14 | Tests for all importers, rules engine, and split logic | 5h |
+| 2.6 | Implement transaction fingerprinting service for idempotent imports and replay-safe processing | 3h |
+| 2.7 | Build import preview page (review before commit) | 4h |
+| 2.8 | Import diagnostics: row-level errors, dead-letter rows, downloadable error report | 3h |
+| 2.9 | Integrate Microsoft.RulesEngine for transaction categorization | 4h |
+| 2.10 | Build Rules UI: create/edit/order rules visually | 6h |
+| 2.11 | Implement auto-apply rules on import | 2h |
+| 2.12 | Transfer between accounts (linked transactions) | 3h |
+| 2.13 | Transaction splitting UI: add/edit logical split lines on a transaction, enforce sum-to-parent validation | 4h |
+| 2.14 | Rules engine split templates: rules can auto-split transactions (e.g., "Costco → 80% Groceries / 20% Household") | 3h |
+| 2.15 | Import history with undo/rollback support | 3h |
+| 2.16 | Tests for all importers, rules engine, split logic, and idempotency paths | 6h |
 
 **Deliverable:** Import CSV/QFX/QIF files, map columns, auto-categorize via rules, review & commit.
 
@@ -529,7 +544,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 3.14 | Minimum balance alerts | 2h |
 | 3.15 | Tests for budgeting, sinking funds, and forecasting logic | 5h |
 
-**Deliverable:** Set budgets, define recurring transactions, see cash flow forecast.
+**Deliverable:** Split-aware budgets, sinking funds, recurring transactions, and reliable cash flow forecasting.
 
 ---
 
@@ -549,10 +564,11 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 4.8 | Implement service worker for app shell caching | 4h |
 | 4.9 | Implement IndexedDB local store (account summaries, recent txns) | 6h |
 | 4.10 | Build sync engine: queue offline changes, sync on reconnect | 8h |
-| 4.11 | Conflict resolution strategy (last-write-wins + user review) | 4h |
-| 4.12 | Offline/online status indicator in UI | 2h |
-| 4.13 | PWA manifest and install prompt | 2h |
-| 4.14 | Tests for sync engine, offline scenarios, and net worth forecasting | 5h |
+| 4.11 | ConflictResolutionService: field-aware merge policies and explicit conflict queue for financial edits | 6h |
+| 4.12 | Sync idempotency: client operation IDs and replay-safe server handlers | 3h |
+| 4.13 | Offline/online status indicator in UI | 2h |
+| 4.14 | PWA manifest and install prompt | 2h |
+| 4.15 | Tests for sync engine, conflict resolution, offline scenarios, and net worth forecasting | 6h |
 
 **Deliverable:** Full dashboard suite. App works offline, syncs when back online.
 
@@ -568,17 +584,19 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 5.2 | Investment account UI: holdings list, lot details | 4h |
 | 5.3 | Portfolio performance calculations (TWR, MWR) | 6h |
 | 5.4 | Price feed plugin interface and Yahoo Finance implementation | 4h |
-| 5.5 | Investment dashboard: portfolio value, gain/loss, allocation | 6h |
-| 5.6 | Plugin loader: assembly scanning, registration, configuration | 6h |
-| 5.7 | Ollama integration: transaction categorization service | 6h |
-| 5.8 | AI categorization UI: suggestions, confidence, batch processing | 4h |
-| 5.9 | Household entity and multi-user sharing | 4h |
-| 5.10 | Shared vs private account visibility | 3h |
-| 5.11 | Role-based access control (Admin/Member) | 3h |
-| 5.12 | Property tracking: value, expenses, mortgage amortization | 4h |
-| 5.13 | Data export (CSV, JSON) and backup/restore | 4h |
-| 5.14 | Automated PostgreSQL backups in Docker Compose | 3h |
-| 5.15 | Tests for investments, plugins, and AI integration | 6h |
+| 5.5 | Price history + FX history storage for accurate net worth and performance time-series | 4h |
+| 5.6 | Investment dashboard: portfolio value, gain/loss, allocation | 6h |
+| 5.7 | Plugin loader: assembly scanning, registration, configuration | 6h |
+| 5.8 | Ollama integration: transaction categorization service | 6h |
+| 5.9 | AI categorization UI: suggestions, confidence, batch processing | 4h |
+| 5.10 | Household entity and multi-user sharing | 4h |
+| 5.11 | Shared vs private account visibility | 3h |
+| 5.12 | Resource-level permissions matrix and enforcement (`Account`, `Transaction`, `ImportBatch`, `Rule`, `Report`) | 4h |
+| 5.13 | Role-based access control (Admin/Member) | 3h |
+| 5.14 | Property tracking: value, expenses, mortgage amortization | 4h |
+| 5.15 | Data export (CSV, JSON) and backup/restore | 4h |
+| 5.16 | Automated PostgreSQL backups in Docker Compose | 3h |
+| 5.17 | Tests for investments, permissions, plugins, and AI integration | 7h |
 
 **Deliverable:** Full investment tracking, AI categorization, plugin system, multi-user households.
 
@@ -595,13 +613,15 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 6.3 | Rate limiting on API endpoints | 2h |
 | 6.4 | Security headers (CSP, HSTS, X-Content-Type-Options) | 2h |
 | 6.5 | Two-factor authentication (TOTP) | 4h |
-| 6.6 | Session management and concurrent session handling | 2h |
-| 6.7 | GitHub Actions: build & push container images to ghcr.io | 3h |
-| 6.8 | GitHub Actions: release workflow with semantic versioning | 3h |
-| 6.9 | Health checks for all services (DB, Ollama, etc.) | 2h |
-| 6.10 | Documentation: README, deployment guide, development setup | 4h |
-| 6.11 | End-to-end testing with Playwright | 6h |
-| 6.12 | Performance testing and optimization | 4h |
+| 6.6 | Encryption key lifecycle: rotation, secure backup, restore validation, compromised-key recovery playbook | 4h |
+| 6.7 | Session management and concurrent session handling | 2h |
+| 6.8 | Backup restore verification job (scheduled test restores + smoke checks) | 3h |
+| 6.9 | GitHub Actions: build & push container images to ghcr.io | 3h |
+| 6.10 | GitHub Actions: release workflow with semantic versioning | 3h |
+| 6.11 | Health checks for all services (DB, Ollama, etc.) | 2h |
+| 6.12 | Documentation: README, deployment guide, development setup, RPO/RTO runbook | 5h |
+| 6.13 | End-to-end testing with Playwright | 6h |
+| 6.14 | Performance testing and optimization | 4h |
 
 **Deliverable:** Production-hardened, secure, documented, and CI/CD automated.
 
@@ -695,10 +715,10 @@ Push to main ──▶ Build ──▶ Test ──▶ Lint ──▶ Publish Ima
 | Phase | Duration | Key Milestone |
 |-------|----------|--------------|
 | **Phase 1: Foundation** | Weeks 1–3 | Auth, accounts, transactions (with splits), Docker |
-| **Phase 2: Ingestion** | Weeks 4–6 | CSV/QFX/QIF import, rules engine, auto-split rules |
+| **Phase 2: Ingestion** | Weeks 4–6 | CSV/QFX/QIF import, idempotent ingestion, diagnostics, rules engine, auto-split rules |
 | **Phase 3: Budgeting & Sinking Funds** | Weeks 7–10 | Budgets (split-aware), sinking funds, recurring, cash flow forecast |
-| **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 11–15 | Charts, net worth forecast with growth scenarios, offline-first, sync |
-| **Phase 5: Investments & Advanced** | Weeks 16–20 | Portfolio, AI, plugins, multi-user |
-| **Phase 6: Polish** | Weeks 21–23 | Security, CI/CD, documentation |
+| **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 11–15 | Charts, net worth forecast with growth scenarios, offline-first, conflict-safe sync |
+| **Phase 5: Investments & Advanced** | Weeks 16–20 | Portfolio, AI, plugins, multi-user, permissions matrix |
+| **Phase 6: Polish** | Weeks 21–23 | Security, key lifecycle, restore verification, CI/CD, documentation |
 
 > **Total estimated effort:** ~23 weeks of part-time development (assuming ~15-20 hours/week)
