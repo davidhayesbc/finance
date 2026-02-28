@@ -54,7 +54,11 @@ public class Payee : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public bool MatchesAlias(string rawPayee) =>
-        _aliases.Any(a => a.Equals(rawPayee?.Trim(), StringComparison.OrdinalIgnoreCase))
-        || DisplayName.Equals(rawPayee?.Trim(), StringComparison.OrdinalIgnoreCase);
+    public bool MatchesAlias(string rawPayee)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rawPayee);
+        var trimmed = rawPayee.Trim();
+        return _aliases.Any(a => a.Equals(trimmed, StringComparison.OrdinalIgnoreCase))
+            || DisplayName.Equals(trimmed, StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -37,7 +37,7 @@ public static class AccountEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = GetUserId(user);
+        var userId = EndpointHelpers.GetUserId(user);
         if (userId is null) return Results.Unauthorized();
 
         var result = await mediator.Send(new GetAccountsQuery(userId.Value), cancellationToken);
@@ -50,7 +50,7 @@ public static class AccountEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = GetUserId(user);
+        var userId = EndpointHelpers.GetUserId(user);
         if (userId is null) return Results.Unauthorized();
 
         var result = await mediator.Send(new GetAccountByIdQuery(id, userId.Value), cancellationToken);
@@ -63,7 +63,7 @@ public static class AccountEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = GetUserId(user);
+        var userId = EndpointHelpers.GetUserId(user);
         if (userId is null) return Results.Unauthorized();
 
         try
@@ -91,11 +91,5 @@ public static class AccountEndpoints
                         g => g.Key,
                         g => g.Select(e => e.ErrorMessage).ToArray()));
         }
-    }
-
-    private static Guid? GetUserId(ClaimsPrincipal user)
-    {
-        var claim = user.FindFirst("domain_user_id") ?? user.FindFirst(ClaimTypes.NameIdentifier);
-        return claim is not null && Guid.TryParse(claim.Value, out var id) ? id : null;
     }
 }

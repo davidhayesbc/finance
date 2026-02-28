@@ -102,4 +102,32 @@ public class DateRangeTests
 
         a.Overlaps(b).Should().BeFalse();
     }
+
+    [Fact]
+    public void Constructor_StartAfterEnd_ThrowsArgumentException()
+    {
+        var act = () => new DateRange(new DateOnly(2024, 12, 31), new DateOnly(2024, 1, 1));
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Constructor_StartEqualsEnd_CreatesInstance()
+    {
+        var date = new DateOnly(2024, 6, 15);
+
+        var range = new DateRange(date, date);
+
+        range.Start.Should().Be(date);
+        range.End.Should().Be(date);
+        range.DayCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Constructor_FromDateTime_StartAfterEnd_ThrowsArgumentException()
+    {
+        var act = () => new DateRange(new DateTime(2024, 12, 31), new DateTime(2024, 1, 1));
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

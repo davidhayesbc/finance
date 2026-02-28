@@ -83,4 +83,34 @@ public class PayeeTests
 
         payee.MatchesAlias("Walmart").Should().BeFalse();
     }
+
+    [Fact]
+    public void MatchesAlias_NullRawPayee_ThrowsArgumentException()
+    {
+        var payee = new Payee("Amazon", _ownerId);
+
+        var act = () => payee.MatchesAlias(null!);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void MatchesAlias_EmptyRawPayee_ThrowsArgumentException()
+    {
+        var payee = new Payee("Amazon", _ownerId);
+
+        var act = () => payee.MatchesAlias("");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void MatchesAlias_WhitespaceRawPayee_ThrowsArgumentException()
+    {
+        var payee = new Payee("Amazon", _ownerId);
+
+        var act = () => payee.MatchesAlias("   ");
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

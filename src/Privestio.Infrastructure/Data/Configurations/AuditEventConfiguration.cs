@@ -27,12 +27,9 @@ public class AuditEventConfiguration : IEntityTypeConfiguration<AuditEvent>
         builder.Property(a => a.NewValues)
             .HasColumnType("jsonb");
 
-        // Audit events are append-only; no soft-delete
+        // Audit events are append-only; no soft-delete filter is applied
         builder.HasIndex(a => new { a.EntityType, a.EntityId });
         builder.HasIndex(a => a.UserId);
         builder.HasIndex(a => a.Timestamp);
-
-        // Override soft-delete for audit events - they should never be deleted
-        builder.HasQueryFilter(a => true);
     }
 }

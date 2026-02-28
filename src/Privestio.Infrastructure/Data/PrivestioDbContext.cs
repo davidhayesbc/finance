@@ -40,6 +40,8 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PrivestioDbContext).Assembly);
 
         // Global soft-delete query filters
+        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Household>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Account>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Transaction>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<TransactionSplit>().HasQueryFilter(e => !e.IsDeleted);
