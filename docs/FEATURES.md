@@ -2,7 +2,7 @@
 
 ## Feature Specification
 
-> **Version:** 0.1.0-draft
+> **Version:** 0.2.0-draft
 > **Last Updated:** 2026-02-27
 > **Status:** Planning
 
@@ -293,6 +293,8 @@ Property and other non-transactional asset accounts derive their `CurrentBalance
 | **Input Validation** | Server-side validation on all inputs using FluentValidation | P0 |
 | **Key Management Lifecycle** | Encryption key generation, rotation schedule, secure backup, restore validation, and compromised-key recovery runbook | P0 |
 | **Soft-Delete / Archival** | Financial records (accounts, transactions, rules) use soft-delete with `IsDeleted` + `DeletedAt` timestamps; hard-delete only via explicit admin purge after retention period. Soft-deletes propagate to offline clients via sync. | P0 |
+| **Admin Purge Job** | Scheduled hard-delete of soft-deleted records after configurable retention period; audit trail for all purge operations; user notification before permanent deletion | P0 |
+| **Audit Query Tooling** | Filterable audit event viewer (by entity, user, date range, action type) with CSV export for compliance and troubleshooting | P1 |
 | **Backup Encryption** | Backup files are encrypted at rest using the application's data protection keys; encrypted backups are the default for both automated and manual exports | P1 |
 
 ---
@@ -361,6 +363,8 @@ Property and other non-transactional asset accounts derive their `CurrentBalance
 | **Seed / Demo Data** | Realistic seed data generated with Bogus for dev mode: sample accounts, transactions, categories, rules, budgets, and holdings for rapid development and demos | P0 |
 | **Metrics & Observability** | Application-level metrics (Prometheus-compatible) for request rates, sync latency, import throughput, error rates; Aspire dashboard integration for development | P1 |
 | **Log Retention Policy** | Configurable structured log retention and rotation; default 30-day retention for self-hosted deployments | P1 |
+| **SLO Definitions** | Documented target availability, sync latency P95/P99, import throughput benchmarks, and automated alerting when SLOs are breached | P1 |
+| **Operational Runbooks** | Documented procedures for sync conflict storms, import failure triage, database recovery, Ollama unavailability, and plugin failures | P1 |
 
 ---
 
@@ -404,7 +408,7 @@ Property and other non-transactional asset accounts derive their `CurrentBalance
 | **Filtering & Sorting** | Transaction, account, and report endpoints support filtering (date range, category, account, tags, payee) and multi-field sorting | P0 |
 | **Search** | Full-text search across transaction descriptions, payee names, and notes | P1 |
 | **Bulk Operations** | Batch endpoints for categorize, tag, delete, and rule-apply operations to avoid N+1 API calls | P1 |
-| **Typed API Contracts** | Shared DTO/contract library between API and Blazor WASM client for compile-time safety | P0 |
+| **Typed API Contracts** | Shared DTO/contract library (`Prospero.Contracts`) between API and Blazor WASM client for compile-time safety; includes request/response DTOs, pagination models, and error contracts | P0 |
 
 ---
 

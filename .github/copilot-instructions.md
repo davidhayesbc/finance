@@ -18,6 +18,7 @@ Prospero is an offline-first, self-hosted personal finance tracker built on .NET
 src/
   Prospero.AppHost/           - .NET Aspire orchestrator (dev)
   Prospero.ServiceDefaults/   - Shared Aspire service defaults
+  Prospero.Contracts/         - Shared DTOs/contracts (API ↔ Blazor WASM)
   Prospero.Domain/            - Entities, value objects, interfaces (pure C#, no dependencies)
   Prospero.Application/       - Use cases, CQRS commands/queries, services
   Prospero.Infrastructure/    - EF Core, importers, plugins, AI, encryption

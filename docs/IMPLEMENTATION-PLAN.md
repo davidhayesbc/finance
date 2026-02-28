@@ -1,6 +1,6 @@
 # Prospero — Implementation Plan
 
-> **Version:** 0.1.0-draft
+> **Version:** 0.2.0-draft
 > **Last Updated:** 2026-02-27
 > **Status:** Planning
 
@@ -153,6 +153,12 @@ finance/
 │   ├── Prospero.ServiceDefaults/            # Shared Aspire service defaults
 │   │   ├── Extensions.cs
 │   │   └── Prospero.ServiceDefaults.csproj
+│   │
+│   ├── Prospero.Contracts/                  # Shared DTOs/contracts (API ↔ Blazor WASM)
+│   │   ├── Requests/
+│   │   ├── Responses/
+│   │   ├── Pagination/
+│   │   └── Prospero.Contracts.csproj
 │   │
 │   ├── Prospero.Domain/                     # Domain layer (pure C#, no dependencies)
 │   │   ├── Entities/
@@ -758,8 +764,13 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 1.13 | Set up GitHub Actions CI pipeline (build + test) | 2h | [ ] |
 | 1.14 | Create Bogus-based seed data generators for dev mode (accounts, transactions, categories, tags) | 3h | [ ] |
 | 1.15 | Basic Playwright E2E smoke test: login → create account → add transaction | 3h | [ ] |
+| 1.16 | Set up Serilog + OpenTelemetry structured logging baseline; wire into Aspire dashboard for dev-time observability | 2h | [ ] |
+| 1.17 | Implement liveness and readiness health check endpoints (`/healthz`, `/ready`) with PostgreSQL dependency check | 2h | [ ] |
+| 1.18 | Configure EF Core automated migrations on API startup with idempotent migration runner | 2h | [ ] |
+| 1.19 | Create `Prospero.Contracts` shared DTO/contract library referenced by both API and Blazor WASM for compile-time type safety | 3h | [ ] |
+| 1.20 | Accessibility baseline: configure ARIA landmarks, semantic HTML, keyboard navigation foundation, and `prefers-reduced-motion` support in layout scaffolding | 2h | [ ] |
 
-**Deliverable:** Login, create accounts, manually add transactions, view account balances. Versioned API with pagination. Realistic seed data in dev mode. Basic Playwright smoke test. Runs in dev mode via Aspire and in production via Docker Compose with HTTPS.
+**Deliverable:** Login, create accounts, manually add transactions, view account balances. Versioned API with pagination. Realistic seed data in dev mode. Basic Playwright smoke test. Structured logging, health checks, auto-migrations, and shared typed contracts from day one. Accessible layout foundation. Runs in dev mode via Aspire and in production via Docker Compose with HTTPS.
 
 ---
 
@@ -788,8 +799,12 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 2.17 | Payee management: CRUD, alias mapping, default category assignment, merge duplicates | 4h | [ ] |
 | 2.18 | Tag management: CRUD, rename, merge, bulk assign/remove | 2h | [ ] |
 | 2.19 | Tests for all importers, rules engine, split logic, idempotency paths, and category/payee/tag management | 7h | [ ] |
+| 2.20 | Full-text search endpoint: search across transaction descriptions, payee names, and notes using PostgreSQL `tsvector`/`tsquery` | 4h | [ ] |
+| 2.21 | Bulk operation endpoints: batch categorize, tag, delete, and rule-apply to avoid N+1 API calls | 4h | [ ] |
+| 2.22 | Import quality metrics: track and expose import success rate, duplicate rate, auto-categorization rate, and manual fix rate per import batch | 3h | [ ] |
+| 2.23 | Partial import policy: configurable behavior (fail-fast, skip-invalid-and-continue, preview-only with no commit) per import session | 2h | [ ] |
 
-**Deliverable:** Import CSV/QFX/QIF files, map columns, auto-categorize via rules, review & commit. Full category hierarchy, payee, and tag management.
+**Deliverable:** Import CSV/QFX/QIF files, map columns, auto-categorize via rules, review & commit. Full category hierarchy, payee, and tag management. Full-text search, bulk operations, and import quality tracking.
 
 ---
 
@@ -814,9 +829,10 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 3.13 | Forecast visualization (line chart with actual vs projected) | 4h | [ ] |
 | 3.14 | Minimum balance alerts | 2h | [ ] |
 | 3.15 | Notification infrastructure: Notification entity, in-app notification center component, alert generation service | 5h | [ ] |
-| 3.16 | Tests for budgeting, sinking funds, forecasting logic, and notification delivery | 6h | [ ] |
+| 3.16 | Notification preferences: per-alert-type enable/disable, threshold configuration, snooze/dismiss actions | 3h | [ ] |
+| 3.17 | Tests for budgeting, sinking funds, forecasting logic, and notification delivery | 6h | [ ] |
 
-**Deliverable:** Split-aware budgets, sinking funds, recurring transactions, reliable cash flow forecasting, and in-app notification center.
+**Deliverable:** Split-aware budgets, sinking funds, recurring transactions, reliable cash flow forecasting, in-app notification center with user-configurable preferences.
 
 ---
 
@@ -824,8 +840,18 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 **Goal:** Rich dashboards, charts, offline PWA capability, conflict resolution UI, reconciliation, contribution room, and amortization schedules.
 
+> **⚠️ Sync Spike Gate (required before tasks 4.8–4.12):** Before committing to the full offline sync engine, complete a 1-week time-boxed spike prototype covering: IndexedDB read/write, basic queue-and-flush sync, and a single conflict scenario. Produce a written go/no-go decision document. If the spike reveals fundamental blockers, re-scope the sync engine to read-only offline with online-only writes as a fallback.
+
+**Phase Acceptance Criteria:**
+- Dashboard pages load in < 2s on a cold start with 1 year of seed data
+- Offline mode: user can view accounts and recent transactions without network connectivity
+- Sync conflict resolution: all field-level conflicts surface in the Conflict Resolution UI within one sync cycle
+- Reconciliation: statement close locks prevent edits without explicit unlock + audit reason
+- Amortization schedules match a reference calculator within ±$0.01 per payment
+
 | Task | Description | Estimate | Done |
 |------|-------------|----------|:----:|
+| 4.0 | **Sync spike prototype** (1-week time-box): IndexedDB CRUD, basic queue/flush sync, single conflict scenario, go/no-go decision doc | 8h | [ ] |
 | 4.1 | Net Worth dashboard: summary cards, time-series chart, asset allocation | 6h | [ ] |
 | 4.2 | Net Worth forecasting: ForecastScenario entity, growth rate assumptions per account/asset class | 4h | [ ] |
 | 4.3 | NetWorthForecastingService: project future net worth using scheduled payments, growth rates, inflation | 6h | [ ] |
@@ -913,8 +939,14 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 6.13a | WCAG 2.1 AA accessibility audit and remediation: keyboard navigation, screen reader, color contrast, ARIA landmarks | 4h | [ ] |
 | 6.14 | Performance testing and optimization | 4h | [ ] |
 | 6.14a | Security testing: OWASP ZAP scan, dependency vulnerability audit, secrets scanning | 3h | [ ] |
+| 6.15 | Soft-delete admin purge job: configurable retention period, hard-delete after expiry, audit trail for purge operations | 3h | [ ] |
+| 6.16 | Data retention policy enforcement: per-entity retention rules, scheduled cleanup, user notification before purge | 2h | [ ] |
+| 6.17 | Audit query tooling: filterable audit event viewer (by entity, user, date range, action type) with CSV export | 3h | [ ] |
+| 6.18 | SLO definitions and error budgets: document target availability, sync latency P95/P99, import throughput, and alert when breached | 2h | [ ] |
+| 6.19 | Operational runbooks: sync conflict storms, import failure triage, database recovery, Ollama unavailability, plugin failures | 3h | [ ] |
+| 6.20 | Category/tag referential integrity enforcement: reassignment UI and API when deleting categories or tags linked to transactions/splits/budgets/rules | 3h | [ ] |
 
-**Deliverable:** Production-hardened, secure, documented, accessible, and CI/CD automated.
+**Deliverable:** Production-hardened, secure, documented, accessible, and CI/CD automated. Complete data lifecycle management, operational runbooks, and SLO monitoring.
 
 ---
 
@@ -1005,15 +1037,17 @@ graph LR
 
 | Phase | Duration | Key Milestone |
 |-------|----------|---------------|
-| **Phase 1: Foundation** | Weeks 1–4 | Auth, accounts, transactions (with splits), categories, tags, payees, API versioning, pagination, seed data, Playwright smoke test, Docker |
-| **Phase 2: Ingestion** | Weeks 5–8 | CSV/QFX/QIF import, idempotent ingestion, diagnostics, rules engine, auto-split rules, category/payee/tag management |
-| **Phase 3: Budgeting & Sinking Funds** | Weeks 9–12 | Budgets (split-aware), sinking funds, recurring, cash flow forecast, notification infrastructure |
-| **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 13–18 | Charts, net worth forecast with growth scenarios, offline-first, conflict-safe sync with resolution UI, reconciliation, contribution room, amortization |
+| **Phase 1: Foundation** | Weeks 1–4 | Auth, accounts, transactions (with splits), categories, tags, payees, API versioning, pagination, seed data, Playwright smoke test, Docker, structured logging, health checks, auto-migrations, shared contracts, accessibility baseline |
+| **Phase 2: Ingestion** | Weeks 5–8 | CSV/QFX/QIF import, idempotent ingestion, diagnostics, rules engine, auto-split rules, category/payee/tag management, full-text search, bulk operations, import quality metrics |
+| **Phase 3: Budgeting & Sinking Funds** | Weeks 9–12 | Budgets (split-aware), sinking funds, recurring, cash flow forecast, notification infrastructure with user preferences |
+| **Phase 4: Dashboards, Net Worth Forecasting & PWA** | Weeks 13–18 | Sync spike gate → Charts, net worth forecast with growth scenarios, offline-first, conflict-safe sync with resolution UI, reconciliation, contribution room, amortization |
 | **Phase 5: Investments & Advanced** | Weeks 19–24 | Portfolio, AI, trusted plugins, multi-user, permissions matrix, FX history |
-| **Phase 6: Polish** | Weeks 25–28 | Security, key lifecycle, restore verification, backup encryption, CI/CD, WCAG audit, security testing, documentation |
+| **Phase 6: Polish** | Weeks 25–30 | Security, key lifecycle, restore verification, backup encryption, CI/CD, WCAG audit, security testing, documentation, data lifecycle management, SLO monitoring, operational runbooks |
 
-> **Total estimated effort:** ~28 weeks of part-time development (assuming ~15-20 hours/week)
+> **Total estimated effort:** ~30 weeks of part-time development (assuming ~15-20 hours/week)
 >
 > **Milestone:** MVP target is end of Phase 6 (all phases complete).
 >
-> **⚠️ Risk note:** The offline sync engine (Phase 4, tasks 4.8–4.12) is historically one of the hardest problems in application development. Budget extra time for edge cases in conflict resolution, partial sync failures, and multi-device scenarios. Consider a spike/prototype sprint before committing to the full implementation.
+> **⚠️ Risk note:** The offline sync engine (Phase 4, tasks 4.8–4.12) is historically one of the hardest problems in application development. A **mandatory sync spike gate** (task 4.0) must produce a go/no-go decision before committing to the full implementation. Budget extra time for edge cases in conflict resolution, partial sync failures, and multi-device scenarios.
+>
+> **📋 Phase gates:** Each phase should end with a brief acceptance review against its stated acceptance criteria before starting the next phase. Criteria include functional correctness, test coverage targets (≥80% line coverage for Domain/Application layers), and performance benchmarks where specified.
