@@ -1,4 +1,4 @@
-# Prospero — Personal Finance Tracker
+# Privestio — Personal Finance Tracker
 
 ## Feature Specification
 
@@ -10,7 +10,7 @@
 
 ## 1. Vision & Goals
 
-Prospero is an **offline-first, self-hosted personal finance tracker** built on .NET Aspire. It provides comprehensive financial asset tracking, a user-configurable ingestion pipeline, intelligent transaction categorization, budgeting, forecasting, and investment portfolio tracking — all without cloud dependencies.
+Privestio is an **offline-first, self-hosted personal finance tracker** built on .NET Aspire. It provides comprehensive financial asset tracking, a user-configurable ingestion pipeline, intelligent transaction categorization, budgeting, forecasting, and investment portfolio tracking — all without cloud dependencies.
 
 ### Core Principles
 
@@ -408,7 +408,7 @@ Property and other non-transactional asset accounts derive their `CurrentBalance
 | **Filtering & Sorting** | Transaction, account, and report endpoints support filtering (date range, category, account, tags, payee) and multi-field sorting | P0 |
 | **Search** | Full-text search across transaction descriptions, payee names, and notes | P1 |
 | **Bulk Operations** | Batch endpoints for categorize, tag, delete, and rule-apply operations to avoid N+1 API calls | P1 |
-| **Typed API Contracts** | Shared DTO/contract library (`Prospero.Contracts`) between API and Blazor WASM client for compile-time safety; includes request/response DTOs, pagination models, and error contracts | P0 |
+| **Typed API Contracts** | Shared DTO/contract library (`Privestio.Contracts`) between API and Blazor WASM client for compile-time safety; includes request/response DTOs, pagination models, and error contracts | P0 |
 
 ---
 

@@ -1,4 +1,4 @@
-# Prospero — Implementation Plan
+# Privestio — Implementation Plan
 
 > **Version:** 0.2.0-draft
 > **Last Updated:** 2026-02-27
@@ -72,7 +72,7 @@
 graph TB
     subgraph Docker["Docker Compose"]
         Caddy["Caddy / Traefik<br/>(TLS/HTTPS)"]
-        API["Prospero API Server<br/>(ASP.NET)"]
+        API["Privestio API Server<br/>(ASP.NET)"]
         PG["PostgreSQL<br/>(encrypted)"]
         Aspire["Aspire Dashboard<br/>(dev only)"]
         Ollama["Ollama<br/>(optional)"]
@@ -146,21 +146,21 @@ finance/
 │   └── IMPLEMENTATION-PLAN.md
 │
 ├── src/
-│   ├── Prospero.AppHost/                    # .NET Aspire orchestrator
+│   ├── Privestio.AppHost/                    # .NET Aspire orchestrator
 │   │   ├── Program.cs
-│   │   └── Prospero.AppHost.csproj
+│   │   └── Privestio.AppHost.csproj
 │   │
-│   ├── Prospero.ServiceDefaults/            # Shared Aspire service defaults
+│   ├── Privestio.ServiceDefaults/            # Shared Aspire service defaults
 │   │   ├── Extensions.cs
-│   │   └── Prospero.ServiceDefaults.csproj
+│   │   └── Privestio.ServiceDefaults.csproj
 │   │
-│   ├── Prospero.Contracts/                  # Shared DTOs/contracts (API ↔ Blazor WASM)
+│   ├── Privestio.Contracts/                  # Shared DTOs/contracts (API ↔ Blazor WASM)
 │   │   ├── Requests/
 │   │   ├── Responses/
 │   │   ├── Pagination/
-│   │   └── Prospero.Contracts.csproj
+│   │   └── Privestio.Contracts.csproj
 │   │
-│   ├── Prospero.Domain/                     # Domain layer (pure C#, no dependencies)
+│   ├── Privestio.Domain/                     # Domain layer (pure C#, no dependencies)
 │   │   ├── Entities/
 │   │   │   ├── Account.cs                   # Base account entity
 │   │   │   ├── Transaction.cs
@@ -207,9 +207,9 @@ finance/
 │   │   │   ├── ITransactionImporter.cs      # Plugin interface
 │   │   │   ├── IPriceFeedProvider.cs         # Plugin interface
 │   │   │   └── IRuleEvaluator.cs
-│   │   └── Prospero.Domain.csproj
+│   │   └── Privestio.Domain.csproj
 │   │
-│   ├── Prospero.Application/                # Application layer (use cases)
+│   ├── Privestio.Application/                # Application layer (use cases)
 │   │   ├── Commands/
 │   │   │   ├── ImportTransactions/
 │   │   │   ├── CreateTransaction/
@@ -246,11 +246,11 @@ finance/
 │   │   │   └── IUnitOfWork.cs
 │   │   ├── DTOs/
 │   │   ├── Mappings/
-│   │   └── Prospero.Application.csproj
+│   │   └── Privestio.Application.csproj
 │   │
-│   ├── Prospero.Infrastructure/             # Infrastructure (data access, external)
+│   ├── Privestio.Infrastructure/             # Infrastructure (data access, external)
 │   │   ├── Data/
-│   │   │   ├── ProsperoDbContext.cs
+│   │   │   ├── PrivestioDbContext.cs
 │   │   │   ├── Configurations/              # EF Core entity configurations
 │   │   │   ├── Migrations/
 │   │   │   └── Repositories/
@@ -272,9 +272,9 @@ finance/
 │   │   │   └── PluginManager.cs
 │   │   ├── AI/
 │   │   │   └── OllamaCategorizer.cs
-│   │   └── Prospero.Infrastructure.csproj
+│   │   └── Privestio.Infrastructure.csproj
 │   │
-│   ├── Prospero.Api/                        # ASP.NET Core API host
+│   ├── Privestio.Api/                        # ASP.NET Core API host
 │   │   ├── Endpoints/
 │   │   │   ├── AccountEndpoints.cs
 │   │   │   ├── TransactionEndpoints.cs
@@ -293,9 +293,9 @@ finance/
 │   │   │   └── RequestLoggingMiddleware.cs
 │   │   ├── Program.cs
 │   │   ├── appsettings.json
-│   │   └── Prospero.Api.csproj
+│   │   └── Privestio.Api.csproj
 │   │
-│   └── Prospero.Web/                        # Blazor WASM PWA
+│   └── Privestio.Web/                        # Blazor WASM PWA
 │       ├── wwwroot/
 │       │   ├── index.html
 │       │   ├── manifest.json
@@ -326,17 +326,17 @@ finance/
 │       │   ├── ApiClient.cs                  # Typed HTTP client
 │       │   └── AuthStateProvider.cs
 │       ├── Program.cs
-│       └── Prospero.Web.csproj
+│       └── Privestio.Web.csproj
 │
 ├── tests/
-│   ├── Prospero.Domain.Tests/
-│   ├── Prospero.Application.Tests/
-│   ├── Prospero.Infrastructure.Tests/
-│   ├── Prospero.Api.Tests/                   # Integration tests
-│   └── Prospero.Web.Tests/                   # bUnit component tests
+│   ├── Privestio.Domain.Tests/
+│   ├── Privestio.Application.Tests/
+│   ├── Privestio.Infrastructure.Tests/
+│   ├── Privestio.Api.Tests/                   # Integration tests
+│   └── Privestio.Web.Tests/                   # bUnit component tests
 │
 ├── plugins/                                  # Example/community plugins
-│   └── Prospero.Plugin.Template/
+│   └── Privestio.Plugin.Template/
 │
 ├── docker/
 │   ├── docker-compose.yml                    # Production compose
@@ -353,7 +353,7 @@ finance/
 │   ├── instructions/                         # Copilot instruction files
 │   └── copilot-instructions.md
 │
-├── Prospero.sln
+├── Privestio.sln
 ├── Directory.Build.props                     # Shared build properties
 ├── Directory.Packages.props                  # Central package management
 ├── .editorconfig
@@ -767,7 +767,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 1.16 | Set up Serilog + OpenTelemetry structured logging baseline; wire into Aspire dashboard for dev-time observability | 2h | [ ] |
 | 1.17 | Implement liveness and readiness health check endpoints (`/healthz`, `/ready`) with PostgreSQL dependency check | 2h | [ ] |
 | 1.18 | Configure EF Core automated migrations on API startup with idempotent migration runner | 2h | [ ] |
-| 1.19 | Create `Prospero.Contracts` shared DTO/contract library referenced by both API and Blazor WASM for compile-time type safety | 3h | [ ] |
+| 1.19 | Create `Privestio.Contracts` shared DTO/contract library referenced by both API and Blazor WASM for compile-time type safety | 3h | [ ] |
 | 1.20 | Accessibility baseline: configure ARIA landmarks, semantic HTML, keyboard navigation foundation, and `prefers-reduced-motion` support in layout scaffolding | 2h | [ ] |
 
 **Deliverable:** Login, create accounts, manually add transactions, view account balances. Versioned API with pagination. Realistic seed data in dev mode. Basic Playwright smoke test. Structured logging, health checks, auto-migrations, and shared typed contracts from day one. Accessible layout foundation. Runs in dev mode via Aspire and in production via Docker Compose with HTTPS.
@@ -955,7 +955,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 ### Aspire AppHost (Development)
 
 ```csharp
-// Prospero.AppHost/Program.cs (conceptual)
+// Privestio.AppHost/Program.cs (conceptual)
 var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres")
@@ -965,11 +965,11 @@ var postgres = builder.AddPostgres("postgres")
 var ollama = builder.AddContainer("ollama", "ollama/ollama")
     .WithEndpoint(11434, 11434, name: "ollama-api");
 
-var api = builder.AddProject<Projects.Prospero_Api>("api")
+var api = builder.AddProject<Projects.Privestio_Api>("api")
     .WithReference(postgres)
     .WithReference(ollama);
 
-builder.AddProject<Projects.Prospero_Web>("web")
+builder.AddProject<Projects.Privestio_Web>("web")
     .WithReference(api);
 
 builder.Build().Run();
