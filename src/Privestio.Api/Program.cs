@@ -61,6 +61,12 @@ try
     var jwtKey = builder.Configuration["Jwt:Key"]
         ?? throw new InvalidOperationException("Jwt:Key is not configured.");
 
+    if (jwtKey.Length < 32)
+        throw new InvalidOperationException("Jwt:Key must be at least 32 characters for HMAC-SHA256 security.");
+
+    if (!builder.Environment.IsDevelopment() && jwtKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("Jwt:Key must not use the default placeholder value in non-development environments.");
+
     builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
