@@ -1,0 +1,49 @@
+# syntax=docker/dockerfile:1
+
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy solution and project files first for better layer caching
+COPY ["Privestio.slnx", "./"]
+COPY ["Directory.Build.props", "./"]
+COPY ["Directory.Packages.props", "./"]
+COPY ["src/Privestio.Api/Privestio.Api.csproj", "src/Privestio.Api/"]
+COPY ["src/Privestio.Application/Privestio.Application.csproj", "src/Privestio.Application/"]
+COPY ["src/Privestio.Contracts/Privestio.Contracts.csproj", "src/Privestio.Contracts/"]
+COPY ["src/Privestio.Domain/Privestio.Domain.csproj", "src/Privestio.Domain/"]
+COPY ["src/Privestio.Infrastructure/Privestio.Infrastructure.csproj", "src/Privestio.Infrastructure/"]
+
+# Restore (cached layer if project files unchanged)
+RUN dotnet restore "src/Privestio.Api/Privestio.Api.csproj"
+
+# Copy source code
+COPY src/ src/
+
+# Build and publish
+RUN dotnet publish "src/Privestio.Api/Privestio.Api.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# Runtime stage — minimal ASP.NET Core runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+
+# Security: run as non-root user
+RUN addgroup --system appgroup && \
+    adduser --system --ingroup appgroup appuser
+
+WORKDIR /app
+
+# Copy published output
+COPY --from=build --chown=appuser:appgroup /app/publish .
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:8080/healthz || exit 1
+
+ENTRYPOINT ["dotnet", "Privestio.Api.dll"]

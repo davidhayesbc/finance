@@ -1,0 +1,81 @@
+@page "/login"
+@using Privestio.Web.Models
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Login — Privestio</PageTitle>
+
+<FluentCard class="login-card">
+    <h1>Sign In</h1>
+    <p>Welcome back to Privestio.</p>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <FluentMessageBar Intent="@MessageIntent.Error">
+            @_errorMessage
+        </FluentMessageBar>
+    }
+
+    <EditForm Model="_form" OnValidSubmit="HandleLoginAsync" aria-label="Login form">
+        <DataAnnotationsValidator />
+
+        <FluentStack Orientation="Orientation.Vertical" Width="100%">
+            <FluentTextField
+                @bind-Value="_form.Email"
+                Label="Email address"
+                Placeholder="you@example.com"
+                Required="true"
+                id="email" />
+            <ValidationMessage For="@(() => _form.Email)" />
+
+            <FluentTextField
+                @bind-Value="_form.Password"
+                Label="Password"
+                Placeholder="Password"
+                TextFieldType="TextFieldType.Password"
+                Required="true"
+                id="password" />
+            <ValidationMessage For="@(() => _form.Password)" />
+
+            <FluentButton
+                Type="ButtonType.Submit"
+                Appearance="Appearance.Accent"
+                Loading="_isLoading"
+                Style="width:100%">
+                Sign In
+            </FluentButton>
+        </FluentStack>
+    </EditForm>
+
+    <p>Don't have an account? <FluentAnchor Href="/register">Register</FluentAnchor></p>
+</FluentCard>
+
+@code {
+    private readonly LoginFormModel _form = new();
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    protected override void OnInitialized()
+    {
+        if (AuthService.IsAuthenticated)
+            Navigation.NavigateTo("/accounts");
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var result = await AuthService.LoginAsync(new Privestio.Contracts.Requests.LoginRequest
+        {
+            Email = _form.Email,
+            Password = _form.Password,
+        });
+        _isLoading = false;
+
+        if (result is null)
+            _errorMessage = "Invalid email or password. Please try again.";
+        else
+            Navigation.NavigateTo("/accounts");
+    }
+}

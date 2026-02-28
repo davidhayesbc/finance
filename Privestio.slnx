@@ -1,16 +1,19 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Privestio.Api/Privestio.Api.csproj" />
+    <Project Path="src/Privestio.AppHost/Privestio.AppHost.csproj" />
     <Project Path="src/Privestio.Application/Privestio.Application.csproj" />
     <Project Path="src/Privestio.Contracts/Privestio.Contracts.csproj" />
     <Project Path="src/Privestio.Domain/Privestio.Domain.csproj" />
     <Project Path="src/Privestio.Infrastructure/Privestio.Infrastructure.csproj" />
+    <Project Path="src/Privestio.ServiceDefaults/Privestio.ServiceDefaults.csproj" />
     <Project Path="src/Privestio.Web/Privestio.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Privestio.Api.Tests/Privestio.Api.Tests.csproj" />
     <Project Path="tests/Privestio.Application.Tests/Privestio.Application.Tests.csproj" />
     <Project Path="tests/Privestio.Domain.Tests/Privestio.Domain.Tests.csproj" />
+    <Project Path="tests/Privestio.E2E.Tests/Privestio.E2E.Tests.csproj" />
     <Project Path="tests/Privestio.Infrastructure.Tests/Privestio.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

@@ -746,29 +746,29 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 | Task | Description | Estimate | Done |
 |------|-------------|----------|:----:|
-| 1.1 | Create solution structure, all `.csproj` files, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig` | 3h | [ ] |
-| 1.2 | Set up Aspire AppHost with PostgreSQL and API project | 2h | [ ] |
-| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Household, Money, Category (hierarchical), Tag, TransactionTag, TransactionSplitTag, Payee, ImportBatch, AuditEvent, Notification, PriceHistory, Valuation | 8h | [ ] |
-| 1.4 | Set up EF Core with PostgreSQL, entity configurations, initial migration, soft-delete global query filters, and database indexing strategy (transaction fingerprints, account+date, category lookups) | 6h | [ ] |
-| 1.4a | Enforce normalized financial taxonomy from day 1 (`Category`, `Payee`, `Tag`, `TransactionTag`, `TransactionSplitTag` with FK constraints); no free-form category/tag strings in persisted model | 3h | [ ] |
-| 1.5 | Implement local Identity auth (register, login, JWT tokens) | 4h | [ ] |
-| 1.6 | Implement OpenID Connect (Google + Microsoft) | 3h | [ ] |
-| 1.6a | Implement password policy, lockout, and reset flows with configurable policy settings | 2h | [ ] |
-| 1.7 | Build Minimal API endpoints: Accounts CRUD, Transactions CRUD with cursor-based pagination, filtering, and sorting | 5h | [ ] |
-| 1.7a | Set up API versioning (`/api/v1/...`) with Asp.Versioning | 2h | [ ] |
-| 1.8 | Scaffold Blazor WASM project with MudBlazor/Fluent UI, ErrorBoundary components, and responsive layout | 4h | [ ] |
-| 1.9 | Build basic pages: Login, Account List, Account Detail, Add Transaction | 6h | [ ] |
-| 1.10 | Set up Docker multi-stage build for API | 2h | [ ] |
-| 1.11 | Set up docker-compose.yml with PostgreSQL + API + Caddy (HTTPS) | 3h | [ ] |
-| 1.12 | Write domain unit tests and API integration tests | 4h | [ ] |
-| 1.13 | Set up GitHub Actions CI pipeline (build + test) | 2h | [ ] |
-| 1.14 | Create Bogus-based seed data generators for dev mode (accounts, transactions, categories, tags) | 3h | [ ] |
-| 1.15 | Basic Playwright E2E smoke test: login → create account → add transaction | 3h | [ ] |
-| 1.16 | Set up Serilog + OpenTelemetry structured logging baseline; wire into Aspire dashboard for dev-time observability | 2h | [ ] |
-| 1.17 | Implement liveness and readiness health check endpoints (`/healthz`, `/ready`) with PostgreSQL dependency check | 2h | [ ] |
-| 1.18 | Configure EF Core automated migrations on API startup with idempotent migration runner | 2h | [ ] |
-| 1.19 | Create `Privestio.Contracts` shared DTO/contract library referenced by both API and Blazor WASM for compile-time type safety | 3h | [ ] |
-| 1.20 | Accessibility baseline: configure ARIA landmarks, semantic HTML, keyboard navigation foundation, and `prefers-reduced-motion` support in layout scaffolding | 2h | [ ] |
+| 1.1 | Create solution structure, all `.csproj` files, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig` | 3h | [x]  |
+| 1.2 | Set up Aspire AppHost with PostgreSQL and API project | 2h | [x]  |
+| 1.3 | Implement domain entities: Account, Transaction, TransactionSplit, User, Household, Money, Category (hierarchical), Tag, TransactionTag, TransactionSplitTag, Payee, ImportBatch, AuditEvent, Notification, PriceHistory, Valuation | 8h | [x]  |
+| 1.4 | Set up EF Core with PostgreSQL, entity configurations, initial migration, soft-delete global query filters, and database indexing strategy (transaction fingerprints, account+date, category lookups) | 6h | [x]  |
+| 1.4a | Enforce normalized financial taxonomy from day 1 (`Category`, `Payee`, `Tag`, `TransactionTag`, `TransactionSplitTag` with FK constraints); no free-form category/tag strings in persisted model | 3h | [x]  |
+| 1.5 | Implement local Identity auth (register, login, JWT tokens) | 4h | [x]  |
+| 1.6 | Implement OpenID Connect (Google + Microsoft) | 3h | [x]  |
+| 1.6a | Implement password policy, lockout, and reset flows with configurable policy settings | 2h | [x]  |
+| 1.7 | Build Minimal API endpoints: Accounts CRUD, Transactions CRUD with cursor-based pagination, filtering, and sorting | 5h | [x]  |
+| 1.7a | Set up API versioning (`/api/v1/...`) with Asp.Versioning | 2h | [x]  |
+| 1.8 | Scaffold Blazor WASM project with MudBlazor/Fluent UI, ErrorBoundary components, and responsive layout | 4h | [x]  |
+| 1.9 | Build basic pages: Login, Account List, Account Detail, Add Transaction | 6h | [x]  |
+| 1.10 | Set up Docker multi-stage build for API | 2h | [x]  |
+| 1.11 | Set up docker-compose.yml with PostgreSQL + API + Caddy (HTTPS) | 3h | [x]  |
+| 1.12 | Write domain unit tests and API integration tests | 4h | [x]  |
+| 1.13 | Set up GitHub Actions CI pipeline (build + test) | 2h | [x]  |
+| 1.14 | Create Bogus-based seed data generators for dev mode (accounts, transactions, categories, tags) | 3h | [x]  |
+| 1.15 | Basic Playwright E2E smoke test: login → create account → add transaction | 3h | [x]  |
+| 1.16 | Set up Serilog + OpenTelemetry structured logging baseline; wire into Aspire dashboard for dev-time observability | 2h | [x]  |
+| 1.17 | Implement liveness and readiness health check endpoints (`/healthz`, `/ready`) with PostgreSQL dependency check | 2h | [x]  |
+| 1.18 | Configure EF Core automated migrations on API startup with idempotent migration runner | 2h | [x]  |
+| 1.19 | Create `Privestio.Contracts` shared DTO/contract library referenced by both API and Blazor WASM for compile-time type safety | 3h | [x]  |
+| 1.20 | Accessibility baseline: configure ARIA landmarks, semantic HTML, keyboard navigation foundation, and `prefers-reduced-motion` support in layout scaffolding | 2h | [x]  |
 
 **Deliverable:** Login, create accounts, manually add transactions, view account balances. Versioned API with pagination. Realistic seed data in dev mode. Basic Playwright smoke test. Structured logging, health checks, auto-migrations, and shared typed contracts from day one. Accessible layout foundation. Runs in dev mode via Aspire and in production via Docker Compose with HTTPS.
 

@@ -1,0 +1,116 @@
+@page "/accounts/{AccountId:guid}/transactions/new"
+@using Privestio.Web.Models
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+@inject HttpClient HttpClient
+
+<PageTitle>Add Transaction — Privestio</PageTitle>
+
+<FluentBreadcrumb>
+    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem Href="@($"/accounts/{AccountId}")">@(_account?.Name ?? "Account")</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem>New Transaction</FluentBreadcrumbItem>
+</FluentBreadcrumb>
+
+<h1>Add Transaction</h1>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Error">
+        @_errorMessage
+    </FluentMessageBar>
+}
+
+<EditForm Model="_form" OnValidSubmit="HandleSubmitAsync" aria-label="Add transaction form">
+    <DataAnnotationsValidator />
+
+    <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:600px">
+        <FluentDatePicker
+            @bind-Value="_date"
+            Label="Transaction date" />
+        <ValidationMessage For="@(() => _form.Date)" />
+
+        <FluentTextField
+            @bind-Value="_form.Description"
+            Label="Description"
+            Placeholder="e.g., Loblaws, Payroll Deposit"
+            Required="true" />
+        <ValidationMessage For="@(() => _form.Description)" />
+
+        <FluentNumberField
+            @bind-Value="_form.Amount"
+            Label="Amount"
+            Step="1"
+            Min="0.01" />
+        <ValidationMessage For="@(() => _form.Amount)" />
+
+        <FluentSelect TOption="string" @bind-Value="_form.TransactionType" Label="Transaction type">
+            <FluentOption TOption="string" Value="">Select type...</FluentOption>
+            <FluentOption TOption="string" Value="Debit">Debit (expense)</FluentOption>
+            <FluentOption TOption="string" Value="Credit">Credit (income)</FluentOption>
+            <FluentOption TOption="string" Value="Transfer">Transfer</FluentOption>
+        </FluentSelect>
+        <ValidationMessage For="@(() => _form.TransactionType)" />
+
+        <FluentTextField
+            @bind-Value="_form.Notes"
+            Label="Notes (optional)"
+            Placeholder="Optional notes" />
+
+        <FluentStack Orientation="Orientation.Horizontal">
+            <FluentButton
+                Type="ButtonType.Submit"
+                Appearance="Appearance.Accent"
+                Loading="_isLoading">
+                Save Transaction
+            </FluentButton>
+            <FluentButton
+                Appearance="Appearance.Outline"
+                OnClick="@(() => Navigation.NavigateTo($"/accounts/{AccountId}"))">
+                Cancel
+            </FluentButton>
+        </FluentStack>
+    </FluentStack>
+</EditForm>
+
+@code {
+    [Parameter] public Guid AccountId { get; set; }
+
+    private AccountResponse? _account;
+    private readonly CreateTransactionFormModel _form = new();
+    private DateTime? _date = DateTime.Today;
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _account = await AccountService.GetAccountByIdAsync(AccountId);
+        _form.AccountId = AccountId;
+        _form.Currency = _account?.Currency ?? "CAD";
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var request = new Privestio.Contracts.Requests.CreateTransactionRequest
+        {
+            AccountId = _form.AccountId,
+            Date = _date ?? DateTime.Today,
+            Amount = _form.Amount,
+            Currency = _form.Currency,
+            Description = _form.Description,
+            TransactionType = _form.TransactionType,
+            Notes = _form.Notes,
+        };
+
+        var response = await HttpClient.PostAsJsonAsync("/api/v1/transactions", request);
+        _isLoading = false;
+
+        if (!response.IsSuccessStatusCode)
+            _errorMessage = "Failed to save transaction. Please try again.";
+        else
+            Navigation.NavigateTo($"/accounts/{AccountId}");
+    }
+}

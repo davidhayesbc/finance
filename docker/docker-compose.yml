@@ -1,0 +1,84 @@
+# Privestio — Production docker-compose (Task 1.11)
+# Usage: docker-compose up -d
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: privestio-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: privestio
+      POSTGRES_USER: privestio
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U privestio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - privestio_net
+    # Do not expose DB port externally in production
+    # ports:
+    #   - "5432:5432"
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: privestio-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__privestio: >-
+        Host=db;Port=5432;Database=privestio;Username=privestio;Password=${DB_PASSWORD:?}
+      Jwt__Key: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required (min 32 chars)}
+      Jwt__Issuer: ${APP_URL:-https://privestio.app}
+      Jwt__Audience: ${APP_URL:-https://privestio.app}
+      Web__Origin: ${WEB_ORIGIN:-https://privestio.app}
+      Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
+      Authentication__Microsoft__ClientId: ${MICROSOFT_CLIENT_ID:-}
+      Authentication__Microsoft__ClientSecret: ${MICROSOFT_CLIENT_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - privestio_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: privestio-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - privestio_net
+
+volumes:
+  postgres_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+networks:
+  privestio_net:
+    driver: bridge

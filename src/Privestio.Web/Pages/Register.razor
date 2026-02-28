@@ -1,0 +1,85 @@
+@page "/register"
+@using Privestio.Web.Models
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Register — Privestio</PageTitle>
+
+<FluentCard class="login-card">
+    <h1>Create Account</h1>
+    <p>Start tracking your finances with Privestio.</p>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <FluentMessageBar Intent="@MessageIntent.Error">
+            @_errorMessage
+        </FluentMessageBar>
+    }
+
+    <EditForm Model="_form" OnValidSubmit="HandleRegisterAsync" aria-label="Registration form">
+        <DataAnnotationsValidator />
+
+        <FluentStack Orientation="Orientation.Vertical" Width="100%">
+            <FluentTextField
+                @bind-Value="_form.DisplayName"
+                Label="Display name"
+                Placeholder="Your name"
+                Required="true"
+                id="displayName" />
+            <ValidationMessage For="@(() => _form.DisplayName)" />
+
+            <FluentTextField
+                @bind-Value="_form.Email"
+                Label="Email address"
+                Placeholder="you@example.com"
+                Required="true"
+                id="email" />
+            <ValidationMessage For="@(() => _form.Email)" />
+
+            <FluentTextField
+                @bind-Value="_form.Password"
+                Label="Password"
+                Placeholder="At least 12 characters"
+                TextFieldType="TextFieldType.Password"
+                Required="true"
+                id="password" />
+            <ValidationMessage For="@(() => _form.Password)" />
+            <small>Password must be at least 12 characters with uppercase, lowercase, digit, and symbol.</small>
+
+            <FluentButton
+                Type="ButtonType.Submit"
+                Appearance="Appearance.Accent"
+                Loading="_isLoading"
+                Style="width:100%">
+                Create Account
+            </FluentButton>
+        </FluentStack>
+    </EditForm>
+
+    <p>Already have an account? <FluentAnchor Href="/login">Sign in</FluentAnchor></p>
+</FluentCard>
+
+@code {
+    private readonly RegisterFormModel _form = new();
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    private async Task HandleRegisterAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var result = await AuthService.RegisterAsync(new Privestio.Contracts.Requests.RegisterRequest
+        {
+            Email = _form.Email,
+            Password = _form.Password,
+            DisplayName = _form.DisplayName,
+        });
+        _isLoading = false;
+
+        if (result is null)
+            _errorMessage = "Registration failed. Please check your details and try again.";
+        else
+            Navigation.NavigateTo("/accounts");
+    }
+}

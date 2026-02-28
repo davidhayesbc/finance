@@ -1,0 +1,120 @@
+@page "/accounts/new"
+@using Privestio.Web.Models
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<PageTitle>Add Account — Privestio</PageTitle>
+
+<FluentBreadcrumb>
+    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem>New Account</FluentBreadcrumbItem>
+</FluentBreadcrumb>
+
+<h1>Add Account</h1>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Error">
+        @_errorMessage
+    </FluentMessageBar>
+}
+
+<EditForm Model="_form" OnValidSubmit="HandleSubmitAsync" aria-label="Add account form">
+    <DataAnnotationsValidator />
+
+    <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:600px">
+        <FluentTextField
+            @bind-Value="_form.Name"
+            Label="Account name"
+            Placeholder="e.g., Main Chequing"
+            Required="true" />
+        <ValidationMessage For="@(() => _form.Name)" />
+
+        <FluentSelect TOption="string" @bind-Value="_form.AccountType" Label="Account type">
+            <FluentOption TOption="string" Value="">Select type...</FluentOption>
+            <FluentOption TOption="string" Value="Banking">Banking</FluentOption>
+            <FluentOption TOption="string" Value="Credit">Credit</FluentOption>
+            <FluentOption TOption="string" Value="Investment">Investment</FluentOption>
+            <FluentOption TOption="string" Value="Property">Property</FluentOption>
+            <FluentOption TOption="string" Value="Loan">Loan</FluentOption>
+        </FluentSelect>
+
+        <FluentSelect TOption="string" @bind-Value="_form.AccountSubType" Label="Sub-type">
+            <FluentOption TOption="string" Value="">Select sub-type...</FluentOption>
+            <FluentOption TOption="string" Value="Chequing">Chequing</FluentOption>
+            <FluentOption TOption="string" Value="Savings">Savings</FluentOption>
+            <FluentOption TOption="string" Value="CreditCard">Credit Card</FluentOption>
+            <FluentOption TOption="string" Value="RRSP">RRSP</FluentOption>
+            <FluentOption TOption="string" Value="TFSA">TFSA</FluentOption>
+            <FluentOption TOption="string" Value="RESP">RESP</FluentOption>
+            <FluentOption TOption="string" Value="LIRA">LIRA</FluentOption>
+            <FluentOption TOption="string" Value="NonRegistered">Non-Registered</FluentOption>
+            <FluentOption TOption="string" Value="RealEstate">Real Estate</FluentOption>
+            <FluentOption TOption="string" Value="Mortgage">Mortgage</FluentOption>
+        </FluentSelect>
+
+        <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency">
+            <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
+            <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
+        </FluentSelect>
+
+        <FluentTextField
+            @bind-Value="_form.Institution"
+            Label="Institution"
+            Placeholder="e.g., RBC, TD" />
+
+        <FluentNumberField
+            @bind-Value="_form.OpeningBalance"
+            Label="Opening balance"
+            Step="1" />
+
+        <FluentStack Orientation="Orientation.Horizontal">
+            <FluentButton
+                Type="ButtonType.Submit"
+                Appearance="Appearance.Accent"
+                Loading="_isLoading">
+                Save Account
+            </FluentButton>
+            <FluentButton
+                Appearance="Appearance.Outline"
+                OnClick="@(() => Navigation.NavigateTo("/accounts"))">
+                Cancel
+            </FluentButton>
+        </FluentStack>
+    </FluentStack>
+</EditForm>
+
+@code {
+    private readonly CreateAccountFormModel _form = new()
+    {
+        Currency = "CAD",
+        OpeningDate = DateTime.Today,
+    };
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    private async Task HandleSubmitAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var result = await AccountService.CreateAccountAsync(new Privestio.Contracts.Requests.CreateAccountRequest
+        {
+            Name = _form.Name,
+            AccountType = _form.AccountType,
+            AccountSubType = _form.AccountSubType,
+            Currency = _form.Currency,
+            Institution = _form.Institution,
+            AccountNumber = _form.AccountNumber,
+            OpeningBalance = _form.OpeningBalance,
+            OpeningDate = _form.OpeningDate,
+            Notes = _form.Notes,
+        });
+        _isLoading = false;
+
+        if (result is null)
+            _errorMessage = "Failed to create account. Please check your inputs and try again.";
+        else
+            Navigation.NavigateTo($"/accounts/{result.Id}");
+    }
+}
