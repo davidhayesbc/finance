@@ -1,0 +1,6 @@
+@Privestio.Api_HostAddress = http://localhost:5114
+
+GET {{Privestio.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

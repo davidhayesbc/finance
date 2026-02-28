@@ -1,0 +1,28 @@
+# Privestio Caddy reverse proxy with automatic HTTPS
+{
+    # Uncomment for staging/dev only
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+{$APP_DOMAIN:privestio.app} {
+    # API reverse proxy
+    reverse_proxy /api/* api:8080
+
+    # Health check passthrough (not exposed to public)
+    respond /healthz 403
+
+    # Serve Blazor WASM (if you add a web service, point here)
+    # reverse_proxy api:8080
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+
+    encode gzip
+}

@@ -1,0 +1,58 @@
+@page "/accounts"
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<PageTitle>Accounts — Privestio</PageTitle>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
+    <h1>Accounts</h1>
+    <FluentButton
+        Appearance="Appearance.Accent"
+        @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
+        aria-label="Add new account">
+        + Add Account
+    </FluentButton>
+</FluentStack>
+
+@if (_isLoading)
+{
+    <FluentProgressRing aria-label="Loading accounts" />
+}
+else if (_accounts.Count == 0)
+{
+    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
+        No accounts yet. Add your first account to get started.
+    </FluentMessageBar>
+}
+else
+{
+    <FluentDataGrid Items="_accounts.AsQueryable()" aria-label="Accounts table" TGridItem="AccountResponse">
+        <PropertyColumn Property="a => a.Name" Title="Account Name" />
+        <PropertyColumn Property="a => a.AccountType" Title="Type" />
+        <PropertyColumn Property="a => a.Institution" Title="Institution" />
+        <TemplateColumn Title="Balance">
+            <FluentBadge Appearance="Appearance.Neutral">
+                @context.CurrentBalance.ToString("C") @context.Currency
+            </FluentBadge>
+        </TemplateColumn>
+        <TemplateColumn Title="">
+            <FluentButton
+                Appearance="Appearance.Stealth"
+                @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))"
+                aria-label="@($"View {context.Name}")">
+                View
+            </FluentButton>
+        </TemplateColumn>
+    </FluentDataGrid>
+}
+
+@code {
+    private List<AccountResponse> _accounts = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accounts = (await AccountService.GetAccountsAsync()).ToList();
+        _isLoading = false;
+    }
+}

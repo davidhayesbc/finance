@@ -1,0 +1,63 @@
+@inherits LayoutComponentBase
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<FluentLayout>
+    <!-- Skip to main content for accessibility (Task 1.20) -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <FluentHeader>
+        <nav aria-label="Top navigation">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentAnchor Href="/" Appearance="Appearance.Hypertext">
+                        <strong>Privestio</strong>
+                    </FluentAnchor>
+                    @if (AuthService.IsAuthenticated)
+                    {
+                        <FluentAnchor Href="/accounts">Accounts</FluentAnchor>
+                    }
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Horizontal">
+                    @if (AuthService.IsAuthenticated)
+                    {
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="HandleLogoutAsync">
+                            Logout
+                        </FluentButton>
+                    }
+                    else
+                    {
+                        <FluentAnchor Href="/login">Login</FluentAnchor>
+                    }
+                </FluentStack>
+            </FluentStack>
+        </nav>
+    </FluentHeader>
+
+    <FluentBodyContent>
+        <main id="main-content" role="main">
+            <ErrorBoundary>
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent>
+                    <FluentMessageBar Intent="@MessageIntent.Error">
+                        An unexpected error occurred. Please try refreshing the page.
+                    </FluentMessageBar>
+                </ErrorContent>
+            </ErrorBoundary>
+        </main>
+    </FluentBodyContent>
+
+    <FluentFooter>
+        <p>Privestio &mdash; Personal Finance Tracker</p>
+    </FluentFooter>
+</FluentLayout>
+
+@code {
+    private async Task HandleLogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

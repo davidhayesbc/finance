@@ -1,0 +1,78 @@
+@page "/accounts/{Id:guid}"
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<PageTitle>@(_account?.Name ?? "Account") — Privestio</PageTitle>
+
+@if (_isLoading)
+{
+    <FluentProgressRing aria-label="Loading account details" />
+}
+else if (_account is null)
+{
+    <FluentMessageBar Intent="MessageIntent.Error" aria-live="assertive">
+        Account not found.
+    </FluentMessageBar>
+    <FluentButton @onclick="@(() => Navigation.NavigateTo("/accounts"))">Back to Accounts</FluentButton>
+}
+else
+{
+    <FluentBreadcrumb aria-label="Breadcrumb navigation">
+        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem>@_account.Name</FluentBreadcrumbItem>
+    </FluentBreadcrumb>
+
+    <article aria-labelledby="account-name">
+        <h1 id="account-name">@_account.Name</h1>
+
+        <FluentGrid>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Account type">
+                    <strong>Type</strong>
+                    <p>@_account.AccountType — @_account.AccountSubType</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Institution">
+                    <strong>Institution</strong>
+                    <p>@(_account.Institution ?? "—")</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Current balance">
+                    <strong>Current Balance</strong>
+                    <p>@_account.CurrentBalance.ToString("C") @_account.Currency</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Opening date">
+                    <strong>Opened</strong>
+                    <p>@_account.OpeningDate.ToString("MMMM d, yyyy")</p>
+                </FluentCard>
+            </FluentGridItem>
+        </FluentGrid>
+
+        <FluentStack Orientation="Orientation.Horizontal" style="margin-top: 16px;">
+            <FluentButton
+                Appearance="Appearance.Accent"
+                @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
+                aria-label="Add a transaction to this account">
+                + Add Transaction
+            </FluentButton>
+        </FluentStack>
+    </article>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private AccountResponse? _account;
+    private bool _isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _account = await AccountService.GetAccountByIdAsync(Id);
+        _isLoading = false;
+    }
+}

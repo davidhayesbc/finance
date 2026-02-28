@@ -416,3 +416,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Build artifacts (auto-added)
+src/**/bin/
+src/**/obj/
+tests/**/bin/
+tests/**/obj/
