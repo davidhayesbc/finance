@@ -1,8 +1,8 @@
-# Prospero — Personal Finance Tracker — Copilot Instructions
+# Privestio — Personal Finance Tracker — Copilot Instructions
 
 ## Project Overview
 
-Prospero is an offline-first, self-hosted personal finance tracker built on .NET 10 with .NET Aspire. It tracks investment accounts (RRSP, TFSA, non-registered), banking, credit cards, mortgages, property, and other financial assets. It features a configurable ingestion pipeline, rules-based categorization, budgeting, forecasting, and portfolio tracking.
+Privestio is an offline-first, self-hosted personal finance tracker built on .NET 10 with .NET Aspire. It tracks investment accounts (RRSP, TFSA, non-registered), banking, credit cards, mortgages, property, and other financial assets. It features a configurable ingestion pipeline, rules-based categorization, budgeting, forecasting, and portfolio tracking.
 
 ### Core Principles
 
@@ -16,20 +16,20 @@ Prospero is an offline-first, self-hosted personal finance tracker built on .NET
 
 ```
 src/
-  Prospero.AppHost/           - .NET Aspire orchestrator (dev)
-  Prospero.ServiceDefaults/   - Shared Aspire service defaults
-  Prospero.Contracts/         - Shared DTOs/contracts (API ↔ Blazor WASM)
-  Prospero.Domain/            - Entities, value objects, interfaces (pure C#, no dependencies)
-  Prospero.Application/       - Use cases, CQRS commands/queries, services
-  Prospero.Infrastructure/    - EF Core, importers, plugins, AI, encryption
-  Prospero.Api/               - ASP.NET Core Minimal API host
-  Prospero.Web/               - Blazor WebAssembly PWA
+  Privestio.AppHost/           - .NET Aspire orchestrator (dev)
+  Privestio.ServiceDefaults/   - Shared Aspire service defaults
+  Privestio.Contracts/         - Shared DTOs/contracts (API ↔ Blazor WASM)
+  Privestio.Domain/            - Entities, value objects, interfaces (pure C#, no dependencies)
+  Privestio.Application/       - Use cases, CQRS commands/queries, services
+  Privestio.Infrastructure/    - EF Core, importers, plugins, AI, encryption
+  Privestio.Api/               - ASP.NET Core Minimal API host
+  Privestio.Web/               - Blazor WebAssembly PWA
 tests/
-  Prospero.Domain.Tests/
-  Prospero.Application.Tests/
-  Prospero.Infrastructure.Tests/
-  Prospero.Api.Tests/
-  Prospero.Web.Tests/
+  Privestio.Domain.Tests/
+  Privestio.Application.Tests/
+  Privestio.Infrastructure.Tests/
+  Privestio.Api.Tests/
+  Privestio.Web.Tests/
 docker/
   docker-compose.yml          - Production deployment
   Dockerfile.api              - Multi-stage API build
