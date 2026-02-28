@@ -3,8 +3,19 @@ namespace Privestio.Domain.ValueObjects;
 /// <summary>
 /// Represents an inclusive date range.
 /// </summary>
-public readonly record struct DateRange(DateOnly Start, DateOnly End)
+public readonly record struct DateRange
 {
+    public DateOnly Start { get; }
+    public DateOnly End { get; }
+
+    public DateRange(DateOnly Start, DateOnly End)
+    {
+        if (Start > End)
+            throw new ArgumentException($"Start date ({Start}) must not be after end date ({End}).");
+        this.Start = Start;
+        this.End = End;
+    }
+
     public DateRange(DateTime start, DateTime end)
         : this(DateOnly.FromDateTime(start), DateOnly.FromDateTime(end))
     {

@@ -45,7 +45,7 @@ public static class TransactionEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = GetUserId(user);
+        var userId = EndpointHelpers.GetUserId(user);
         if (userId is null) return Results.Unauthorized();
 
         var effectivePageSize = pageSize > 0 ? Math.Min(pageSize, 100) : 20;
@@ -73,7 +73,7 @@ public static class TransactionEndpoints
 
         // Verify account ownership
         var account = await unitOfWork.Accounts.GetByIdAsync(transaction.AccountId, cancellationToken);
-        var userId = GetUserId(user);
+        var userId = EndpointHelpers.GetUserId(user);
         if (userId is null || account is null || account.OwnerId != userId.Value)
             return Results.Forbid();
 
@@ -102,7 +102,7 @@ public static class TransactionEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = GetUserId(user);
+        var userId = EndpointHelpers.GetUserId(user);
         if (userId is null) return Results.Unauthorized();
 
         // Verify account ownership
@@ -145,11 +145,5 @@ public static class TransactionEndpoints
             transaction.PayeeId,
             transaction.CreatedAt,
         });
-    }
-
-    private static Guid? GetUserId(ClaimsPrincipal user)
-    {
-        var claim = user.FindFirst("domain_user_id") ?? user.FindFirst(ClaimTypes.NameIdentifier);
-        return claim is not null && Guid.TryParse(claim.Value, out var id) ? id : null;
     }
 }

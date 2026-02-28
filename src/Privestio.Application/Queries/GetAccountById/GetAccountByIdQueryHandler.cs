@@ -1,7 +1,7 @@
 using MediatR;
 using Privestio.Application.Interfaces;
+using Privestio.Application.Mapping;
 using Privestio.Contracts.Responses;
-using Privestio.Domain.Entities;
 
 namespace Privestio.Application.Queries.GetAccountById;
 
@@ -23,24 +23,6 @@ public class GetAccountByIdQueryHandler : IRequestHandler<GetAccountByIdQuery, A
         if (account is null || account.OwnerId != request.RequestingUserId)
             return null;
 
-        return MapToResponse(account);
+        return AccountMapper.ToResponse(account);
     }
-
-    private static AccountResponse MapToResponse(Account account) => new()
-    {
-        Id = account.Id,
-        Name = account.Name,
-        AccountType = account.AccountType.ToString(),
-        AccountSubType = account.AccountSubType.ToString(),
-        Currency = account.Currency,
-        Institution = account.Institution,
-        OpeningBalance = account.OpeningBalance.Amount,
-        CurrentBalance = account.CurrentBalance.Amount,
-        OpeningDate = account.OpeningDate,
-        IsActive = account.IsActive,
-        IsShared = account.IsShared,
-        Notes = account.Notes,
-        CreatedAt = account.CreatedAt,
-        UpdatedAt = account.UpdatedAt,
-    };
 }
