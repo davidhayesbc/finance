@@ -8,6 +8,7 @@ using Privestio.Api.Endpoints;
 using Privestio.Api.Middleware;
 using Privestio.Application;
 using Privestio.Infrastructure;
+using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Events;
 
@@ -160,7 +161,12 @@ try
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
+        app.MapScalarApiReference();
     }
+
+    // Redirect root to Scalar API docs
+    app.MapGet("/", () => Results.Redirect("/scalar/v1"))
+        .ExcludeFromDescription();
 
     app.UseSerilogRequestLogging(opts =>
     {
