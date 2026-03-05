@@ -19,7 +19,8 @@ public class GetTransactionsQueryHandler
 
     public async Task<PagedResponse<TransactionResponse>> Handle(
         GetTransactionsQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // Verify account ownership
         var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
@@ -44,7 +45,8 @@ public class GetTransactionsQueryHandler
             request.Cursor,
             dateFilter,
             request.CategoryId,
-            cancellationToken);
+            cancellationToken
+        );
 
         return new PagedResponse<TransactionResponse>
         {
@@ -54,23 +56,24 @@ public class GetTransactionsQueryHandler
         };
     }
 
-    private static TransactionResponse MapToResponse(Transaction t) => new()
-    {
-        Id = t.Id,
-        AccountId = t.AccountId,
-        Date = t.Date,
-        Amount = t.Amount.Amount,
-        Currency = t.Amount.CurrencyCode,
-        Description = t.Description,
-        TransactionType = t.Type.ToString(),
-        CategoryId = t.CategoryId,
-        CategoryName = t.Category?.Name,
-        PayeeId = t.PayeeId,
-        PayeeName = t.Payee?.DisplayName,
-        IsReconciled = t.IsReconciled,
-        IsSplit = t.IsSplit,
-        Notes = t.Notes,
-        CreatedAt = t.CreatedAt,
-        UpdatedAt = t.UpdatedAt,
-    };
+    private static TransactionResponse MapToResponse(Transaction t) =>
+        new()
+        {
+            Id = t.Id,
+            AccountId = t.AccountId,
+            Date = t.Date,
+            Amount = t.Amount.Amount,
+            Currency = t.Amount.CurrencyCode,
+            Description = t.Description,
+            TransactionType = t.Type.ToString(),
+            CategoryId = t.CategoryId,
+            CategoryName = t.Category?.Name,
+            PayeeId = t.PayeeId,
+            PayeeName = t.Payee?.DisplayName,
+            IsReconciled = t.IsReconciled,
+            IsSplit = t.IsSplit,
+            Notes = t.Notes,
+            CreatedAt = t.CreatedAt,
+            UpdatedAt = t.UpdatedAt,
+        };
 }

@@ -16,7 +16,8 @@ public class GetAccountByIdQueryHandler : IRequestHandler<GetAccountByIdQuery, A
 
     public async Task<AccountResponse?> Handle(
         GetAccountByIdQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
 

@@ -13,4 +13,5 @@ public record CreateAccountCommand(
     Guid OwnerId,
     string? Institution = null,
     string? AccountNumber = null,
-    string? Notes = null) : IRequest<AccountResponse>;
+    string? Notes = null
+) : IRequest<AccountResponse>;

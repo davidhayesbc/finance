@@ -11,4 +11,5 @@ public record GetTransactionsQuery(
     string? Cursor = null,
     DateTime? FromDate = null,
     DateTime? ToDate = null,
-    Guid? CategoryId = null) : IRequest<PagedResponse<TransactionResponse>>;
+    Guid? CategoryId = null
+) : IRequest<PagedResponse<TransactionResponse>>;

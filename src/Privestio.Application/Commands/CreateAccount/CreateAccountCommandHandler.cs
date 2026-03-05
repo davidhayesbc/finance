@@ -19,9 +19,10 @@ public class CreateAccountCommandHandler : IRequestHandler<CreateAccountCommand,
 
     public async Task<AccountResponse> Handle(
         CreateAccountCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var accountType = Enum.Parse<Domain.Enums.AccountType>(request.AccountType);
+        var accountType = Enum.Parse<AccountType>(request.AccountType);
         var accountSubType = Enum.Parse<AccountSubType>(request.AccountSubType);
         var openingBalance = new Money(request.OpeningBalance, request.Currency);
 
@@ -33,7 +34,8 @@ public class CreateAccountCommandHandler : IRequestHandler<CreateAccountCommand,
             openingBalance,
             request.OpeningDate,
             request.OwnerId,
-            request.Institution);
+            request.Institution
+        );
 
         account.AccountNumber = request.AccountNumber;
         account.Notes = request.Notes;

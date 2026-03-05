@@ -4,19 +4,37 @@ namespace Privestio.Application.Commands.CreateAccount;
 
 public class CreateAccountCommandValidator : AbstractValidator<CreateAccountCommand>
 {
-    private static readonly string[] ValidAccountTypes = ["Banking", "Credit", "Investment", "Property", "Loan"];
-    private static readonly string[] ValidSubTypes = [
-        "Chequing", "Savings", "CreditCard", "LineOfCredit",
-        "RRSP", "TFSA", "RESP", "LIRA", "NonRegistered",
-        "RealEstate", "Vehicle", "OtherAsset",
-        "Mortgage", "AutoLoan", "StudentLoan", "PersonalLoan",
+    private static readonly string[] ValidAccountTypes =
+    [
+        "Banking",
+        "Credit",
+        "Investment",
+        "Property",
+        "Loan",
+    ];
+    private static readonly string[] ValidSubTypes =
+    [
+        "Chequing",
+        "Savings",
+        "CreditCard",
+        "LineOfCredit",
+        "RRSP",
+        "TFSA",
+        "RESP",
+        "LIRA",
+        "NonRegistered",
+        "RealEstate",
+        "Vehicle",
+        "OtherAsset",
+        "Mortgage",
+        "AutoLoan",
+        "StudentLoan",
+        "PersonalLoan",
     ];
 
     public CreateAccountCommandValidator()
     {
-        RuleFor(x => x.Name)
-            .NotEmpty()
-            .MaximumLength(200);
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
 
         RuleFor(x => x.AccountType)
             .NotEmpty()
@@ -38,7 +56,6 @@ public class CreateAccountCommandValidator : AbstractValidator<CreateAccountComm
             .LessThanOrEqualTo(DateTime.UtcNow.AddDays(1))
             .WithMessage("Opening date cannot be in the future.");
 
-        RuleFor(x => x.OwnerId)
-            .NotEmpty();
+        RuleFor(x => x.OwnerId).NotEmpty();
     }
 }

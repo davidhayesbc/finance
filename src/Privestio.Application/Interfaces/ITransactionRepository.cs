@@ -12,9 +12,19 @@ public interface ITransactionRepository
         string? cursor,
         DateRange? dateFilter = null,
         Guid? categoryId = null,
-        CancellationToken cancellationToken = default);
-    Task<Transaction> AddAsync(Transaction transaction, CancellationToken cancellationToken = default);
-    Task<Transaction> UpdateAsync(Transaction transaction, CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
+    Task<Transaction> AddAsync(
+        Transaction transaction,
+        CancellationToken cancellationToken = default
+    );
+    Task<Transaction> UpdateAsync(
+        Transaction transaction,
+        CancellationToken cancellationToken = default
+    );
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<bool> FingerprintExistsAsync(string fingerprint, CancellationToken cancellationToken = default);
+    Task<bool> FingerprintExistsAsync(
+        string fingerprint,
+        CancellationToken cancellationToken = default
+    );
 }

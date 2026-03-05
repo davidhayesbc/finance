@@ -5,7 +5,8 @@ using Privestio.Contracts.Responses;
 
 namespace Privestio.Application.Queries.GetAccounts;
 
-public class GetAccountsQueryHandler : IRequestHandler<GetAccountsQuery, IReadOnlyList<AccountResponse>>
+public class GetAccountsQueryHandler
+    : IRequestHandler<GetAccountsQuery, IReadOnlyList<AccountResponse>>
 {
     private readonly IUnitOfWork _unitOfWork;
 
@@ -16,9 +17,13 @@ public class GetAccountsQueryHandler : IRequestHandler<GetAccountsQuery, IReadOn
 
     public async Task<IReadOnlyList<AccountResponse>> Handle(
         GetAccountsQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var accounts = await _unitOfWork.Accounts.GetByOwnerIdAsync(request.OwnerId, cancellationToken);
+        var accounts = await _unitOfWork.Accounts.GetByOwnerIdAsync(
+            request.OwnerId,
+            cancellationToken
+        );
         return accounts.Select(AccountMapper.ToResponse).ToList().AsReadOnly();
     }
 }
