@@ -1,13 +1,13 @@
+using System.Security.Claims;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetTransactions;
 using Privestio.Contracts.Requests;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.ValueObjects;
-using Privestio.Application.Interfaces;
-using MediatR;
-using System.Security.Claims;
-using FluentValidation;
 
 namespace Privestio.Api.Endpoints;
 
@@ -19,15 +19,18 @@ public static class TransactionEndpoints
             .WithTags("Transactions")
             .RequireAuthorization();
 
-        group.MapGet("/", GetTransactionsAsync)
+        group
+            .MapGet("/", GetTransactionsAsync)
             .WithName("GetTransactions")
             .WithSummary("Get transactions with cursor-based pagination");
 
-        group.MapGet("/{id:guid}", GetTransactionByIdAsync)
+        group
+            .MapGet("/{id:guid}", GetTransactionByIdAsync)
             .WithName("GetTransactionById")
             .WithSummary("Get a specific transaction by ID");
 
-        group.MapPost("/", CreateTransactionAsync)
+        group
+            .MapPost("/", CreateTransactionAsync)
             .WithName("CreateTransaction")
             .WithSummary("Create a new transaction");
 
@@ -43,21 +46,27 @@ public static class TransactionEndpoints
         [FromQuery] Guid? categoryId,
         IMediator mediator,
         ClaimsPrincipal user,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var userId = EndpointHelpers.GetUserId(user);
-        if (userId is null) return Results.Unauthorized();
+        if (userId is null)
+            return Results.Unauthorized();
 
         var effectivePageSize = pageSize > 0 ? Math.Min(pageSize, 100) : 20;
 
-        var result = await mediator.Send(new GetTransactionsQuery(
-            accountId,
-            userId.Value,
-            effectivePageSize,
-            cursor,
-            fromDate,
-            toDate,
-            categoryId), cancellationToken);
+        var result = await mediator.Send(
+            new GetTransactionsQuery(
+                accountId,
+                userId.Value,
+                effectivePageSize,
+                cursor,
+                fromDate,
+                toDate,
+                categoryId
+            ),
+            cancellationToken
+        );
 
         return Results.Ok(result);
     }
@@ -66,44 +75,53 @@ public static class TransactionEndpoints
         Guid id,
         IUnitOfWork unitOfWork,
         ClaimsPrincipal user,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var transaction = await unitOfWork.Transactions.GetByIdAsync(id, cancellationToken);
-        if (transaction is null) return Results.NotFound();
+        if (transaction is null)
+            return Results.NotFound();
 
         // Verify account ownership
-        var account = await unitOfWork.Accounts.GetByIdAsync(transaction.AccountId, cancellationToken);
+        var account = await unitOfWork.Accounts.GetByIdAsync(
+            transaction.AccountId,
+            cancellationToken
+        );
         var userId = EndpointHelpers.GetUserId(user);
         if (userId is null || account is null || account.OwnerId != userId.Value)
             return Results.Forbid();
 
-        return Results.Ok(new
-        {
-            transaction.Id,
-            transaction.AccountId,
-            transaction.Date,
-            Amount = transaction.Amount.Amount,
-            Currency = transaction.Amount.CurrencyCode,
-            transaction.Description,
-            TransactionType = transaction.Type.ToString(),
-            transaction.CategoryId,
-            transaction.PayeeId,
-            transaction.IsReconciled,
-            transaction.IsSplit,
-            transaction.Notes,
-            transaction.CreatedAt,
-            transaction.UpdatedAt,
-        });
+        return Results.Ok(
+            new
+            {
+                transaction.Id,
+                transaction.AccountId,
+                transaction.Date,
+                Amount = transaction.Amount.Amount,
+                Currency = transaction.Amount.CurrencyCode,
+                transaction.Description,
+                TransactionType = transaction.Type.ToString(),
+                transaction.CategoryId,
+                transaction.PayeeId,
+                transaction.IsReconciled,
+                transaction.IsSplit,
+                transaction.Notes,
+                transaction.CreatedAt,
+                transaction.UpdatedAt,
+            }
+        );
     }
 
     private static async Task<IResult> CreateTransactionAsync(
         [FromBody] CreateTransactionRequest request,
         IUnitOfWork unitOfWork,
         ClaimsPrincipal user,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var userId = EndpointHelpers.GetUserId(user);
-        if (userId is null) return Results.Unauthorized();
+        if (userId is null)
+            return Results.Unauthorized();
 
         // Verify account ownership
         var account = await unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
@@ -114,8 +132,9 @@ public static class TransactionEndpoints
             return Results.ValidationProblem(
                 new Dictionary<string, string[]>
                 {
-                    { "TransactionType", [$"Invalid value '{request.TransactionType}'."] }
-                });
+                    { "TransactionType", [$"Invalid value '{request.TransactionType}'."] },
+                }
+            );
 
         var amount = new Money(request.Amount, request.Currency);
         var transaction = new Transaction(
@@ -123,7 +142,8 @@ public static class TransactionEndpoints
             request.Date,
             amount,
             request.Description,
-            transactionType);
+            transactionType
+        );
 
         transaction.CategoryId = request.CategoryId;
         transaction.PayeeId = request.PayeeId;
@@ -132,18 +152,21 @@ public static class TransactionEndpoints
         await unitOfWork.Transactions.AddAsync(transaction, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Results.Created($"/api/v1/transactions/{transaction.Id}", new
-        {
-            transaction.Id,
-            transaction.AccountId,
-            transaction.Date,
-            Amount = transaction.Amount.Amount,
-            Currency = transaction.Amount.CurrencyCode,
-            transaction.Description,
-            TransactionType = transaction.Type.ToString(),
-            transaction.CategoryId,
-            transaction.PayeeId,
-            transaction.CreatedAt,
-        });
+        return Results.Created(
+            $"/api/v1/transactions/{transaction.Id}",
+            new
+            {
+                transaction.Id,
+                transaction.AccountId,
+                transaction.Date,
+                Amount = transaction.Amount.Amount,
+                Currency = transaction.Amount.CurrencyCode,
+                transaction.Description,
+                TransactionType = transaction.Type.ToString(),
+                transaction.CategoryId,
+                transaction.PayeeId,
+                transaction.CreatedAt,
+            }
+        );
     }
 }

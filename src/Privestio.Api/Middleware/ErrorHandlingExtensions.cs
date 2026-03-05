@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Diagnostics;
 using System.Text.Json;
+using Microsoft.AspNetCore.Diagnostics;
 
 namespace Privestio.Api.Middleware;
 
@@ -15,7 +15,8 @@ public static class ErrorHandlingExtensions
             errorApp.Run(async context =>
             {
                 var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
-                if (exceptionFeature is null) return;
+                if (exceptionFeature is null)
+                    return;
 
                 var exception = exceptionFeature.Error;
                 var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -28,21 +29,27 @@ public static class ErrorHandlingExtensions
                     FluentValidation.ValidationException vex => (
                         StatusCodes.Status400BadRequest,
                         "Validation failed",
-                        string.Join("; ", vex.Errors.Select(e => e.ErrorMessage))),
+                        string.Join("; ", vex.Errors.Select(e => e.ErrorMessage))
+                    ),
                     UnauthorizedAccessException => (
                         StatusCodes.Status401Unauthorized,
                         "Unauthorized",
-                        "You are not authorized to perform this action."),
+                        "You are not authorized to perform this action."
+                    ),
                     KeyNotFoundException => (
                         StatusCodes.Status404NotFound,
                         "Not found",
-                        exception.Message),
+                        exception.Message
+                    ),
                     _ => (
                         StatusCodes.Status500InternalServerError,
                         "An unexpected error occurred",
-                        app.ApplicationServices.GetRequiredService<IHostEnvironment>().IsDevelopment()
+                        app
+                            .ApplicationServices.GetRequiredService<IHostEnvironment>()
+                            .IsDevelopment()
                             ? exception.Message
-                            : "An internal server error occurred."),
+                            : "An internal server error occurred."
+                    ),
                 };
 
                 context.Response.StatusCode = statusCode;
