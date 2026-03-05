@@ -6,11 +6,11 @@ Privestio is an offline-first, self-hosted personal finance tracker built on .NE
 
 ### Core Principles
 
--   **Offline-first**: Blazor WASM PWA with IndexedDB local store; sync when server is reachable
--   **Null avoidance**: Minimize null usage; prefer Option/Result patterns, empty collections, and default values
--   **Functional style**: Favor immutability, pure functions, LINQ, and declarative code
--   **Security-first**: Encryption at rest and in transit; OWASP compliance; no hardcoded secrets
--   **Extensible**: Plugin architecture for importers, price feeds, and custom rules
+- **Offline-first**: Blazor WASM PWA with IndexedDB local store; sync when server is reachable
+- **Null avoidance**: Minimize null usage; prefer Option/Result patterns, empty collections, and default values
+- **Functional style**: Favor immutability, pure functions, LINQ, and declarative code
+- **Security-first**: Encryption at rest and in transit; OWASP compliance; no hardcoded secrets
+- **Extensible**: Plugin architecture for importers, price feeds, and custom rules
 
 ## Architecture
 
@@ -37,28 +37,28 @@ docker/
 
 ## Layer Responsibilities
 
--   **Domain**: Pure C# entities, value objects, domain events, interfaces. NO external dependencies.
--   **Application**: Use cases orchestrated as Commands/Queries. References Domain only.
--   **Infrastructure**: EF Core, file parsers, plugins, Ollama client. Implements Domain/Application interfaces.
--   **Api**: Thin Minimal API layer. Maps HTTP to Application commands/queries. Handles auth, validation, error responses.
--   **Web**: Blazor WASM PWA. Calls API via typed HttpClient. Manages offline state in IndexedDB.
+- **Domain**: Pure C# entities, value objects, domain events, interfaces. NO external dependencies.
+- **Application**: Use cases orchestrated as Commands/Queries. References Domain only.
+- **Infrastructure**: EF Core, file parsers, plugins, Ollama client. Implements Domain/Application interfaces.
+- **Api**: Thin Minimal API layer. Maps HTTP to Application commands/queries. Handles auth, validation, error responses.
+- **Web**: Blazor WASM PWA. Calls API via typed HttpClient. Manages offline state in IndexedDB.
 
 ## Key Domain Types
 
--   `Account` - Financial account (investment, banking, credit, property) with `OpeningBalance` + `OpeningDate` for onboarding; `CurrentBalance` is computed/cached per account type (banking: from transactions, investment: from holdings × prices, property: from latest `Valuation`)
--   `Transaction` - Individual financial transaction with category and tags
--   `TransactionSplit` - Logical child split line of a Transaction (category + amount); splits must sum to parent
--   `Money` - Value object: `decimal Amount` + `string CurrencyCode`
--   `Holding` - Investment position (symbol, quantity, price)
--   `Lot` - Purchase lot for cost basis tracking
--   `PriceHistory` - Point-in-time security price: `AsOfDate` (market date) + `RecordedAt` (fetch time) + `Source`
--   `Valuation` - Manual asset/property valuation: `EffectiveDate` (when valuation applies) + `RecordedAt` (when entered) + `Source`
--   `Budget` - Monthly budget per category (split-aware: uses split line categories)
--   `SinkingFund` - Savings target for lump-sum expenses (target amount, due date, monthly set-aside)
--   `RecurringTransaction` - Expected recurring income/expense pattern
--   `ForecastScenario` - Named net worth forecast with per-account/asset-class growth rate assumptions
--   `CategorizationRule` - User-defined rule (conditions + actions as JSON); can include auto-split templates
--   `ImportMapping` - Saved column mapping for a file format/institution
+- `Account` - Financial account (investment, banking, credit, property) with `OpeningBalance` + `OpeningDate` for onboarding; `CurrentBalance` is computed/cached per account type (banking: from transactions, investment: from holdings × prices, property: from latest `Valuation`)
+- `Transaction` - Individual financial transaction with category and tags
+- `TransactionSplit` - Logical child split line of a Transaction (category + amount); splits must sum to parent
+- `Money` - Value object: `decimal Amount` + `string CurrencyCode`
+- `Holding` - Investment position (symbol, quantity, price)
+- `Lot` - Purchase lot for cost basis tracking
+- `PriceHistory` - Point-in-time security price: `AsOfDate` (market date) + `RecordedAt` (fetch time) + `Source`
+- `Valuation` - Manual asset/property valuation: `EffectiveDate` (when valuation applies) + `RecordedAt` (when entered) + `Source`
+- `Budget` - Monthly budget per category (split-aware: uses split line categories)
+- `SinkingFund` - Savings target for lump-sum expenses (target amount, due date, monthly set-aside)
+- `RecurringTransaction` - Expected recurring income/expense pattern
+- `ForecastScenario` - Named net worth forecast with per-account/asset-class growth rate assumptions
+- `CategorizationRule` - User-defined rule (conditions + actions as JSON); can include auto-split templates
+- `ImportMapping` - Saved column mapping for a file format/institution
 
 ## Coding Standards
 
@@ -176,59 +176,67 @@ return Results.Problem("Account not found", statusCode: 404);
 
 ### Test-First Development (Critical)
 
--   **Always write tests before implementation code.** For every new entity, service, handler, or endpoint:
+- **Always write tests before implementation code.** For every new entity, service, handler, or endpoint:
     1. Write failing unit/integration tests that define the expected behavior
     2. Implement the minimum code to make the tests pass
     3. Refactor while keeping tests green
--   Do not consider a task complete until tests exist and pass
+- Do not consider a task complete until tests exist and pass
 
 ### General Conventions
 
--   Use xUnit with `[Fact]` and `[Theory]` attributes
--   Test file naming: `{ClassName}Tests.cs`
--   Follow Arrange-Act-Assert pattern
--   Use descriptive test names: `MethodName_Scenario_ExpectedResult`
--   Use Testcontainers for integration tests needing PostgreSQL
--   Use bUnit for Blazor component tests
--   Use Bogus for realistic test data generation
+- Use xUnit with `[Fact]` and `[Theory]` attributes
+- Test file naming: `{ClassName}Tests.cs`
+- Follow Arrange-Act-Assert pattern
+- Use descriptive test names: `MethodName_Scenario_ExpectedResult`
+- Use Testcontainers for integration tests needing PostgreSQL
+- Use bUnit for Blazor component tests
+- Use Bogus for realistic test data generation
 
 ## Formatting
 
--   Use CSharpier for formatting
--   Do not manually format code — let the tool handle it
+- Use CSharpier for formatting
+- Do not manually format code — let the tool handle it
 
 ## Diagrams
 
--   **Always use Mermaid** for diagrams in Markdown files (architecture, data flow, entity relationships, sequence diagrams, CI/CD pipelines, etc.)
--   Do not use ASCII art or box-drawing characters for diagrams
--   Use appropriate Mermaid diagram types: `graph`/`flowchart` for architecture and flows, `classDiagram` for domain models, `sequenceDiagram` for interaction flows, `erDiagram` for database schemas
--   Wrap Mermaid diagrams in fenced code blocks with the `mermaid` language identifier
+- **Always use Mermaid** for diagrams in Markdown files (architecture, data flow, entity relationships, sequence diagrams, CI/CD pipelines, etc.)
+- Do not use ASCII art or box-drawing characters for diagrams
+- Use appropriate Mermaid diagram types: `graph`/`flowchart` for architecture and flows, `classDiagram` for domain models, `sequenceDiagram` for interaction flows, `erDiagram` for database schemas
+- Wrap Mermaid diagrams in fenced code blocks with the `mermaid` language identifier
 
 ## File Organization
 
--   One primary type per file
--   File name matches primary type name
--   Keep interfaces in the Domain project
--   Keep implementations in Infrastructure project
--   Keep use cases (commands/queries) in Application project
--   Keep API endpoint groups in separate files under `Endpoints/`
+- One primary type per file
+- File name matches primary type name
+- Keep interfaces in the Domain project
+- Keep implementations in Infrastructure project
+- Keep use cases (commands/queries) in Application project
+- Keep API endpoint groups in separate files under `Endpoints/`
 
 ## Naming Conventions
 
--   Interfaces: `I{Name}` (e.g., `IAccountRepository`, `ITransactionImporter`)
--   Entities: Descriptive singular nouns (e.g., `Account`, `Transaction`)
--   Value Objects: Descriptive names (e.g., `Money`, `DateRange`)
--   Commands: `{Verb}{Noun}Command` (e.g., `CreateAccountCommand`, `ImportTransactionsCommand`)
--   Queries: `Get{Noun}Query` (e.g., `GetNetWorthQuery`, `GetTransactionsQuery`)
--   Handlers: `{Command/Query}Handler` (e.g., `CreateAccountCommandHandler`)
--   Endpoints: `{Resource}Endpoints` (e.g., `AccountEndpoints`, `TransactionEndpoints`)
--   Plugin interfaces: `I{Noun}{Verb}er` (e.g., `ITransactionImporter`, `IPriceFeedProvider`)
+- Interfaces: `I{Name}` (e.g., `IAccountRepository`, `ITransactionImporter`)
+- Entities: Descriptive singular nouns (e.g., `Account`, `Transaction`)
+- Value Objects: Descriptive names (e.g., `Money`, `DateRange`)
+- Commands: `{Verb}{Noun}Command` (e.g., `CreateAccountCommand`, `ImportTransactionsCommand`)
+- Queries: `Get{Noun}Query` (e.g., `GetNetWorthQuery`, `GetTransactionsQuery`)
+- Handlers: `{Command/Query}Handler` (e.g., `CreateAccountCommandHandler`)
+- Endpoints: `{Resource}Endpoints` (e.g., `AccountEndpoints`, `TransactionEndpoints`)
+- Plugin interfaces: `I{Noun}{Verb}er` (e.g., `ITransactionImporter`, `IPriceFeedProvider`)
 
 ## Implementation Tracking
 
--   All implementation tasks are tracked in `docs/IMPLEMENTATION-PLAN.md` with checkboxes in the **Done** column
--   When a task is completed, **immediately** mark it as done by changing `[ ]` to `[x]` in the corresponding row
--   A task is only considered complete when:
+- All implementation tasks are tracked in `docs/IMPLEMENTATION-PLAN.md` with checkboxes in the **Done** column
+- When a task is completed, **immediately** mark it as done by changing `[ ]` to `[x]` in the corresponding row
+- A task is only considered complete when:
     1. Tests are written and passing
     2. Implementation code satisfies the tests
     3. The checkbox in the implementation plan is checked off
+
+## Database Migrations
+
+- **Always add an EF Core migration** when domain entities, value objects, or EF configurations are added or changed
+- Run: `dotnet ef migrations add <MigrationName> --project src/Privestio.Infrastructure --startup-project src/Privestio.Api --output-dir Data/Migrations`
+- The `dotnet-ef` tool must be installed globally (`dotnet tool install dotnet-ef --global`)
+- Migrations are auto-applied on startup via `ApplyMigrationsAsync` in `DependencyInjection.cs`
+- Do not suppress `PendingModelChangesWarning` — always create the migration instead
