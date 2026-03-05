@@ -48,6 +48,8 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<TransactionSplit>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Category>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Tag>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<TransactionTag>().HasQueryFilter(e => !e.Tag!.IsDeleted);
+        modelBuilder.Entity<TransactionSplitTag>().HasQueryFilter(e => !e.Tag!.IsDeleted);
         modelBuilder.Entity<Payee>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ImportBatch>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Notification>().HasQueryFilter(e => !e.IsDeleted);
