@@ -120,4 +120,61 @@ public class TransactionRepository : ITransactionRepository
             t => t.ImportFingerprint == fingerprint,
             cancellationToken
         );
+
+    public async Task AddRangeAsync(
+        IEnumerable<Transaction> transactions,
+        CancellationToken cancellationToken = default
+    ) => await _context.Transactions.AddRangeAsync(transactions, cancellationToken);
+
+    public async Task<IReadOnlySet<string>> GetExistingFingerprintsAsync(
+        IEnumerable<string> fingerprints,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var fingerprintList = fingerprints.ToList();
+        var existing = await _context
+            .Transactions.Where(t =>
+                t.ImportFingerprint != null && fingerprintList.Contains(t.ImportFingerprint)
+            )
+            .Select(t => t.ImportFingerprint!)
+            .ToListAsync(cancellationToken);
+        return existing.ToHashSet();
+    }
+
+    public async Task<IReadOnlyList<Transaction>> GetByImportBatchIdAsync(
+        Guid importBatchId,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Transactions.Where(t => t.ImportBatchId == importBatchId)
+            .Include(t => t.Category)
+            .Include(t => t.Payee)
+            .OrderByDescending(t => t.Date)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Transaction>> SearchAsync(
+        string searchTerm,
+        Guid ownerId,
+        int maxResults = 50,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var normalizedTerm = searchTerm.Trim().ToLower();
+        return await _context
+            .Transactions.Include(t => t.Category)
+            .Include(t => t.Payee)
+            .Include(t => t.Account)
+            .Where(t =>
+                t.Account != null
+                && t.Account.OwnerId == ownerId
+                && (
+                    t.Description.ToLower().Contains(normalizedTerm)
+                    || (t.Notes != null && t.Notes.ToLower().Contains(normalizedTerm))
+                    || (t.Payee != null && t.Payee.DisplayName.ToLower().Contains(normalizedTerm))
+                )
+            )
+            .OrderByDescending(t => t.Date)
+            .Take(maxResults)
+            .ToListAsync(cancellationToken);
+    }
 }

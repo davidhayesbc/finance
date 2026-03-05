@@ -780,29 +780,29 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 | Task | Description | Estimate | Done |
 |------|-------------|----------|:----:|
-| 2.1 | Implement CSV parser with CsvHelper and dynamic column mapping | 4h | [ ] |
-| 2.2 | Implement OFX/QFX parser | 4h | [ ] |
-| 2.3 | Implement QIF parser | 3h | [ ] |
+| 2.1 | Implement CSV parser with CsvHelper and dynamic column mapping | 4h | [x] |
+| 2.2 | Implement OFX/QFX parser | 4h | [x] |
+| 2.3 | Implement QIF parser | 3h | [x] |
 | 2.4 | Build Column Mapping UI: preview file, assign columns, save mapping | 6h | [ ] |
-| 2.5 | Implement duplicate detection (hash-based + fuzzy date/amount match) | 4h | [ ] |
-| 2.6 | Implement transaction fingerprinting service for idempotent imports and replay-safe processing | 3h | [ ] |
+| 2.5 | Implement duplicate detection (hash-based + fuzzy date/amount match) | 4h | [x] |
+| 2.6 | Implement transaction fingerprinting service for idempotent imports and replay-safe processing | 3h | [x] |
 | 2.7 | Build import preview page (review before commit) | 4h | [ ] |
-| 2.8 | Import diagnostics: row-level errors, dead-letter rows, downloadable error report | 3h | [ ] |
-| 2.9 | Integrate Microsoft.RulesEngine for transaction categorization | 4h | [ ] |
+| 2.8 | Import diagnostics: row-level errors, dead-letter rows, downloadable error report | 3h | [x] |
+| 2.9 | Integrate Microsoft.RulesEngine for transaction categorization | 4h | [x] |
 | 2.10 | Build Rules UI: create/edit/order rules visually | 6h | [ ] |
-| 2.11 | Implement auto-apply rules on import | 2h | [ ] |
-| 2.12 | Transfer between accounts (linked transactions) | 3h | [ ] |
+| 2.11 | Implement auto-apply rules on import | 2h | [x] |
+| 2.12 | Transfer between accounts (linked transactions) | 3h | [x] |
 | 2.13 | Transaction splitting UI: add/edit logical split lines on a transaction, enforce sum-to-parent validation | 4h | [ ] |
-| 2.14 | Rules engine split templates: rules can auto-split transactions (e.g., "Costco → 80% Groceries / 20% Household") | 3h | [ ] |
-| 2.15 | Import history with undo/rollback support | 3h | [ ] |
-| 2.16 | Category management UI: create, edit, reorder, group categories hierarchically | 4h | [ ] |
-| 2.17 | Payee management: CRUD, alias mapping, default category assignment, merge duplicates | 4h | [ ] |
-| 2.18 | Tag management: CRUD, rename, merge, bulk assign/remove | 2h | [ ] |
-| 2.19 | Tests for all importers, rules engine, split logic, idempotency paths, and category/payee/tag management | 7h | [ ] |
-| 2.20 | Full-text search endpoint: search across transaction descriptions, payee names, and notes using PostgreSQL `tsvector`/`tsquery` | 4h | [ ] |
-| 2.21 | Bulk operation endpoints: batch categorize, tag, delete, and rule-apply to avoid N+1 API calls | 4h | [ ] |
-| 2.22 | Import quality metrics: track and expose import success rate, duplicate rate, auto-categorization rate, and manual fix rate per import batch | 3h | [ ] |
-| 2.23 | Partial import policy: configurable behavior (fail-fast, skip-invalid-and-continue, preview-only with no commit) per import session | 2h | [ ] |
+| 2.14 | Rules engine split templates: rules can auto-split transactions (e.g., "Costco → 80% Groceries / 20% Household") | 3h | [x] |
+| 2.15 | Import history with undo/rollback support | 3h | [x] |
+| 2.16 | Category management UI: create, edit, reorder, group categories hierarchically | 4h | [x] |
+| 2.17 | Payee management: CRUD, alias mapping, default category assignment, merge duplicates | 4h | [x] |
+| 2.18 | Tag management: CRUD, rename, merge, bulk assign/remove | 2h | [x] |
+| 2.19 | Tests for all importers, rules engine, split logic, idempotency paths, and category/payee/tag management | 7h | [x] |
+| 2.20 | Full-text search endpoint: search across transaction descriptions, payee names, and notes using PostgreSQL `tsvector`/`tsquery` | 4h | [x] |
+| 2.21 | Bulk operation endpoints: batch categorize, tag, delete, and rule-apply to avoid N+1 API calls | 4h | [x] |
+| 2.22 | Import quality metrics: track and expose import success rate, duplicate rate, auto-categorization rate, and manual fix rate per import batch | 3h | [x] |
+| 2.23 | Partial import policy: configurable behavior (fail-fast, skip-invalid-and-continue, preview-only with no commit) per import session | 2h | [x] |
 
 **Deliverable:** Import CSV/QFX/QIF files, map columns, auto-categorize via rules, review & commit. Full category hierarchy, payee, and tag management. Full-text search, bulk operations, and import quality tracking.
 

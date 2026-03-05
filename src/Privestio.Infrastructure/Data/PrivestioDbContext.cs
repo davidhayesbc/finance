@@ -30,6 +30,8 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
     public DbSet<Valuation> Valuations => Set<Valuation>();
+    public DbSet<ImportMapping> ImportMappings => Set<ImportMapping>();
+    public DbSet<CategorizationRule> CategorizationRules => Set<CategorizationRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +53,8 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Notification>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PriceHistory>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Valuation>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ImportMapping>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<CategorizationRule>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -18,6 +18,10 @@ public interface ITransactionRepository
         Transaction transaction,
         CancellationToken cancellationToken = default
     );
+    Task AddRangeAsync(
+        IEnumerable<Transaction> transactions,
+        CancellationToken cancellationToken = default
+    );
     Task<Transaction> UpdateAsync(
         Transaction transaction,
         CancellationToken cancellationToken = default
@@ -25,6 +29,20 @@ public interface ITransactionRepository
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> FingerprintExistsAsync(
         string fingerprint,
+        CancellationToken cancellationToken = default
+    );
+    Task<IReadOnlySet<string>> GetExistingFingerprintsAsync(
+        IEnumerable<string> fingerprints,
+        CancellationToken cancellationToken = default
+    );
+    Task<IReadOnlyList<Transaction>> GetByImportBatchIdAsync(
+        Guid importBatchId,
+        CancellationToken cancellationToken = default
+    );
+    Task<IReadOnlyList<Transaction>> SearchAsync(
+        string searchTerm,
+        Guid ownerId,
+        int maxResults = 50,
         CancellationToken cancellationToken = default
     );
 }

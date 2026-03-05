@@ -2,8 +2,11 @@ using System.Security.Claims;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Privestio.Application.Commands.BulkCategorize;
+using Privestio.Application.Commands.CreateTransfer;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetTransactions;
+using Privestio.Application.Queries.SearchTransactions;
 using Privestio.Contracts.Requests;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
@@ -33,6 +36,21 @@ public static class TransactionEndpoints
             .MapPost("/", CreateTransactionAsync)
             .WithName("CreateTransaction")
             .WithSummary("Create a new transaction");
+
+        group
+            .MapGet("/search", SearchTransactionsAsync)
+            .WithName("SearchTransactions")
+            .WithSummary("Full-text search across transactions");
+
+        group
+            .MapPost("/bulk/categorize", BulkCategorizeAsync)
+            .WithName("BulkCategorize")
+            .WithSummary("Bulk categorize multiple transactions");
+
+        group
+            .MapPost("/transfers", CreateTransferAsync)
+            .WithName("CreateTransfer")
+            .WithSummary("Create a transfer between two accounts");
 
         return app;
     }
@@ -168,5 +186,74 @@ public static class TransactionEndpoints
                 transaction.CreatedAt,
             }
         );
+    }
+
+    private static async Task<IResult> SearchTransactionsAsync(
+        [FromQuery] string q,
+        [FromQuery] int maxResults,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(q))
+            return Results.Ok(Array.Empty<object>());
+
+        var effectiveMax = maxResults > 0 ? Math.Min(maxResults, 100) : 50;
+        var result = await mediator.Send(
+            new SearchTransactionsQuery(q, userId.Value, effectiveMax),
+            cancellationToken
+        );
+
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> BulkCategorizeAsync(
+        [FromBody] BulkCategorizeRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var command = new BulkCategorizeCommand(
+            request.TransactionIds,
+            request.CategoryId,
+            userId.Value
+        );
+
+        var updated = await mediator.Send(command, cancellationToken);
+        return Results.Ok(new { UpdatedCount = updated });
+    }
+
+    private static async Task<IResult> CreateTransferAsync(
+        [FromBody] CreateTransferRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var command = new CreateTransferCommand(
+            request.SourceAccountId,
+            request.DestinationAccountId,
+            request.Amount,
+            request.Currency,
+            request.Date,
+            request.Notes
+        );
+
+        var result = await mediator.Send(command, cancellationToken);
+        return Results.Created($"/api/v1/transactions/{result.SourceTransactionId}", result);
     }
 }

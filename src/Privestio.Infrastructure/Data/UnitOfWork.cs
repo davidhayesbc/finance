@@ -12,10 +12,22 @@ public class UnitOfWork : IUnitOfWork
         _context = context;
         Accounts = new AccountRepository(context);
         Transactions = new TransactionRepository(context);
+        ImportBatches = new ImportBatchRepository(context);
+        Categories = new CategoryRepository(context);
+        Payees = new PayeeRepository(context);
+        Tags = new TagRepository(context);
+        CategorizationRules = new CategorizationRuleRepository(context);
+        ImportMappings = new ImportMappingRepository(context);
     }
 
     public IAccountRepository Accounts { get; }
     public ITransactionRepository Transactions { get; }
+    public IImportBatchRepository ImportBatches { get; }
+    public ICategoryRepository Categories { get; }
+    public IPayeeRepository Payees { get; }
+    public ITagRepository Tags { get; }
+    public ICategorizationRuleRepository CategorizationRules { get; }
+    public IImportMappingRepository ImportMappings { get; }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         await _context.SaveChangesAsync(cancellationToken);

@@ -3,8 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Privestio.Application.Interfaces;
+using Privestio.Application.Services;
+using Privestio.Domain.Interfaces;
 using Privestio.Infrastructure.Data;
 using Privestio.Infrastructure.Identity;
+using Privestio.Infrastructure.Importers;
+using Privestio.Infrastructure.Rules;
 
 namespace Privestio.Infrastructure;
 
@@ -48,6 +52,13 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Ingestion pipeline services (Phase 2)
+        services.AddScoped<ITransactionImporter, CsvTransactionImporter>();
+        services.AddScoped<ITransactionImporter, OfxTransactionImporter>();
+        services.AddScoped<ITransactionImporter, QifTransactionImporter>();
+        services.AddSingleton<TransactionFingerprintService>();
+        services.AddScoped<IRuleEvaluator, CategorizationRuleEvaluator>();
 
         return services;
     }
