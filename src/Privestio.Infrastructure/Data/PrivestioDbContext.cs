@@ -11,9 +11,8 @@ namespace Privestio.Infrastructure.Data;
 /// </summary>
 public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
 {
-    public PrivestioDbContext(DbContextOptions<PrivestioDbContext> options) : base(options)
-    {
-    }
+    public PrivestioDbContext(DbContextOptions<PrivestioDbContext> options)
+        : base(options) { }
 
     // Domain entities
     public DbSet<User> DomainUsers => Set<User>();

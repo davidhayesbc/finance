@@ -18,7 +18,8 @@ public class TransactionSplit : BaseEntity
         Money amount,
         Guid categoryId,
         string? notes = null,
-        decimal? percentage = null)
+        decimal? percentage = null
+    )
     {
         TransactionId = transactionId;
         Amount = amount;

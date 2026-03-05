@@ -20,7 +20,6 @@ public static class SeedDataGenerator
             new Category("Employment Income", CategoryType.Income, ownerId, null, "💼", 1, true),
             new Category("Investment Income", CategoryType.Income, ownerId, null, "📈", 2, true),
             new Category("Other Income", CategoryType.Income, ownerId, null, "💰", 3, true),
-
             // Expense categories
             new Category("Housing", CategoryType.Expense, ownerId, null, "🏠", 10, true),
             new Category("Groceries", CategoryType.Expense, ownerId, null, "🛒", 11, true),
@@ -37,15 +36,16 @@ public static class SeedDataGenerator
             new Category("Travel", CategoryType.Expense, ownerId, null, "✈️", 22, true),
             new Category("Gifts & Donations", CategoryType.Expense, ownerId, null, "🎁", 23, true),
             new Category("Other Expenses", CategoryType.Expense, ownerId, null, "📋", 99, true),
-
             // Transfer
             new Category("Transfer", CategoryType.Transfer, ownerId, null, "↔️", 50, true),
         ];
     }
 
-    public static (User user, List<Account> accounts, List<Transaction> transactions) GenerateSampleData(
-        string email = "demo@privestio.app",
-        string displayName = "Demo User")
+    public static (
+        User user,
+        List<Account> accounts,
+        List<Transaction> transactions
+    ) GenerateSampleData(string email = "demo@privestio.app", string displayName = "Demo User")
     {
         var user = new User(email, displayName);
 
@@ -57,7 +57,8 @@ public static class SeedDataGenerator
             new Money(2500.00m),
             DateTime.UtcNow.AddYears(-2),
             user.Id,
-            "RBC");
+            "RBC"
+        );
 
         var savingsAccount = new Account(
             "High-Interest Savings",
@@ -67,7 +68,8 @@ public static class SeedDataGenerator
             new Money(10000.00m),
             DateTime.UtcNow.AddYears(-2),
             user.Id,
-            "RBC");
+            "RBC"
+        );
 
         var creditCard = new Account(
             "Visa Infinite",
@@ -77,7 +79,8 @@ public static class SeedDataGenerator
             new Money(0m),
             DateTime.UtcNow.AddYears(-1),
             user.Id,
-            "RBC");
+            "RBC"
+        );
 
         var rrsp = new Account(
             "RRSP",
@@ -87,7 +90,8 @@ public static class SeedDataGenerator
             new Money(25000.00m),
             DateTime.UtcNow.AddYears(-5),
             user.Id,
-            "TD");
+            "TD"
+        );
 
         var accounts = new List<Account> { chequingAccount, savingsAccount, creditCard, rrsp };
 
@@ -99,17 +103,34 @@ public static class SeedDataGenerator
     private static List<Transaction> GenerateSampleTransactions(
         Account chequingAccount,
         Account creditCard,
-        int daysBack)
+        int daysBack
+    )
     {
         var transactions = new List<Transaction>();
         var random = new Random(42); // Fixed seed for reproducibility
 
         var payees = new[]
         {
-            "Loblaws", "Metro", "Costco", "Walmart", "Tim Hortons", "Starbucks",
-            "McDonald's", "Amazon", "Netflix", "Spotify", "Rogers", "Bell",
-            "Hydro One", "Shell", "Petro-Canada", "LCBO", "Chapters",
-            "Sport Chek", "Rexall", "Shoppers Drug Mart",
+            "Loblaws",
+            "Metro",
+            "Costco",
+            "Walmart",
+            "Tim Hortons",
+            "Starbucks",
+            "McDonald's",
+            "Amazon",
+            "Netflix",
+            "Spotify",
+            "Rogers",
+            "Bell",
+            "Hydro One",
+            "Shell",
+            "Petro-Canada",
+            "LCBO",
+            "Chapters",
+            "Sport Chek",
+            "Rexall",
+            "Shoppers Drug Mart",
         };
 
         // Bi-weekly salary
@@ -121,7 +142,8 @@ public static class SeedDataGenerator
                 date,
                 new Money(3500.00m),
                 "PAYROLL DEPOSIT - EMPLOYER CO",
-                TransactionType.Credit);
+                TransactionType.Credit
+            );
             transactions.Add(salary);
         }
 
@@ -141,7 +163,8 @@ public static class SeedDataGenerator
                     date,
                     new Money(amount),
                     payee.ToUpperInvariant(),
-                    TransactionType.Debit);
+                    TransactionType.Debit
+                );
 
                 transactions.Add(transaction);
             }

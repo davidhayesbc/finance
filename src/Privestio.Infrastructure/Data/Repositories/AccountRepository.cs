@@ -13,26 +13,36 @@ public class AccountRepository : IAccountRepository
         _context = context;
     }
 
-    public async Task<Account?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _context.Accounts
-            .Include(a => a.Valuations)
+    public async Task<Account?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Accounts.Include(a => a.Valuations)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<Account>> GetByOwnerIdAsync(
         Guid ownerId,
-        CancellationToken cancellationToken = default)
-        => await _context.Accounts
-            .Where(a => a.OwnerId == ownerId)
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Accounts.Where(a => a.OwnerId == ownerId)
             .OrderBy(a => a.Name)
             .ToListAsync(cancellationToken);
 
-    public async Task<Account> AddAsync(Account account, CancellationToken cancellationToken = default)
+    public async Task<Account> AddAsync(
+        Account account,
+        CancellationToken cancellationToken = default
+    )
     {
         await _context.Accounts.AddAsync(account, cancellationToken);
         return account;
     }
 
-    public async Task<Account> UpdateAsync(Account account, CancellationToken cancellationToken = default)
+    public async Task<Account> UpdateAsync(
+        Account account,
+        CancellationToken cancellationToken = default
+    )
     {
         _context.Accounts.Update(account);
         return await Task.FromResult(account);
@@ -47,6 +57,6 @@ public class AccountRepository : IAccountRepository
         }
     }
 
-    public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _context.Accounts.AnyAsync(a => a.Id == id, cancellationToken);
+    public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await _context.Accounts.AnyAsync(a => a.Id == id, cancellationToken);
 }

@@ -10,13 +10,9 @@ public class ImportBatchConfiguration : IEntityTypeConfiguration<ImportBatch>
     {
         builder.HasKey(b => b.Id);
 
-        builder.Property(b => b.FileName)
-            .IsRequired()
-            .HasMaxLength(500);
+        builder.Property(b => b.FileName).IsRequired().HasMaxLength(500);
 
-        builder.Property(b => b.FileFormat)
-            .IsRequired()
-            .HasMaxLength(20);
+        builder.Property(b => b.FileFormat).IsRequired().HasMaxLength(20);
 
         builder.HasIndex(b => b.UserId);
         builder.HasIndex(b => b.ImportDate);

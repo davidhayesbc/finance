@@ -25,23 +25,14 @@
     <DataAnnotationsValidator />
 
     <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:600px">
-        <FluentDatePicker
-            @bind-Value="_date"
-            Label="Transaction date" />
+        <FluentDatePicker @bind-Value="_date" Label="Transaction date" />
         <ValidationMessage For="@(() => _form.Date)" />
 
-        <FluentTextField
-            @bind-Value="_form.Description"
-            Label="Description"
-            Placeholder="e.g., Loblaws, Payroll Deposit"
-            Required="true" />
+        <FluentTextField @bind-Value="_form.Description" Label="Description"
+                         Placeholder="e.g., Loblaws, Payroll Deposit" Required="true" />
         <ValidationMessage For="@(() => _form.Description)" />
 
-        <FluentNumberField
-            @bind-Value="_form.Amount"
-            Label="Amount"
-            Step="1"
-            Min="0.01" />
+        <FluentNumberField @bind-Value="_form.Amount" Label="Amount" Step="1" Min="0.01" />
         <ValidationMessage For="@(() => _form.Amount)" />
 
         <FluentSelect TOption="string" @bind-Value="_form.TransactionType" Label="Transaction type">
@@ -52,21 +43,14 @@
         </FluentSelect>
         <ValidationMessage For="@(() => _form.TransactionType)" />
 
-        <FluentTextField
-            @bind-Value="_form.Notes"
-            Label="Notes (optional)"
-            Placeholder="Optional notes" />
+        <FluentTextField @bind-Value="_form.Notes" Label="Notes (optional)" Placeholder="Optional notes" />
 
         <FluentStack Orientation="Orientation.Horizontal">
-            <FluentButton
-                Type="ButtonType.Submit"
-                Appearance="Appearance.Accent"
-                Loading="_isLoading">
+            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading">
                 Save Transaction
             </FluentButton>
-            <FluentButton
-                Appearance="Appearance.Outline"
-                OnClick="@(() => Navigation.NavigateTo($"/accounts/{AccountId}"))">
+            <FluentButton Appearance="Appearance.Outline"
+                          OnClick="@(() => Navigation.NavigateTo($"/accounts/{AccountId}"))">
                 Cancel
             </FluentButton>
         </FluentStack>

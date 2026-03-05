@@ -15,7 +15,8 @@ public class AuditEvent : BaseEntity
         string action,
         string? changedFields = null,
         string? oldValues = null,
-        string? newValues = null)
+        string? newValues = null
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(entityType);
         ArgumentException.ThrowIfNullOrWhiteSpace(action);

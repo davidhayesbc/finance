@@ -17,7 +17,8 @@ public class Valuation : BaseEntity
         Money estimatedValue,
         DateOnly effectiveDate,
         string source,
-        string? notes = null)
+        string? notes = null
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
 

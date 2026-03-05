@@ -10,11 +10,10 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
     {
         builder.HasKey(t => t.Id);
 
-        builder.Property(t => t.Name)
-            .IsRequired()
-            .HasMaxLength(100);
+        builder.Property(t => t.Name).IsRequired().HasMaxLength(100);
 
-        builder.HasIndex(t => new { t.OwnerId, t.Name })
+        builder
+            .HasIndex(t => new { t.OwnerId, t.Name })
             .IsUnique()
             .HasFilter("\"IsDeleted\" = false");
     }

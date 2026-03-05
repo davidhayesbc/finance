@@ -12,7 +12,8 @@ public readonly record struct Money(decimal Amount, string CurrencyCode = "CAD")
     {
         if (CurrencyCode != other.CurrencyCode)
             throw new InvalidOperationException(
-                $"Cannot add {CurrencyCode} and {other.CurrencyCode}. Use explicit FX conversion.");
+                $"Cannot add {CurrencyCode} and {other.CurrencyCode}. Use explicit FX conversion."
+            );
         return new(Amount + other.Amount, CurrencyCode);
     }
 
@@ -20,7 +21,8 @@ public readonly record struct Money(decimal Amount, string CurrencyCode = "CAD")
     {
         if (CurrencyCode != other.CurrencyCode)
             throw new InvalidOperationException(
-                $"Cannot subtract {other.CurrencyCode} from {CurrencyCode}. Use explicit FX conversion.");
+                $"Cannot subtract {other.CurrencyCode} from {CurrencyCode}. Use explicit FX conversion."
+            );
         return new(Amount - other.Amount, CurrencyCode);
     }
 
@@ -62,7 +64,8 @@ public readonly record struct Money(decimal Amount, string CurrencyCode = "CAD")
     {
         if (left.CurrencyCode != right.CurrencyCode)
             throw new InvalidOperationException(
-                $"Cannot compare {left.CurrencyCode} and {right.CurrencyCode}.");
+                $"Cannot compare {left.CurrencyCode} and {right.CurrencyCode}."
+            );
     }
 
     public override string ToString() => $"{Amount:F2} {CurrencyCode}";

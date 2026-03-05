@@ -24,7 +24,9 @@ public class AccountService : IAccountService
     {
         try
         {
-            var accounts = await _httpClient.GetFromJsonAsync<List<AccountResponse>>("/api/v1/accounts");
+            var accounts = await _httpClient.GetFromJsonAsync<List<AccountResponse>>(
+                "/api/v1/accounts"
+            );
             return accounts ?? new List<AccountResponse>();
         }
         catch
@@ -50,7 +52,8 @@ public class AccountService : IAccountService
         try
         {
             var response = await _httpClient.PostAsJsonAsync("/api/v1/accounts", request);
-            if (!response.IsSuccessStatusCode) return null;
+            if (!response.IsSuccessStatusCode)
+                return null;
             return await response.Content.ReadFromJsonAsync<AccountResponse>();
         }
         catch

@@ -10,17 +10,17 @@ public class PayeeConfiguration : IEntityTypeConfiguration<Payee>
     {
         builder.HasKey(p => p.Id);
 
-        builder.Property(p => p.DisplayName)
-            .IsRequired()
-            .HasMaxLength(200);
+        builder.Property(p => p.DisplayName).IsRequired().HasMaxLength(200);
 
         // Store aliases as a JSON array
-        builder.Property<List<string>>("_aliases")
+        builder
+            .Property<List<string>>("_aliases")
             .HasColumnName("Aliases")
             .HasColumnType("jsonb")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        builder.HasOne(p => p.DefaultCategory)
+        builder
+            .HasOne(p => p.DefaultCategory)
             .WithMany()
             .HasForeignKey(p => p.DefaultCategoryId)
             .OnDelete(DeleteBehavior.SetNull);

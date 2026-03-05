@@ -10,22 +10,20 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
     {
         builder.HasKey(n => n.Id);
 
-        builder.Property(n => n.Type)
-            .IsRequired()
-            .HasMaxLength(100);
+        builder.Property(n => n.Type).IsRequired().HasMaxLength(100);
 
-        builder.Property(n => n.Title)
-            .IsRequired()
-            .HasMaxLength(300);
+        builder.Property(n => n.Title).IsRequired().HasMaxLength(300);
 
-        builder.Property(n => n.Message)
-            .IsRequired()
-            .HasMaxLength(2000);
+        builder.Property(n => n.Message).IsRequired().HasMaxLength(2000);
 
-        builder.Property(n => n.RelatedEntityType)
-            .HasMaxLength(100);
+        builder.Property(n => n.RelatedEntityType).HasMaxLength(100);
 
-        builder.HasIndex(n => new { n.UserId, n.IsRead, n.IsDeleted });
+        builder.HasIndex(n => new
+        {
+            n.UserId,
+            n.IsRead,
+            n.IsDeleted,
+        });
         builder.HasIndex(n => n.CreatedAtUtc);
     }
 }

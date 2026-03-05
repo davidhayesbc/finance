@@ -23,11 +23,8 @@
     <DataAnnotationsValidator />
 
     <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:600px">
-        <FluentTextField
-            @bind-Value="_form.Name"
-            Label="Account name"
-            Placeholder="e.g., Main Chequing"
-            Required="true" />
+        <FluentTextField @bind-Value="_form.Name" Label="Account name" Placeholder="e.g., Main Chequing"
+                         Required="true" />
         <ValidationMessage For="@(() => _form.Name)" />
 
         <FluentSelect TOption="string" @bind-Value="_form.AccountType" Label="Account type">
@@ -58,26 +55,15 @@
             <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
         </FluentSelect>
 
-        <FluentTextField
-            @bind-Value="_form.Institution"
-            Label="Institution"
-            Placeholder="e.g., RBC, TD" />
+        <FluentTextField @bind-Value="_form.Institution" Label="Institution" Placeholder="e.g., RBC, TD" />
 
-        <FluentNumberField
-            @bind-Value="_form.OpeningBalance"
-            Label="Opening balance"
-            Step="1" />
+        <FluentNumberField @bind-Value="_form.OpeningBalance" Label="Opening balance" Step="1" />
 
         <FluentStack Orientation="Orientation.Horizontal">
-            <FluentButton
-                Type="ButtonType.Submit"
-                Appearance="Appearance.Accent"
-                Loading="_isLoading">
+            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading">
                 Save Account
             </FluentButton>
-            <FluentButton
-                Appearance="Appearance.Outline"
-                OnClick="@(() => Navigation.NavigateTo("/accounts"))">
+            <FluentButton Appearance="Appearance.Outline" OnClick="@(() => Navigation.NavigateTo("/accounts"))">
                 Cancel
             </FluentButton>
         </FluentStack>

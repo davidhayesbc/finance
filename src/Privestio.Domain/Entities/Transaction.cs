@@ -19,7 +19,8 @@ public class Transaction : BaseEntity
         DateTime date,
         Money amount,
         string description,
-        TransactionType type)
+        TransactionType type
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
 
@@ -83,11 +84,10 @@ public class Transaction : BaseEntity
     /// </summary>
     public bool ValidateSplitInvariant()
     {
-        if (_splits.Count == 0) return true;
+        if (_splits.Count == 0)
+            return true;
 
-        var splitTotal = _splits
-            .Where(s => !s.IsDeleted)
-            .Sum(s => s.Amount.Amount);
+        var splitTotal = _splits.Where(s => !s.IsDeleted).Sum(s => s.Amount.Amount);
 
         return splitTotal == Amount.Amount;
     }

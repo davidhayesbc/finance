@@ -10,15 +10,13 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
     {
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.Name)
-            .IsRequired()
-            .HasMaxLength(100);
+        builder.Property(c => c.Name).IsRequired().HasMaxLength(100);
 
-        builder.Property(c => c.Icon)
-            .HasMaxLength(50);
+        builder.Property(c => c.Icon).HasMaxLength(50);
 
         // Self-referential parent-child relationship
-        builder.HasOne(c => c.ParentCategory)
+        builder
+            .HasOne(c => c.ParentCategory)
             .WithMany(c => c.Children)
             .HasForeignKey(c => c.ParentCategoryId)
             .OnDelete(DeleteBehavior.Restrict);

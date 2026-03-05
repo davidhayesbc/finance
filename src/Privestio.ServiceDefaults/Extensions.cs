@@ -22,7 +22,9 @@ public static class Extensions
         return builder;
     }
 
-    public static IHostApplicationBuilder ConfigureOpenTelemetry(this IHostApplicationBuilder builder)
+    public static IHostApplicationBuilder ConfigureOpenTelemetry(
+        this IHostApplicationBuilder builder
+    )
     {
         builder.Logging.AddOpenTelemetry(logging =>
         {
@@ -30,16 +32,15 @@ public static class Extensions
             logging.IncludeScopes = true;
         });
 
-        builder.Services.AddOpenTelemetry()
+        builder
+            .Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
-                metrics.AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation();
+                metrics.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation();
             })
             .WithTracing(tracing =>
             {
-                tracing.AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation();
+                tracing.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation();
             });
 
         builder.AddOpenTelemetryExporters();
@@ -47,22 +48,26 @@ public static class Extensions
         return builder;
     }
 
-    private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostApplicationBuilder builder)
+    private static IHostApplicationBuilder AddOpenTelemetryExporters(
+        this IHostApplicationBuilder builder
+    )
     {
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            builder.Services.AddOpenTelemetry()
-                .UseOtlpExporter();
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
         return builder;
     }
 
-    public static IHostApplicationBuilder AddDefaultHealthChecks(this IHostApplicationBuilder builder)
+    public static IHostApplicationBuilder AddDefaultHealthChecks(
+        this IHostApplicationBuilder builder
+    )
     {
-        builder.Services.AddHealthChecks()
+        builder
+            .Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
 
         return builder;
@@ -71,16 +76,16 @@ public static class Extensions
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         // Liveness: is the process alive?
-        app.MapHealthChecks("/healthz", new HealthCheckOptions
-        {
-            Predicate = r => r.Tags.Contains("live"),
-        });
+        app.MapHealthChecks(
+            "/healthz",
+            new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") }
+        );
 
         // Readiness: is the process ready to accept traffic?
-        app.MapHealthChecks("/ready", new HealthCheckOptions
-        {
-            Predicate = r => r.Tags.Contains("ready"),
-        });
+        app.MapHealthChecks(
+            "/ready",
+            new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") }
+        );
 
         return app;
     }

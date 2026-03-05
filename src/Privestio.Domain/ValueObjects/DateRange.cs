@@ -11,15 +11,15 @@ public readonly record struct DateRange
     public DateRange(DateOnly Start, DateOnly End)
     {
         if (Start > End)
-            throw new ArgumentException($"Start date ({Start}) must not be after end date ({End}).");
+            throw new ArgumentException(
+                $"Start date ({Start}) must not be after end date ({End})."
+            );
         this.Start = Start;
         this.End = End;
     }
 
     public DateRange(DateTime start, DateTime end)
-        : this(DateOnly.FromDateTime(start), DateOnly.FromDateTime(end))
-    {
-    }
+        : this(DateOnly.FromDateTime(start), DateOnly.FromDateTime(end)) { }
 
     public bool Contains(DateOnly date) => date >= Start && date <= End;
 

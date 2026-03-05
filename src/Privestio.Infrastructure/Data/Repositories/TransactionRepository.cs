@@ -14,9 +14,12 @@ public class TransactionRepository : ITransactionRepository
         _context = context;
     }
 
-    public async Task<Transaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _context.Transactions
-            .Include(t => t.Splits)
+    public async Task<Transaction?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Transactions.Include(t => t.Splits)
             .Include(t => t.Tags)
             .Include(t => t.Category)
             .Include(t => t.Payee)
@@ -28,10 +31,11 @@ public class TransactionRepository : ITransactionRepository
         string? cursor,
         DateRange? dateFilter = null,
         Guid? categoryId = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var query = _context.Transactions
-            .Where(t => t.AccountId == accountId)
+        var query = _context
+            .Transactions.Where(t => t.AccountId == accountId)
             .Include(t => t.Category)
             .Include(t => t.Payee)
             .AsQueryable();
@@ -52,13 +56,15 @@ public class TransactionRepository : ITransactionRepository
         if (!string.IsNullOrEmpty(cursor))
         {
             var parts = cursor.Split('|');
-            if (parts.Length == 2
+            if (
+                parts.Length == 2
                 && DateTime.TryParse(parts[0], out var cursorDate)
-                && Guid.TryParse(parts[1], out var cursorId))
+                && Guid.TryParse(parts[1], out var cursorId)
+            )
             {
                 query = query.Where(t =>
-                    t.Date < cursorDate
-                    || (t.Date == cursorDate && t.Id.CompareTo(cursorId) < 0));
+                    t.Date < cursorDate || (t.Date == cursorDate && t.Id.CompareTo(cursorId) < 0)
+                );
             }
         }
 
@@ -79,13 +85,19 @@ public class TransactionRepository : ITransactionRepository
         return (items.AsReadOnly(), nextCursor);
     }
 
-    public async Task<Transaction> AddAsync(Transaction transaction, CancellationToken cancellationToken = default)
+    public async Task<Transaction> AddAsync(
+        Transaction transaction,
+        CancellationToken cancellationToken = default
+    )
     {
         await _context.Transactions.AddAsync(transaction, cancellationToken);
         return transaction;
     }
 
-    public async Task<Transaction> UpdateAsync(Transaction transaction, CancellationToken cancellationToken = default)
+    public async Task<Transaction> UpdateAsync(
+        Transaction transaction,
+        CancellationToken cancellationToken = default
+    )
     {
         _context.Transactions.Update(transaction);
         return await Task.FromResult(transaction);
@@ -100,7 +112,12 @@ public class TransactionRepository : ITransactionRepository
         }
     }
 
-    public async Task<bool> FingerprintExistsAsync(string fingerprint, CancellationToken cancellationToken = default)
-        => await _context.Transactions
-            .AnyAsync(t => t.ImportFingerprint == fingerprint, cancellationToken);
+    public async Task<bool> FingerprintExistsAsync(
+        string fingerprint,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context.Transactions.AnyAsync(
+            t => t.ImportFingerprint == fingerprint,
+            cancellationToken
+        );
 }

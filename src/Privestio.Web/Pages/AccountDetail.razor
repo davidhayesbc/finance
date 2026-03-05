@@ -53,10 +53,9 @@ else
         </FluentGrid>
 
         <FluentStack Orientation="Orientation.Horizontal" style="margin-top: 16px;">
-            <FluentButton
-                Appearance="Appearance.Accent"
-                @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
-                aria-label="Add a transaction to this account">
+            <FluentButton    Appearance="Appearance.Accent"
+                             @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
+                             aria-label="Add a transaction to this account">
                 + Add Transaction
             </FluentButton>
         </FluentStack>

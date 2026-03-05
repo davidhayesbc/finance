@@ -1,5 +1,5 @@
-using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using Microsoft.JSInterop;
 using Privestio.Contracts.Requests;
 using Privestio.Contracts.Responses;
@@ -28,7 +28,8 @@ public class AuthService : IAuthService
         _jsRuntime = jsRuntime;
     }
 
-    public bool IsAuthenticated => _currentUser is not null && !string.IsNullOrEmpty(_currentUser.AccessToken);
+    public bool IsAuthenticated =>
+        _currentUser is not null && !string.IsNullOrEmpty(_currentUser.AccessToken);
     public string? AccessToken => _currentUser?.AccessToken;
     public AuthResponse? CurrentUser => _currentUser;
 
@@ -37,7 +38,8 @@ public class AuthService : IAuthService
         try
         {
             var response = await _httpClient.PostAsJsonAsync("/api/v1/auth/login", request);
-            if (!response.IsSuccessStatusCode) return null;
+            if (!response.IsSuccessStatusCode)
+                return null;
 
             _currentUser = await response.Content.ReadFromJsonAsync<AuthResponse>();
             if (_currentUser is not null)
@@ -59,7 +61,8 @@ public class AuthService : IAuthService
         try
         {
             var response = await _httpClient.PostAsJsonAsync("/api/v1/auth/register", request);
-            if (!response.IsSuccessStatusCode) return null;
+            if (!response.IsSuccessStatusCode)
+                return null;
 
             _currentUser = await response.Content.ReadFromJsonAsync<AuthResponse>();
             if (_currentUser is not null)
@@ -85,7 +88,10 @@ public class AuthService : IAuthService
 
     public async Task InitializeAsync()
     {
-        var token = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", "privestio_token");
+        var token = await _jsRuntime.InvokeAsync<string?>(
+            "localStorage.getItem",
+            "privestio_token"
+        );
         if (!string.IsNullOrEmpty(token))
         {
             SetAuthorizationHeader(token);
@@ -96,6 +102,8 @@ public class AuthService : IAuthService
         await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "privestio_token", token);
 
     private void SetAuthorizationHeader(string token) =>
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", token);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            token
+        );
 }

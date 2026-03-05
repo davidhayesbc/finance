@@ -10,12 +10,14 @@ public class TransactionSplitTagConfiguration : IEntityTypeConfiguration<Transac
     {
         builder.HasKey(tst => new { tst.TransactionSplitId, tst.TagId });
 
-        builder.HasOne(tst => tst.TransactionSplit)
+        builder
+            .HasOne(tst => tst.TransactionSplit)
             .WithMany(s => s.Tags)
             .HasForeignKey(tst => tst.TransactionSplitId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(tst => tst.Tag)
+        builder
+            .HasOne(tst => tst.Tag)
             .WithMany(t => t.TransactionSplitTags)
             .HasForeignKey(tst => tst.TagId)
             .OnDelete(DeleteBehavior.Cascade);

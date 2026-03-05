@@ -6,10 +6,8 @@
 
 <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
     <h1>Accounts</h1>
-    <FluentButton
-        Appearance="Appearance.Accent"
-        @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
-        aria-label="Add new account">
+    <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
+                  aria-label="Add new account">
         + Add Account
     </FluentButton>
 </FluentStack>
@@ -36,10 +34,8 @@ else
             </FluentBadge>
         </TemplateColumn>
         <TemplateColumn Title="">
-            <FluentButton
-                Appearance="Appearance.Stealth"
-                @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))"
-                aria-label="@($"View {context.Name}")">
+            <FluentButton Appearance="Appearance.Stealth"
+                          @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))" aria-label="@($"View {context.Name}")">
                 View
             </FluentButton>
         </TemplateColumn>

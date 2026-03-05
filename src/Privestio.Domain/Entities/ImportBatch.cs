@@ -7,11 +7,7 @@ public class ImportBatch : BaseEntity
 {
     private ImportBatch() { }
 
-    public ImportBatch(
-        string fileName,
-        string fileFormat,
-        Guid userId,
-        Guid? mappingId = null)
+    public ImportBatch(string fileName, string fileFormat, Guid userId, Guid? mappingId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileFormat);

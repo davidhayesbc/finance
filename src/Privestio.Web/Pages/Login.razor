@@ -20,34 +20,23 @@
         <DataAnnotationsValidator />
 
         <FluentStack Orientation="Orientation.Vertical" Width="100%">
-            <FluentTextField
-                @bind-Value="_form.Email"
-                Label="Email address"
-                Placeholder="you@example.com"
-                Required="true"
-                id="email" />
+            <FluentTextField @bind-Value="_form.Email" Label="Email address" Placeholder="you@example.com"
+                             Required="true" id="email" />
             <ValidationMessage For="@(() => _form.Email)" />
 
-            <FluentTextField
-                @bind-Value="_form.Password"
-                Label="Password"
-                Placeholder="Password"
-                TextFieldType="TextFieldType.Password"
-                Required="true"
-                id="password" />
+            <FluentTextField @bind-Value="_form.Password" Label="Password" Placeholder="Password"
+                             TextFieldType="TextFieldType.Password" Required="true" id="password" />
             <ValidationMessage For="@(() => _form.Password)" />
 
-            <FluentButton
-                Type="ButtonType.Submit"
-                Appearance="Appearance.Accent"
-                Loading="_isLoading"
-                Style="width:100%">
+            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading"
+                          Style="width:100%">
                 Sign In
             </FluentButton>
         </FluentStack>
     </EditForm>
 
-    <p>Don't have an account? <FluentAnchor Href="/register">Register</FluentAnchor></p>
+    <p>Don't have an account? <FluentAnchor Href="/register">Register</FluentAnchor>
+    </p>
 </FluentCard>
 
 @code {

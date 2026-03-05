@@ -10,20 +10,22 @@ public class TransactionSplitConfiguration : IEntityTypeConfiguration<Transactio
     {
         builder.HasKey(s => s.Id);
 
-        builder.Property(s => s.Notes)
-            .HasMaxLength(2000);
+        builder.Property(s => s.Notes).HasMaxLength(2000);
 
-        builder.ComplexProperty(s => s.Amount, money =>
-        {
-            money.Property(m => m.Amount)
-                .HasColumnName("Amount")
-                .HasColumnType("numeric(18,4)");
-            money.Property(m => m.CurrencyCode)
-                .HasColumnName("Currency")
-                .HasMaxLength(3);
-        });
+        builder.ComplexProperty(
+            s => s.Amount,
+            money =>
+            {
+                money
+                    .Property(m => m.Amount)
+                    .HasColumnName("Amount")
+                    .HasColumnType("numeric(18,4)");
+                money.Property(m => m.CurrencyCode).HasColumnName("Currency").HasMaxLength(3);
+            }
+        );
 
-        builder.HasOne(s => s.Category)
+        builder
+            .HasOne(s => s.Category)
             .WithMany()
             .HasForeignKey(s => s.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);

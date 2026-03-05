@@ -16,7 +16,8 @@ public class Notification : BaseEntity
         string title,
         string message,
         string? relatedEntityType = null,
-        Guid? relatedEntityId = null)
+        Guid? relatedEntityId = null
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);

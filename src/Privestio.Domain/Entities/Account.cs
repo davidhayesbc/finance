@@ -22,7 +22,8 @@ public class Account : BaseEntity
         Money openingBalance,
         DateTime openingDate,
         Guid ownerId,
-        string? institution = null)
+        string? institution = null
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);

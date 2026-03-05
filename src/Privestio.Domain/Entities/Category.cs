@@ -20,7 +20,8 @@ public class Category : BaseEntity
         Guid? parentCategoryId = null,
         string? icon = null,
         int sortOrder = 0,
-        bool isSystem = false)
+        bool isSystem = false
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 

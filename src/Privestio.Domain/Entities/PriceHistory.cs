@@ -11,11 +11,7 @@ public class PriceHistory : BaseEntity
 {
     private PriceHistory() { }
 
-    public PriceHistory(
-        string symbol,
-        Money price,
-        DateOnly asOfDate,
-        string source)
+    public PriceHistory(string symbol, Money price, DateOnly asOfDate, string source)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(source);

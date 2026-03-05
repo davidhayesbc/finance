@@ -10,12 +10,14 @@ public class TransactionTagConfiguration : IEntityTypeConfiguration<TransactionT
     {
         builder.HasKey(tt => new { tt.TransactionId, tt.TagId });
 
-        builder.HasOne(tt => tt.Transaction)
+        builder
+            .HasOne(tt => tt.Transaction)
             .WithMany(t => t.Tags)
             .HasForeignKey(tt => tt.TransactionId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(tt => tt.Tag)
+        builder
+            .HasOne(tt => tt.Tag)
             .WithMany(t => t.TransactionTags)
             .HasForeignKey(tt => tt.TagId)
             .OnDelete(DeleteBehavior.Cascade);

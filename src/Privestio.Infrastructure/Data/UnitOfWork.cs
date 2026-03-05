@@ -17,6 +17,6 @@ public class UnitOfWork : IUnitOfWork
     public IAccountRepository Accounts { get; }
     public ITransactionRepository Transactions { get; }
 
-    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        => await _context.SaveChangesAsync(cancellationToken);
+    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        await _context.SaveChangesAsync(cancellationToken);
 }

@@ -39,7 +39,8 @@ public class Payee : BaseEntity
     public void RemoveAlias(string alias)
     {
         var existing = _aliases.FirstOrDefault(a =>
-            a.Equals(alias.Trim(), StringComparison.OrdinalIgnoreCase));
+            a.Equals(alias.Trim(), StringComparison.OrdinalIgnoreCase)
+        );
         if (existing is not null)
         {
             _aliases.Remove(existing);

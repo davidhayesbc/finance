@@ -19,7 +19,8 @@ public class Tag : BaseEntity
     public User? Owner { get; set; }
 
     public ICollection<TransactionTag> TransactionTags { get; } = new List<TransactionTag>();
-    public ICollection<TransactionSplitTag> TransactionSplitTags { get; } = new List<TransactionSplitTag>();
+    public ICollection<TransactionSplitTag> TransactionSplitTags { get; } =
+        new List<TransactionSplitTag>();
 
     public void Rename(string name)
     {
