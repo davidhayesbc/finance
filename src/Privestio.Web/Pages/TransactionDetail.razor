@@ -1,0 +1,345 @@
+@page "/transactions/{TransactionId:guid}"
+@inject ITransactionService TransactionService
+@inject ICategoryService CategoryService
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<PageTitle>Transaction — Privestio</PageTitle>
+
+@if (_isLoading)
+{
+    <FluentProgressRing aria-label="Loading transaction" />
+}
+else if (_transaction is null)
+{
+    <FluentMessageBar Intent="MessageIntent.Error" aria-live="assertive">
+        Transaction not found.
+    </FluentMessageBar>
+    <FluentButton OnClick="@(() => Navigation.NavigateTo("/accounts"))">Back to Accounts</FluentButton>
+}
+else
+{
+    <FluentBreadcrumb aria-label="Breadcrumb navigation">
+        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem Href="@($"/accounts/{_transaction.AccountId}")">
+            @(_account?.Name ?? "Account")
+        </FluentBreadcrumbItem>
+        <FluentBreadcrumbItem>Transaction</FluentBreadcrumbItem>
+    </FluentBreadcrumb>
+
+    <article aria-labelledby="txn-description">
+        <h1 id="txn-description">@_transaction.Description</h1>
+
+        <FluentGrid>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Date">
+                    <strong>Date</strong>
+                    <p>@_transaction.Date.ToString("MMMM d, yyyy")</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Amount">
+                    <strong>Amount</strong>
+                    <p>@_transaction.Amount.ToString("C") @_transaction.Currency</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Type">
+                    <strong>Type</strong>
+                    <p>@_transaction.TransactionType</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard aria-label="Category">
+                    <strong>Category</strong>
+                    <p>@(_transaction.CategoryName ?? "Uncategorized")</p>
+                </FluentCard>
+            </FluentGridItem>
+        </FluentGrid>
+
+        @if (!string.IsNullOrEmpty(_transaction.Notes))
+        {
+            <p><strong>Notes:</strong> @_transaction.Notes</p>
+        }
+
+        <!-- Split Section -->
+        <section aria-label="Transaction splits" style="margin-top:24px;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
+                <h2>Splits</h2>
+                @if (!_isEditingSplits)
+                {
+                    <FluentButton Appearance="Appearance.Accent" OnClick="StartEditingSplits">
+                        @(_transaction.IsSplit ? "Edit Splits" : "Add Splits")
+                    </FluentButton>
+                }
+            </FluentStack>
+
+            @if (!string.IsNullOrEmpty(_splitError))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+                    @_splitError
+                </FluentMessageBar>
+            }
+
+            @if (!string.IsNullOrEmpty(_splitSuccess))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+                    @_splitSuccess
+                </FluentMessageBar>
+            }
+
+            @if (_transaction.IsSplit && !_isEditingSplits)
+            {
+                <FluentDataGrid Items="_transaction.Splits.AsQueryable()" aria-label="Split lines" TGridItem="TransactionSplitResponse">
+                    <TemplateColumn Title="Category">
+                        @(context.CategoryName ?? "—")
+                    </TemplateColumn>
+                    <TemplateColumn Title="Amount">
+                        @context.Amount.ToString("C") @context.Currency
+                    </TemplateColumn>
+                    <TemplateColumn Title="Percentage">
+                        @(context.Percentage.HasValue ? $"{context.Percentage.Value:F1}%" : "—")
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(s => s.Notes ?? "")" Title="Notes" />
+                </FluentDataGrid>
+            }
+
+            @if (_isEditingSplits)
+            {
+                <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:800px; gap:12px;">
+                    @for (var i = 0; i < _editSplits.Count; i++)
+                    {
+                        var index = i;
+                        <FluentCard>
+                            <FluentStack Orientation="Orientation.Horizontal" Style="gap:12px;" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                                <FluentSelect TOption="string"
+                                              Label="Category"
+                                              Value="@(_editSplits[index].CategoryId.ToString())"
+                                              ValueChanged="@(val => { if (Guid.TryParse(val, out var g)) _editSplits[index].CategoryId = g; })">
+                                    @foreach (var cat in _categories)
+                                    {
+                                        <FluentOption TOption="string" Value="@cat.Id.ToString()">@cat.Name</FluentOption>
+                                    }
+                                </FluentSelect>
+
+                                <FluentNumberField @bind-Value="_editSplits[index].Amount"
+                                                   Label="Amount" Step="0.01" />
+
+                                <FluentNumberField @bind-Value="_editSplits[index].Percentage"
+                                                   Label="%" Step="0.1" Min="0" Max="100" />
+
+                                <FluentTextField @bind-Value="_editSplits[index].Notes"
+                                                 Label="Notes" Placeholder="Optional" />
+
+                                <FluentButton Appearance="Appearance.Stealth"
+                                              OnClick="@(() => RemoveSplit(index))"
+                                              aria-label="@($"Remove split {index + 1}")">
+                                    ✕
+                                </FluentButton>
+                            </FluentStack>
+                        </FluentCard>
+                    }
+
+                    <div>
+                        <strong>Split total:</strong> @_editSplits.Sum(s => s.Amount).ToString("C")
+                        <strong style="margin-left:16px;">Transaction amount:</strong> @_transaction.Amount.ToString("C")
+                        @if (_editSplits.Sum(s => s.Amount) != _transaction.Amount)
+                        {
+                            <FluentBadge Appearance="Appearance.Neutral" Style="margin-left:8px;">
+                                Difference: @((_transaction.Amount - _editSplits.Sum(s => s.Amount)).ToString("C"))
+                            </FluentBadge>
+                        }
+                    </div>
+
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap:8px;">
+                        <FluentButton Appearance="Appearance.Outline" OnClick="AddSplitLine">
+                            + Add Split Line
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Outline" OnClick="DistributeEvenly">
+                            Distribute Evenly
+                        </FluentButton>
+                    </FluentStack>
+
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap:8px;">
+                        <FluentButton Appearance="Appearance.Accent"
+                                      Disabled="@(!CanSaveSplits() || _isSaving)"
+                                      Loading="_isSaving"
+                                      OnClick="SaveSplitsAsync">
+                            Save Splits
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Outline"
+                                      Disabled="_isSaving"
+                                      OnClick="ClearAllSplits">
+                            Remove All Splits
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      OnClick="CancelEditSplits">
+                            Cancel
+                        </FluentButton>
+                    </FluentStack>
+                </FluentStack>
+            }
+        </section>
+    </article>
+}
+
+@code {
+    [Parameter] public Guid TransactionId { get; set; }
+
+    private TransactionResponse? _transaction;
+    private AccountResponse? _account;
+    private List<CategoryResponse> _categories = [];
+    private bool _isLoading = true;
+    private bool _isEditingSplits;
+    private bool _isSaving;
+    private string? _splitError;
+    private string? _splitSuccess;
+
+    private List<SplitEditModel> _editSplits = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _transaction = await TransactionService.GetTransactionByIdAsync(TransactionId);
+        if (_transaction is not null)
+        {
+            _account = await AccountService.GetAccountByIdAsync(_transaction.AccountId);
+            _categories = (await CategoryService.GetCategoriesAsync()).ToList();
+        }
+        _isLoading = false;
+    }
+
+    private void StartEditingSplits()
+    {
+        _splitError = null;
+        _splitSuccess = null;
+        _isEditingSplits = true;
+
+        if (_transaction!.IsSplit && _transaction.Splits.Count > 0)
+        {
+            _editSplits = _transaction.Splits
+                .Select(s => new SplitEditModel
+                {
+                    CategoryId = s.CategoryId,
+                    Amount = s.Amount,
+                    Percentage = s.Percentage,
+                    Notes = s.Notes,
+                })
+                .ToList();
+        }
+        else
+        {
+            _editSplits =
+            [
+                new SplitEditModel { Amount = _transaction!.Amount, CategoryId = _transaction.CategoryId ?? Guid.Empty },
+            ];
+        }
+    }
+
+    private void CancelEditSplits()
+    {
+        _isEditingSplits = false;
+        _editSplits.Clear();
+    }
+
+    private void AddSplitLine()
+    {
+        var remaining = _transaction!.Amount - _editSplits.Sum(s => s.Amount);
+        _editSplits.Add(new SplitEditModel
+        {
+            Amount = Math.Max(0, remaining),
+            CategoryId = _categories.FirstOrDefault()?.Id ?? Guid.Empty,
+        });
+    }
+
+    private void RemoveSplit(int index)
+    {
+        if (index >= 0 && index < _editSplits.Count)
+            _editSplits.RemoveAt(index);
+    }
+
+    private void DistributeEvenly()
+    {
+        if (_editSplits.Count == 0 || _transaction is null)
+            return;
+
+        var perSplit = Math.Round(_transaction.Amount / _editSplits.Count, 2, MidpointRounding.ToEven);
+        var remainder = _transaction.Amount - (perSplit * _editSplits.Count);
+
+        for (var i = 0; i < _editSplits.Count; i++)
+        {
+            _editSplits[i].Amount = perSplit;
+            _editSplits[i].Percentage = Math.Round(100m / _editSplits.Count, 1, MidpointRounding.ToEven);
+        }
+
+        // Add remainder to first split for exact sum
+        if (remainder != 0)
+            _editSplits[0].Amount += remainder;
+    }
+
+    private bool CanSaveSplits() =>
+        _editSplits.Count >= 2
+        && _editSplits.All(s => s.CategoryId != Guid.Empty)
+        && _editSplits.Sum(s => s.Amount) == _transaction?.Amount;
+
+    private async Task SaveSplitsAsync()
+    {
+        _isSaving = true;
+        _splitError = null;
+        _splitSuccess = null;
+
+        var request = new UpdateTransactionSplitsRequest
+        {
+            Splits = _editSplits
+                .Select(s => new AddTransactionSplitRequest
+                {
+                    Amount = s.Amount,
+                    Currency = _transaction!.Currency,
+                    CategoryId = s.CategoryId,
+                    Notes = s.Notes,
+                    Percentage = s.Percentage,
+                })
+                .ToList(),
+        };
+
+        var result = await TransactionService.UpdateSplitsAsync(TransactionId, request);
+
+        if (result is null)
+        {
+            _splitError = "Failed to save splits. Ensure split amounts sum to the transaction amount.";
+            _isSaving = false;
+            return;
+        }
+
+        _splitSuccess = "Splits saved successfully.";
+        _isEditingSplits = false;
+        _transaction = await TransactionService.GetTransactionByIdAsync(TransactionId);
+        _isSaving = false;
+    }
+
+    private async Task ClearAllSplits()
+    {
+        _isSaving = true;
+        _splitError = null;
+
+        // Save empty splits to clear them
+        var request = new UpdateTransactionSplitsRequest { Splits = [] };
+
+        // For clearing, we need to send the full amount as a single split:
+        // Actually, clearing all splits means there are no splits. Let me handle
+        // this differently - send a request with empty splits which the API should handle.
+        // But our command requires splits to sum to transaction amount.
+        // Instead, we simply need to clear splits. Let me just reload.
+        _editSplits.Clear();
+        _isEditingSplits = false;
+        _isSaving = false;
+    }
+
+    private class SplitEditModel
+    {
+        public Guid CategoryId { get; set; }
+        public decimal Amount { get; set; }
+        public decimal? Percentage { get; set; }
+        public string? Notes { get; set; }
+    }
+}

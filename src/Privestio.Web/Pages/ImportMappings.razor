@@ -1,0 +1,75 @@
+@page "/import/mappings"
+@inject IImportService ImportService
+@inject NavigationManager Navigation
+
+<PageTitle>Saved Mappings — Privestio</PageTitle>
+
+<FluentBreadcrumb aria-label="Breadcrumb navigation">
+    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem Href="/import">Import</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem>Saved Mappings</FluentBreadcrumbItem>
+</FluentBreadcrumb>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
+    <h1>Saved Mappings</h1>
+</FluentStack>
+
+@if (_isLoading)
+{
+    <FluentProgressRing aria-label="Loading mappings" />
+}
+else if (_mappings.Count == 0)
+{
+    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
+        No saved mappings yet. Create a mapping during the import process.
+    </FluentMessageBar>
+}
+else
+{
+    <FluentDataGrid Items="_mappings.AsQueryable()" aria-label="Saved import mappings" TGridItem="ImportMappingResponse">
+        <PropertyColumn Property="@(m => m.Name)" Title="Name" />
+        <PropertyColumn Property="@(m => m.FileFormat)" Title="Format" />
+        <PropertyColumn Property="@(m => m.Institution ?? "—")" Title="Institution" />
+        <TemplateColumn Title="Mapped Columns">
+            <FluentBadge Appearance="Appearance.Neutral">
+                @context.ColumnMappings.Count columns
+            </FluentBadge>
+        </TemplateColumn>
+        <TemplateColumn Title="">
+            <FluentButton Appearance="Appearance.Stealth"
+                          OnClick="@(() => DeleteMappingAsync(context.Id))"
+                          aria-label="@($"Delete mapping {context.Name}")">
+                Delete
+            </FluentButton>
+        </TemplateColumn>
+    </FluentDataGrid>
+}
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+        @_errorMessage
+    </FluentMessageBar>
+}
+
+@code {
+    private List<ImportMappingResponse> _mappings = [];
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _mappings = (await ImportService.GetMappingsAsync()).ToList();
+        _isLoading = false;
+    }
+
+    private async Task DeleteMappingAsync(Guid id)
+    {
+        _errorMessage = null;
+        var success = await ImportService.DeleteMappingAsync(id);
+        if (success)
+            _mappings = (await ImportService.GetMappingsAsync()).ToList();
+        else
+            _errorMessage = "Failed to delete mapping.";
+    }
+}

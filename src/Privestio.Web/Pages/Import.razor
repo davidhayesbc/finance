@@ -1,0 +1,422 @@
+@page "/import"
+@inject IImportService ImportService
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<PageTitle>Import Transactions — Privestio</PageTitle>
+
+<FluentBreadcrumb aria-label="Breadcrumb navigation">
+    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem>Import</FluentBreadcrumbItem>
+</FluentBreadcrumb>
+
+<h1>Import Transactions</h1>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+        @_errorMessage
+    </FluentMessageBar>
+}
+
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+        @_successMessage
+    </FluentMessageBar>
+}
+
+@if (_step == ImportStep.Upload)
+{
+    <section aria-label="Upload file">
+        <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:600px; gap:16px;">
+            <FluentSelect TOption="string"
+                          Label="Account"
+                          @bind-Value="_selectedAccountIdStr"
+                          aria-required="true">
+                <FluentOption TOption="string" Value="">Select an account...</FluentOption>
+                @foreach (var account in _accounts)
+                {
+                    <FluentOption TOption="string" Value="@account.Id.ToString()">
+                        @account.Name (@account.AccountType)
+                    </FluentOption>
+                }
+            </FluentSelect>
+
+            <FluentInputFile @ref="_fileInput"
+                             Mode="InputFileMode.Stream"
+                             Accept=".csv,.ofx,.qfx,.qif"
+                             MaximumFileCount="1"
+                             MaximumFileSize="@(10 * 1024 * 1024)"
+                             Label="Select file to import"
+                             OnFileUploaded="HandleFileSelectedAsync"
+                             aria-label="Choose a file to import" />
+
+            @if (_selectedFile is not null)
+            {
+                <FluentBadge Appearance="Appearance.Neutral">
+                    @_selectedFileName
+                </FluentBadge>
+            }
+
+            <FluentStack Orientation="Orientation.Horizontal">
+                <FluentButton Appearance="Appearance.Accent"
+                              Disabled="@(_selectedAccountId is null || _selectedFile is null || _isLoading)"
+                              Loading="_isLoading"
+                              OnClick="PreviewFileAsync">
+                    Preview Import
+                </FluentButton>
+            </FluentStack>
+        </FluentStack>
+    </section>
+}
+
+@if (_step == ImportStep.ColumnMapping && _filePreview is not null)
+{
+    <section aria-label="Column mapping">
+        <h2>Column Mapping</h2>
+        <p>Map source columns to transaction fields. @_filePreview.TotalRows rows detected.</p>
+
+        <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:800px; gap:12px;">
+            @foreach (var column in _filePreview.DetectedColumns)
+            {
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                    <FluentLabel Style="width:200px; font-weight:600;">@column</FluentLabel>
+                    <FluentSelect TOption="string"
+                                  Value="@GetMappingValue(column)"
+                                  ValueChanged="@(val => SetMappingValue(column, val))">
+                        <FluentOption TOption="string" Value="">— Skip —</FluentOption>
+                        <FluentOption TOption="string" Value="Date">Date</FluentOption>
+                        <FluentOption TOption="string" Value="Amount">Amount</FluentOption>
+                        <FluentOption TOption="string" Value="Description">Description</FluentOption>
+                        <FluentOption TOption="string" Value="Payee">Payee</FluentOption>
+                        <FluentOption TOption="string" Value="Category">Category</FluentOption>
+                        <FluentOption TOption="string" Value="Notes">Notes</FluentOption>
+                        <FluentOption TOption="string" Value="ExternalId">External ID</FluentOption>
+                    </FluentSelect>
+                </FluentStack>
+            }
+
+            <h3>Sample Data</h3>
+            <FluentDataGrid Items="_sampleRows.AsQueryable()" aria-label="File preview data" TGridItem="SampleRow">
+                @foreach (var (col, idx) in _filePreview.DetectedColumns.Select((c, i) => (c, i)))
+                {
+                    var colIndex = idx;
+                    <PropertyColumn Property="@(r => r.Values.Count > colIndex ? r.Values[colIndex] : "")" Title="@col" />
+                }
+            </FluentDataGrid>
+
+            <FluentStack Orientation="Orientation.Horizontal" Style="gap:8px;">
+                <FluentButton Appearance="Appearance.Accent"
+                              Disabled="@(!HasRequiredMappings() || _isLoading)"
+                              Loading="_isLoading"
+                              OnClick="RunPreviewImportAsync">
+                    Preview Results
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Outline" OnClick="SaveMappingAsync">
+                    Save Mapping
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.Upload)">
+                    Back
+                </FluentButton>
+            </FluentStack>
+        </FluentStack>
+    </section>
+}
+
+@if (_step == ImportStep.Preview && _previewResult is not null)
+{
+    <section aria-label="Import preview">
+        <h2>Import Preview</h2>
+
+        <FluentGrid>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard aria-label="Total rows">
+                    <strong>Total Rows</strong>
+                    <p>@_previewResult.TotalRows</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard aria-label="Will import">
+                    <strong>Will Import</strong>
+                    <p style="color: var(--accent-fill-rest);">@_previewResult.ImportedCount</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard aria-label="Duplicates">
+                    <strong>Duplicates</strong>
+                    <p>@_previewResult.DuplicateCount</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard aria-label="Errors">
+                    <strong>Errors</strong>
+                    <p style="color: var(--error);">@_previewResult.ErrorCount</p>
+                </FluentCard>
+            </FluentGridItem>
+        </FluentGrid>
+
+        @if (_previewResult.Errors.Count > 0)
+        {
+            <h3>Errors</h3>
+            <FluentDataGrid Items="_previewResult.Errors.AsQueryable()" aria-label="Import errors" TGridItem="ImportErrorDetail">
+                <PropertyColumn Property="@(e => e.RowNumber)" Title="Row" />
+                <PropertyColumn Property="@(e => e.Message)" Title="Error" />
+                <PropertyColumn Property="@(e => e.RawData ?? "")" Title="Raw Data" />
+            </FluentDataGrid>
+        }
+
+        <FluentStack Orientation="Orientation.Horizontal" Style="margin-top:16px; gap:8px;">
+            <FluentButton Appearance="Appearance.Accent"
+                          Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)"
+                          Loading="_isLoading"
+                          OnClick="CommitImportAsync">
+                Commit Import (@_previewResult.ImportedCount transactions)
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.ColumnMapping)">
+                Back to Mapping
+            </FluentButton>
+        </FluentStack>
+    </section>
+}
+
+@if (_step == ImportStep.Complete && _importResult is not null)
+{
+    <section aria-label="Import complete">
+        <h2>Import Complete</h2>
+
+        <FluentGrid>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard>
+                    <strong>Imported</strong>
+                    <p style="color: var(--accent-fill-rest);">@_importResult.ImportedCount</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard>
+                    <strong>Duplicates Skipped</strong>
+                    <p>@_importResult.DuplicateCount</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard>
+                    <strong>Errors</strong>
+                    <p>@_importResult.ErrorCount</p>
+                </FluentCard>
+            </FluentGridItem>
+            <FluentGridItem xs="6" sm="3">
+                <FluentCard>
+                    <strong>Status</strong>
+                    <p>@_importResult.Status</p>
+                </FluentCard>
+            </FluentGridItem>
+        </FluentGrid>
+
+        <FluentStack Orientation="Orientation.Horizontal" Style="margin-top:16px; gap:8px;">
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="@(() => Navigation.NavigateTo($"/accounts/{_selectedAccountId}"))">
+                View Account
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
+                Import Another File
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Stealth"
+                          OnClick="@(() => Navigation.NavigateTo("/import/history"))">
+                Import History
+            </FluentButton>
+        </FluentStack>
+    </section>
+}
+
+@code {
+    private enum ImportStep { Upload, ColumnMapping, Preview, Complete }
+
+    private ImportStep _step = ImportStep.Upload;
+    private List<AccountResponse> _accounts = [];
+    private string? _selectedAccountIdStr;
+    private Guid? _selectedAccountId => Guid.TryParse(_selectedAccountIdStr, out var id) ? id : null;
+    private FluentInputFile? _fileInput;
+    private MemoryStream? _selectedFile;
+    private string? _selectedFileName;
+    private FilePreviewResponse? _filePreview;
+    private ImportResultResponse? _previewResult;
+    private ImportResultResponse? _importResult;
+    private Dictionary<string, string> _columnMappings = new();
+    private List<SampleRow> _sampleRows = [];
+    private string? _errorMessage;
+    private string? _successMessage;
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accounts = (await AccountService.GetAccountsAsync()).ToList();
+    }
+
+    private async Task HandleFileSelectedAsync(FluentInputFileEventArgs args)
+    {
+        _errorMessage = null;
+        if (args.Stream is null)
+            return;
+
+        _selectedFile = new MemoryStream();
+        await args.Stream.CopyToAsync(_selectedFile);
+        _selectedFile.Position = 0;
+        _selectedFileName = args.Name;
+    }
+
+    private async Task PreviewFileAsync()
+    {
+        if (_selectedAccountId is null || _selectedFile is null)
+            return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        _selectedFile.Position = 0;
+        _filePreview = await ImportService.PreviewFileAsync(_selectedFile, _selectedFileName!);
+
+        if (_filePreview is null)
+        {
+            _errorMessage = "Failed to preview file. Ensure it is a valid CSV, OFX, QFX, or QIF file.";
+            _isLoading = false;
+            return;
+        }
+
+        _sampleRows = _filePreview.SampleRows
+            .Select(r => new SampleRow { Values = r.ToList() })
+            .ToList();
+
+        // Auto-detect common column names
+        _columnMappings.Clear();
+        foreach (var col in _filePreview.DetectedColumns)
+        {
+            var lower = col.ToLowerInvariant();
+            if (lower.Contains("date"))
+                _columnMappings[col] = "Date";
+            else if (lower.Contains("amount") || lower.Contains("total"))
+                _columnMappings[col] = "Amount";
+            else if (lower.Contains("desc") || lower.Contains("memo") || lower.Contains("narrative"))
+                _columnMappings[col] = "Description";
+            else if (lower.Contains("payee") || lower.Contains("name"))
+                _columnMappings[col] = "Payee";
+            else if (lower.Contains("category") || lower.Contains("cat"))
+                _columnMappings[col] = "Category";
+            else if (lower.Contains("note") || lower.Contains("comment"))
+                _columnMappings[col] = "Notes";
+            else if (lower.Contains("ref") || lower.Contains("id") || lower.Contains("check"))
+                _columnMappings[col] = "ExternalId";
+        }
+
+        _step = ImportStep.ColumnMapping;
+        _isLoading = false;
+    }
+
+    private string GetMappingValue(string column) =>
+        _columnMappings.TryGetValue(column, out var val) ? val : "";
+
+    private void SetMappingValue(string column, string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            _columnMappings.Remove(column);
+        else
+            _columnMappings[column] = value;
+    }
+
+    private bool HasRequiredMappings() =>
+        _columnMappings.ContainsValue("Date")
+        && _columnMappings.ContainsValue("Amount")
+        && _columnMappings.ContainsValue("Description");
+
+    private async Task RunPreviewImportAsync()
+    {
+        if (_selectedAccountId is null || _selectedFile is null)
+            return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        _selectedFile.Position = 0;
+        _previewResult = await ImportService.ImportFileAsync(
+            _selectedAccountId.Value,
+            _selectedFile,
+            _selectedFileName!,
+            policy: "PreviewOnly"
+        );
+
+        if (_previewResult is null)
+        {
+            _errorMessage = "Failed to preview import. Please try again.";
+            _isLoading = false;
+            return;
+        }
+
+        _step = ImportStep.Preview;
+        _isLoading = false;
+    }
+
+    private async Task CommitImportAsync()
+    {
+        if (_selectedAccountId is null || _selectedFile is null)
+            return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        _selectedFile.Position = 0;
+        _importResult = await ImportService.ImportFileAsync(
+            _selectedAccountId.Value,
+            _selectedFile,
+            _selectedFileName!
+        );
+
+        if (_importResult is null)
+        {
+            _errorMessage = "Import failed. Please try again.";
+            _isLoading = false;
+            return;
+        }
+
+        _step = ImportStep.Complete;
+        _isLoading = false;
+    }
+
+    private async Task SaveMappingAsync()
+    {
+        if (_filePreview is null)
+            return;
+
+        var request = new CreateImportMappingRequest
+        {
+            Name = $"{_selectedFileName} mapping",
+            FileFormat = _filePreview.FileFormat,
+            ColumnMappings = _columnMappings,
+            HasHeaderRow = true,
+        };
+
+        var result = await ImportService.CreateMappingAsync(request);
+        if (result is not null)
+            _successMessage = $"Mapping \"{result.Name}\" saved.";
+        else
+            _errorMessage = "Failed to save mapping.";
+    }
+
+    private void ResetImport()
+    {
+        _step = ImportStep.Upload;
+        _selectedFile?.Dispose();
+        _selectedFile = null;
+        _selectedFileName = null;
+        _filePreview = null;
+        _previewResult = null;
+        _importResult = null;
+        _columnMappings.Clear();
+        _sampleRows.Clear();
+        _errorMessage = null;
+        _successMessage = null;
+    }
+
+    public record SampleRow
+    {
+        public List<string> Values { get; init; } = [];
+    }
+}

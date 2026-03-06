@@ -1,0 +1,237 @@
+@page "/rules"
+@inject IRuleService RuleService
+@inject NavigationManager Navigation
+
+<PageTitle>Categorization Rules — Privestio</PageTitle>
+
+<FluentBreadcrumb aria-label="Breadcrumb navigation">
+    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem>Rules</FluentBreadcrumbItem>
+</FluentBreadcrumb>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
+    <h1>Categorization Rules</h1>
+    <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm" aria-label="Create new rule">
+        + New Rule
+    </FluentButton>
+</FluentStack>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+        @_errorMessage
+    </FluentMessageBar>
+}
+
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+        @_successMessage
+    </FluentMessageBar>
+}
+
+@if (_isLoading)
+{
+    <FluentProgressRing aria-label="Loading rules" />
+}
+else if (!_showForm && _rules.Count == 0)
+{
+    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
+        No categorization rules yet. Create your first rule to auto-categorize imported transactions.
+    </FluentMessageBar>
+}
+
+@if (_showForm)
+{
+    <section aria-label="@(_editingRuleId.HasValue ? "Edit rule" : "Create rule")">
+        <h2>@(_editingRuleId.HasValue ? "Edit Rule" : "New Rule")</h2>
+
+        <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:700px; gap:12px;">
+            <FluentTextField @bind-Value="_formName" Label="Rule Name"
+                             Placeholder="e.g., Loblaws → Groceries" Required="true" />
+
+            <FluentNumberField @bind-Value="_formPriority" Label="Priority (lower = higher priority)"
+                               Min="1" Max="9999" Step="1" />
+
+            <FluentTextArea @bind-Value="_formConditions" Label="Conditions (JSON)"
+                            Placeholder='e.g., {"field":"Description","operator":"Contains","value":"Loblaws"}'
+                            Rows="4" Style="font-family:monospace;" />
+
+            <FluentTextArea @bind-Value="_formActions" Label="Actions (JSON)"
+                            Placeholder='e.g., {"categoryId":"...","payeeId":"..."}'
+                            Rows="4" Style="font-family:monospace;" />
+
+            <FluentCheckbox @bind-Value="_formIsEnabled" Label="Enabled" />
+
+            <FluentStack Orientation="Orientation.Horizontal" Style="gap:8px;">
+                <FluentButton Appearance="Appearance.Accent"
+                              Disabled="@(string.IsNullOrWhiteSpace(_formName) || _isSaving)"
+                              Loading="_isSaving"
+                              OnClick="SaveRuleAsync">
+                    @(_editingRuleId.HasValue ? "Update Rule" : "Create Rule")
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">
+                    Cancel
+                </FluentButton>
+            </FluentStack>
+        </FluentStack>
+    </section>
+}
+
+@if (!_isLoading && _rules.Count > 0)
+{
+    <FluentDataGrid Items="_rules.AsQueryable()" aria-label="Categorization rules" TGridItem="CategorizationRuleResponse">
+        <PropertyColumn Property="@(r => r.Priority)" Title="Priority" Sortable="true" />
+        <PropertyColumn Property="@(r => r.Name)" Title="Name" />
+        <TemplateColumn Title="Status">
+            <FluentBadge Appearance="@(context.IsEnabled ? Appearance.Accent : Appearance.Neutral)">
+                @(context.IsEnabled ? "Enabled" : "Disabled")
+            </FluentBadge>
+        </TemplateColumn>
+        <PropertyColumn Property="@(r => r.UpdatedAt)" Title="Updated" Format="g" />
+        <TemplateColumn Title="">
+            <FluentStack Orientation="Orientation.Horizontal" Style="gap:4px;">
+                <FluentButton Appearance="Appearance.Stealth"
+                              OnClick="@(() => EditRule(context))"
+                              aria-label="@($"Edit rule {context.Name}")">
+                    Edit
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Stealth"
+                              OnClick="@(() => DeleteRuleAsync(context.Id))"
+                              aria-label="@($"Delete rule {context.Name}")">
+                    Delete
+                </FluentButton>
+            </FluentStack>
+        </TemplateColumn>
+    </FluentDataGrid>
+}
+
+@code {
+    private List<CategorizationRuleResponse> _rules = [];
+    private bool _isLoading = true;
+    private bool _showForm;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    // Form state
+    private Guid? _editingRuleId;
+    private string _formName = string.Empty;
+    private int _formPriority = 100;
+    private string _formConditions = string.Empty;
+    private string _formActions = string.Empty;
+    private bool _formIsEnabled = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRulesAsync();
+        _isLoading = false;
+    }
+
+    private async Task LoadRulesAsync()
+    {
+        _rules = (await RuleService.GetRulesAsync()).ToList();
+    }
+
+    private void ShowCreateForm()
+    {
+        _editingRuleId = null;
+        _formName = string.Empty;
+        _formPriority = (_rules.Count > 0 ? _rules.Max(r => r.Priority) : 0) + 10;
+        _formConditions = string.Empty;
+        _formActions = string.Empty;
+        _formIsEnabled = true;
+        _showForm = true;
+        _errorMessage = null;
+        _successMessage = null;
+    }
+
+    private void EditRule(CategorizationRuleResponse rule)
+    {
+        _editingRuleId = rule.Id;
+        _formName = rule.Name;
+        _formPriority = rule.Priority;
+        _formConditions = rule.Conditions;
+        _formActions = rule.Actions;
+        _formIsEnabled = rule.IsEnabled;
+        _showForm = true;
+        _errorMessage = null;
+        _successMessage = null;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _editingRuleId = null;
+    }
+
+    private async Task SaveRuleAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        if (_editingRuleId.HasValue)
+        {
+            var request = new UpdateCategorizationRuleRequest
+            {
+                Name = _formName,
+                Priority = _formPriority,
+                Conditions = _formConditions,
+                Actions = _formActions,
+                IsEnabled = _formIsEnabled,
+            };
+
+            var result = await RuleService.UpdateRuleAsync(_editingRuleId.Value, request);
+            if (result is null)
+            {
+                _errorMessage = "Failed to update rule.";
+                _isSaving = false;
+                return;
+            }
+            _successMessage = $"Rule \"{result.Name}\" updated.";
+        }
+        else
+        {
+            var request = new CreateCategorizationRuleRequest
+            {
+                Name = _formName,
+                Priority = _formPriority,
+                Conditions = _formConditions,
+                Actions = _formActions,
+                IsEnabled = _formIsEnabled,
+            };
+
+            var result = await RuleService.CreateRuleAsync(request);
+            if (result is null)
+            {
+                _errorMessage = "Failed to create rule.";
+                _isSaving = false;
+                return;
+            }
+            _successMessage = $"Rule \"{result.Name}\" created.";
+        }
+
+        _showForm = false;
+        _editingRuleId = null;
+        await LoadRulesAsync();
+        _isSaving = false;
+    }
+
+    private async Task DeleteRuleAsync(Guid id)
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        var success = await RuleService.DeleteRuleAsync(id);
+        if (success)
+        {
+            _successMessage = "Rule deleted.";
+            await LoadRulesAsync();
+        }
+        else
+        {
+            _errorMessage = "Failed to delete rule.";
+        }
+    }
+}

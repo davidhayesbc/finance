@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<ITransactionImporter, QifTransactionImporter>();
         services.AddSingleton<TransactionFingerprintService>();
         services.AddScoped<IRuleEvaluator, CategorizationRuleEvaluator>();
+        services.AddScoped<IFilePreviewService, CsvFilePreviewService>();
 
         return services;
     }

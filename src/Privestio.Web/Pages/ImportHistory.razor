@@ -1,0 +1,109 @@
+@page "/import/history"
+@inject IImportService ImportService
+@inject NavigationManager Navigation
+
+<PageTitle>Import History — Privestio</PageTitle>
+
+<FluentBreadcrumb aria-label="Breadcrumb navigation">
+    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem Href="/import">Import</FluentBreadcrumbItem>
+    <FluentBreadcrumbItem>History</FluentBreadcrumbItem>
+</FluentBreadcrumb>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
+    <h1>Import History</h1>
+    <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Navigation.NavigateTo("/import"))">
+        New Import
+    </FluentButton>
+</FluentStack>
+
+@if (_isLoading)
+{
+    <FluentProgressRing aria-label="Loading import history" />
+}
+else if (_batches.Count == 0)
+{
+    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
+        No imports yet. Import your first file to get started.
+    </FluentMessageBar>
+}
+else
+{
+    <FluentDataGrid Items="_batches.AsQueryable()" aria-label="Import history" TGridItem="ImportBatchResponse">
+        <PropertyColumn Property="@(b => b.FileName)" Title="File" />
+        <PropertyColumn Property="@(b => b.FileFormat)" Title="Format" />
+        <PropertyColumn Property="@(b => b.ImportDate)" Title="Date" Format="g" />
+        <PropertyColumn Property="@(b => b.SuccessCount)" Title="Imported" />
+        <PropertyColumn Property="@(b => b.DuplicateCount)" Title="Duplicates" />
+        <PropertyColumn Property="@(b => b.ErrorCount)" Title="Errors" />
+        <TemplateColumn Title="Status">
+            <FluentBadge Appearance="@(GetStatusAppearance(context.Status))">
+                @context.Status
+            </FluentBadge>
+        </TemplateColumn>
+        <TemplateColumn Title="">
+            @if (context.Status is "Completed" or "CompletedWithErrors")
+            {
+                <FluentButton Appearance="Appearance.Stealth"
+                              OnClick="@(() => RollbackAsync(context.Id))"
+                              aria-label="@($"Rollback import {context.FileName}")">
+                    Rollback
+                </FluentButton>
+            }
+        </TemplateColumn>
+    </FluentDataGrid>
+}
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+        @_errorMessage
+    </FluentMessageBar>
+}
+
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+        @_successMessage
+    </FluentMessageBar>
+}
+
+@code {
+    private List<ImportBatchResponse> _batches = [];
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _batches = (await ImportService.GetImportBatchesAsync()).ToList();
+        _isLoading = false;
+    }
+
+    private async Task RollbackAsync(Guid batchId)
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        var success = await ImportService.RollbackImportAsync(batchId);
+        if (success)
+        {
+            _successMessage = "Import rolled back successfully.";
+            _batches = (await ImportService.GetImportBatchesAsync()).ToList();
+        }
+        else
+        {
+            _errorMessage = "Failed to rollback import.";
+        }
+    }
+
+    private static Appearance GetStatusAppearance(string status) =>
+        status switch
+        {
+            "Completed" => Appearance.Accent,
+            "CompletedWithErrors" => Appearance.Neutral,
+            "Failed" => Appearance.Neutral,
+            "RolledBack" => Appearance.Lightweight,
+            _ => Appearance.Neutral,
+        };
+}

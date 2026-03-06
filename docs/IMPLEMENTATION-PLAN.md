@@ -783,16 +783,16 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 2.1 | Implement CSV parser with CsvHelper and dynamic column mapping | 4h | [x] |
 | 2.2 | Implement OFX/QFX parser | 4h | [x] |
 | 2.3 | Implement QIF parser | 3h | [x] |
-| 2.4 | Build Column Mapping UI: preview file, assign columns, save mapping | 6h | [ ] |
+| 2.4 | Build Column Mapping UI: preview file, assign columns, save mapping | 6h | [x] |
 | 2.5 | Implement duplicate detection (hash-based + fuzzy date/amount match) | 4h | [x] |
 | 2.6 | Implement transaction fingerprinting service for idempotent imports and replay-safe processing | 3h | [x] |
-| 2.7 | Build import preview page (review before commit) | 4h | [ ] |
+| 2.7 | Build import preview page (review before commit) | 4h | [x] |
 | 2.8 | Import diagnostics: row-level errors, dead-letter rows, downloadable error report | 3h | [x] |
 | 2.9 | Integrate Microsoft.RulesEngine for transaction categorization | 4h | [x] |
-| 2.10 | Build Rules UI: create/edit/order rules visually | 6h | [ ] |
+| 2.10 | Build Rules UI: create/edit/order rules visually | 6h | [x] |
 | 2.11 | Implement auto-apply rules on import | 2h | [x] |
 | 2.12 | Transfer between accounts (linked transactions) | 3h | [x] |
-| 2.13 | Transaction splitting UI: add/edit logical split lines on a transaction, enforce sum-to-parent validation | 4h | [ ] |
+| 2.13 | Transaction splitting UI: add/edit logical split lines on a transaction, enforce sum-to-parent validation | 4h | [x] |
 | 2.14 | Rules engine split templates: rules can auto-split transactions (e.g., "Costco → 80% Groceries / 20% Household") | 3h | [x] |
 | 2.15 | Import history with undo/rollback support | 3h | [x] |
 | 2.16 | Category management UI: create, edit, reorder, group categories hierarchically | 4h | [x] |

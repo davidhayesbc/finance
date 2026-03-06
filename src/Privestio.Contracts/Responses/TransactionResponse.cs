@@ -15,6 +15,7 @@ public record TransactionResponse
     public string? PayeeName { get; init; }
     public bool IsReconciled { get; init; }
     public bool IsSplit { get; init; }
+    public IReadOnlyList<TransactionSplitResponse> Splits { get; init; } = [];
     public string? Notes { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }

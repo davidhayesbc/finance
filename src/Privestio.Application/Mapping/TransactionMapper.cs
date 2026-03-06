@@ -21,6 +21,19 @@ public static class TransactionMapper
             PayeeName = transaction.Payee?.DisplayName,
             IsReconciled = transaction.IsReconciled,
             IsSplit = transaction.IsSplit,
+            Splits = transaction
+                .Splits.Select(s => new TransactionSplitResponse
+                {
+                    Id = s.Id,
+                    TransactionId = s.TransactionId,
+                    Amount = s.Amount.Amount,
+                    Currency = s.Amount.CurrencyCode,
+                    CategoryId = s.CategoryId,
+                    CategoryName = s.Category?.Name,
+                    Notes = s.Notes,
+                    Percentage = s.Percentage,
+                })
+                .ToList(),
             Notes = transaction.Notes,
             CreatedAt = transaction.CreatedAt,
             UpdatedAt = transaction.UpdatedAt,

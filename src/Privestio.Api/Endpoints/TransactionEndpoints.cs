@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Privestio.Application.Commands.BulkCategorize;
 using Privestio.Application.Commands.CreateTransfer;
+using Privestio.Application.Commands.UpdateTransactionSplits;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetTransactions;
 using Privestio.Application.Queries.SearchTransactions;
@@ -51,6 +52,11 @@ public static class TransactionEndpoints
             .MapPost("/transfers", CreateTransferAsync)
             .WithName("CreateTransfer")
             .WithSummary("Create a transfer between two accounts");
+
+        group
+            .MapPut("/{id:guid}/splits", UpdateTransactionSplitsAsync)
+            .WithName("UpdateTransactionSplits")
+            .WithSummary("Replace all splits on a transaction");
 
         return app;
     }
@@ -255,5 +261,33 @@ public static class TransactionEndpoints
 
         var result = await mediator.Send(command, cancellationToken);
         return Results.Created($"/api/v1/transactions/{result.SourceTransactionId}", result);
+    }
+
+    private static async Task<IResult> UpdateTransactionSplitsAsync(
+        Guid id,
+        [FromBody] UpdateTransactionSplitsRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var splits = request
+            .Splits.Select(s => new SplitLineInput(
+                s.Amount,
+                s.Currency,
+                s.CategoryId,
+                s.Notes,
+                s.Percentage
+            ))
+            .ToList();
+
+        var command = new UpdateTransactionSplitsCommand(id, userId.Value, splits);
+        var result = await mediator.Send(command, cancellationToken);
+
+        return result is not null ? Results.Ok(result) : Results.NotFound();
     }
 }

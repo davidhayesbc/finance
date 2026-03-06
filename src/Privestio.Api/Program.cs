@@ -214,6 +214,8 @@ try
     app.MapPayeeEndpoints();
     app.MapTagEndpoints();
     app.MapImportEndpoints();
+    app.MapImportMappingEndpoints();
+    app.MapRuleEndpoints();
 
     // Health check endpoints (Task 1.17)
     app.MapHealthChecks("/healthz");
