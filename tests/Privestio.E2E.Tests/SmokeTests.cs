@@ -11,7 +11,9 @@ namespace Privestio.E2E.Tests;
 [Trait("Category", "E2E")]
 public class SmokeTests : PlaywrightTestBase
 {
-    [Fact(Skip = "Requires running application and Playwright browsers installed. Run with `dotnet playwright install`.")]
+    [Fact(
+        Skip = "Requires running application and Playwright browsers installed. Run with `dotnet playwright install`."
+    )]
     public async Task Login_CreateAccount_AddTransaction_SmokeTest()
     {
         var page = Page;
@@ -47,9 +49,14 @@ public class SmokeTests : PlaywrightTestBase
 
         // --- Step 3: Add a transaction ---
         await page.ClickAsync("text=Add Transaction");
-        await page.WaitForURLAsync(new Regex($"{Regex.Escape(BaseUrl)}/accounts/.+/transactions/new"));
+        await page.WaitForURLAsync(
+            new Regex($"{Regex.Escape(BaseUrl)}/accounts/.+/transactions/new")
+        );
 
-        await page.FillAsync("fluent-text-field[label='Description'] input", "E2E Test Transaction");
+        await page.FillAsync(
+            "fluent-text-field[label='Description'] input",
+            "E2E Test Transaction"
+        );
         await page.FillAsync("fluent-number-field[label='Amount'] input", "100.00");
         await page.SelectOptionAsync("fluent-select[label='Transaction type']", "Debit");
         await page.ClickAsync("fluent-button[type=submit]");

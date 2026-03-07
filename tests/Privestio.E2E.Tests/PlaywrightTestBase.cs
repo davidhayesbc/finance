@@ -13,27 +13,29 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
     protected static string BaseUrl =>
         Environment.GetEnvironmentVariable("BASE_URL") ?? "https://localhost:5001";
 
-    protected IPage Page => _page ?? throw new InvalidOperationException("Playwright page not initialized.");
+    protected IPage Page =>
+        _page ?? throw new InvalidOperationException("Playwright page not initialized.");
 
     public async Task InitializeAsync()
     {
         _playwright = await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
-        {
-            Headless = true,
-        });
-        _context = await _browser.NewContextAsync(new BrowserNewContextOptions
-        {
-            IgnoreHTTPSErrors = true,
-        });
+        _browser = await _playwright.Chromium.LaunchAsync(
+            new BrowserTypeLaunchOptions { Headless = true }
+        );
+        _context = await _browser.NewContextAsync(
+            new BrowserNewContextOptions { IgnoreHTTPSErrors = true }
+        );
         _page = await _context.NewPageAsync();
     }
 
     public async Task DisposeAsync()
     {
-        if (_page is not null) await _page.CloseAsync();
-        if (_context is not null) await _context.CloseAsync();
-        if (_browser is not null) await _browser.CloseAsync();
+        if (_page is not null)
+            await _page.CloseAsync();
+        if (_context is not null)
+            await _context.CloseAsync();
+        if (_browser is not null)
+            await _browser.CloseAsync();
         _playwright?.Dispose();
     }
 

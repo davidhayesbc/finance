@@ -11,8 +11,7 @@
         <FluentBreadcrumbItem>Saved Mappings</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="Import"
-                Title="Saved mappings"
+    <PageHeader Eyebrow="Import"                Title="Saved mappings"
                 Description="Review reusable file mappings and remove obsolete templates before the next import run."
                 Compact="true" />
 
@@ -38,7 +37,8 @@
     else
     {
         <FluentCard Class="surface-card data-card">
-            <FluentDataGrid Items="_mappings.AsQueryable()" aria-label="Saved import mappings" TGridItem="ImportMappingResponse" Class="data-grid--elevated">
+            <FluentDataGrid Items="_mappings.AsQueryable()" aria-label="Saved import mappings"
+                            TGridItem="ImportMappingResponse" Class="data-grid--elevated">
                 <PropertyColumn Property="@(m => m.Name)" Title="Name" />
                 <PropertyColumn Property="@(m => m.FileFormat)" Title="Format" />
                 <PropertyColumn Property="@(m => m.Institution ?? "—")" Title="Institution" />
@@ -48,8 +48,7 @@
                     </FluentBadge>
                 </TemplateColumn>
                 <TemplateColumn Title="">
-                    <FluentButton Appearance="Appearance.Stealth"
-                                  OnClick="@(() => DeleteMappingAsync(context.Id))"
+                    <FluentButton Appearance="Appearance.Stealth"          OnClick="@(() => DeleteMappingAsync(context.Id))"
                                   aria-label="@($"Delete mapping {context.Name}")">
                         Delete
                     </FluentButton>

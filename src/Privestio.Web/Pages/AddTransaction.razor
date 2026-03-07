@@ -13,8 +13,7 @@
         <FluentBreadcrumbItem>New Transaction</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="New transaction"
-                Title="Add a transaction"
+    <PageHeader Eyebrow="New transaction"                Title="Add a transaction"
                 Description="Capture a clean description, amount, and transaction type without leaving the account workflow."
                 Compact="true" />
 
@@ -49,7 +48,8 @@
                 </FluentSelect>
                 <FluentValidationMessage For="@(() => _form.TransactionType)" />
 
-                <FluentTextField @bind-Value="_form.Notes" Label="Notes (optional)" Placeholder="Optional notes" maxlength="500" />
+                <FluentTextField @bind-Value="_form.Notes" Label="Notes (optional)" Placeholder="Optional notes"
+                                 maxlength="500" />
 
                 <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
                     <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading">

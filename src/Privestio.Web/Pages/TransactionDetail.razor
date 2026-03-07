@@ -33,8 +33,7 @@ else
             <FluentBreadcrumbItem>Transaction</FluentBreadcrumbItem>
         </FluentBreadcrumb>
 
-        <PageHeader Eyebrow="Transaction detail"
-                    Title="@_transaction.Description"
+        <PageHeader Eyebrow="Transaction detail"    Title="@_transaction.Description"
                     Description="Inspect the transaction context and manage split allocations without dropping back to a raw table."
                     Compact="true" />
 
@@ -66,8 +65,7 @@ else
         }
 
         <FluentCard Class="surface-card panel-stack" aria-label="Transaction splits">
-            <PageHeader Eyebrow="Split editor"
-                        Title="Splits"
+            <PageHeader Eyebrow="Split editor"             Title="Splits"
                         Description="Balance category allocations against the original transaction amount before saving."
                         Compact="true">
                 <Actions>
@@ -101,7 +99,8 @@ else
 
             @if (_transaction.IsSplit && !_isEditingSplits)
             {
-                <FluentDataGrid Items="_transaction.Splits.AsQueryable()" aria-label="Split lines" TGridItem="TransactionSplitResponse" Class="data-grid--elevated">
+                <FluentDataGrid Items="_transaction.Splits.AsQueryable()" aria-label="Split lines"
+                                TGridItem="TransactionSplitResponse" Class="data-grid--elevated">
                     <TemplateColumn Title="Category">
                         @(context.CategoryName ?? "—")
                     </TemplateColumn>
@@ -122,10 +121,9 @@ else
                     {
                         var index = i;
                         <FluentCard Class="detail-card split-editor-card">
-                            <FluentStack Orientation="Orientation.Horizontal" Class="action-cluster" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
-                                <FluentSelect TOption="string"
-                                              Label="Category"
-                                              Value="@(_editSplits[index].CategoryId.ToString())"
+                            <FluentStack Orientation="Orientation.Horizontal" Class="action-cluster"
+                                         VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                                <FluentSelect TOption="string"           Label="Category"          Value="@(_editSplits[index].CategoryId.ToString())"
                                               ValueChanged="@(val => { if (Guid.TryParse(val, out var g)) _editSplits[index].CategoryId = g; })">
                                     @foreach (var cat in _categories)
                                     {
@@ -133,17 +131,15 @@ else
                                     }
                                 </FluentSelect>
 
-                                <FluentNumberField @bind-Value="_editSplits[index].Amount"
-                                                   Label="Amount" Step="0.01" />
+                                <FluentNumberField @bind-Value="_editSplits[index].Amount"                    Label="Amount" Step="0.01" />
 
-                                <FluentNumberField @bind-Value="_editSplits[index].Percentage"
-                                                   Label="%" Step="0.1" Min="0" Max="100" />
+                                <FluentNumberField @bind-Value="_editSplits[index].Percentage"                                    Label="%" Step="0.1" Min="0"
+                                                   Max="100" />
 
-                                <FluentTextField @bind-Value="_editSplits[index].Notes"
-                                                 Label="Notes" Placeholder="Optional" maxlength="500" />
+                                <FluentTextField @bind-Value="_editSplits[index].Notes"                            Label="Notes" Placeholder="Optional"
+                                                 maxlength="500" />
 
-                                <FluentButton Appearance="Appearance.Stealth"
-                                              OnClick="@(() => RemoveSplit(index))"
+                                <FluentButton Appearance="Appearance.Stealth"                 OnClick="@(() => RemoveSplit(index))"
                                               aria-label="@($"Remove split {index + 1}")">
                                     Remove
                                 </FluentButton>
@@ -179,19 +175,14 @@ else
                     </div>
 
                     <div class="action-cluster">
-                        <FluentButton Appearance="Appearance.Accent"
-                                      Disabled="@(!CanSaveSplits() || _isSaving)"
-                                      Loading="_isSaving"
-                                      OnClick="SaveSplitsAsync">
+                        <FluentButton Appearance="Appearance.Accent"                                      Disabled="@(!CanSaveSplits() || _isSaving)"
+                                      Loading="_isSaving"                                      OnClick="SaveSplitsAsync">
                             Save Splits
                         </FluentButton>
-                        <FluentButton Appearance="Appearance.Outline"
-                                      Disabled="_isSaving"
-                                      OnClick="ClearAllSplits">
+                        <FluentButton Appearance="Appearance.Outline"                                      Disabled="_isSaving"                                      OnClick="ClearAllSplits">
                             Remove All Splits
                         </FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth"
-                                      OnClick="CancelEditSplits">
+                        <FluentButton Appearance="Appearance.Stealth"                                      OnClick="CancelEditSplits">
                             Cancel
                         </FluentButton>
                     </div>

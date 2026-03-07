@@ -2,7 +2,8 @@ namespace Privestio.E2E.Tests;
 
 public class UiRegressionTests : PlaywrightTestBase
 {
-    private const string RequiresRunningApp = "Requires a running application, configured BASE_URL, and Playwright browsers installed.";
+    private const string RequiresRunningApp =
+        "Requires a running application, configured BASE_URL, and Playwright browsers installed.";
 
     [Fact(Skip = RequiresRunningApp)]
     public async Task HomePage_ShowsHeroAndFeatureCards()
@@ -12,7 +13,9 @@ public class UiRegressionTests : PlaywrightTestBase
         var heading = await Page.TextContentAsync("h1");
         Assert.Contains("See your money clearly", heading);
         Assert.True(await Page.Locator("text=Offline-first personal finance").IsVisibleAsync());
-        Assert.True(await Page.Locator("text=Track every balance with less friction").IsVisibleAsync());
+        Assert.True(
+            await Page.Locator("text=Track every balance with less friction").IsVisibleAsync()
+        );
     }
 
     [Fact(Skip = RequiresRunningApp)]
@@ -43,7 +46,9 @@ public class UiRegressionTests : PlaywrightTestBase
     {
         await GotoRelativeAsync("/definitely-not-a-route");
 
-        Assert.True(await Page.Locator("text=Sorry, there's nothing at this address.").IsVisibleAsync());
+        Assert.True(
+            await Page.Locator("text=Sorry, there's nothing at this address.").IsVisibleAsync()
+        );
     }
 
     [Fact(Skip = RequiresRunningApp)]

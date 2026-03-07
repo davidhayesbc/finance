@@ -11,8 +11,7 @@
         <FluentBreadcrumbItem>History</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="Import"
-                Title="Import history"
+    <PageHeader Eyebrow="Import"        Title="Import history"
                 Description="Inspect previous import batches, error counts, and rollback candidates in one table."
                 Compact="true">
         <Actions>
@@ -54,7 +53,8 @@
     else
     {
         <FluentCard Class="surface-card data-card">
-            <FluentDataGrid Items="_batches.AsQueryable()" aria-label="Import history" TGridItem="ImportBatchResponse" Class="data-grid--elevated">
+            <FluentDataGrid Items="_batches.AsQueryable()" aria-label="Import history" TGridItem="ImportBatchResponse"
+                            Class="data-grid--elevated">
                 <PropertyColumn Property="@(b => b.FileName)" Title="File" />
                 <PropertyColumn Property="@(b => b.FileFormat)" Title="Format" />
                 <PropertyColumn Property="@(b => b.ImportDate)" Title="Date" Format="g" />
@@ -69,8 +69,7 @@
                 <TemplateColumn Title="">
                     @if (context.Status is "Completed" or "CompletedWithErrors")
                     {
-                        <FluentButton Appearance="Appearance.Stealth"
-                                      OnClick="@(() => RollbackAsync(context.Id))"
+                        <FluentButton Appearance="Appearance.Stealth"        OnClick="@(() => RollbackAsync(context.Id))"
                                       aria-label="@($"Rollback import {context.FileName}")">
                             Rollback
                         </FluentButton>
