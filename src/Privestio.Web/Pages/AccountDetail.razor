@@ -6,60 +6,60 @@
 
 @if (_isLoading)
 {
-    <FluentProgressRing aria-label="Loading account details" />
+    <div class="empty-state-shell page-shell">
+        <FluentProgressRing aria-label="Loading account details" />
+    </div>
 }
 else if (_account is null)
 {
-    <FluentMessageBar Intent="MessageIntent.Error" aria-live="assertive">
-        Account not found.
-    </FluentMessageBar>
-    <FluentButton @onclick="@(() => Navigation.NavigateTo("/accounts"))">Back to Accounts</FluentButton>
+    <EmptyStateCard Message="Account not found." Intent="MessageIntent.Error" AriaLive="assertive">
+        <Actions>
+            <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
+                Back to Accounts
+            </FluentButton>
+        </Actions>
+    </EmptyStateCard>
 }
 else
 {
-    <FluentBreadcrumb aria-label="Breadcrumb navigation">
-        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
-        <FluentBreadcrumbItem>@_account.Name</FluentBreadcrumbItem>
-    </FluentBreadcrumb>
+    <section class="page-shell panel-stack" aria-labelledby="account-name">
+        <FluentBreadcrumb aria-label="Breadcrumb navigation">
+            <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+            <FluentBreadcrumbItem>@_account.Name</FluentBreadcrumbItem>
+        </FluentBreadcrumb>
 
-    <article aria-labelledby="account-name">
-        <h1 id="account-name">@_account.Name</h1>
+        <PageHeader Eyebrow="Account detail"
+                    Title="@_account.Name"
+                    Description="Review account metadata, balance context, and continue into transaction capture from the same workspace."
+                    Compact="true">
+            <Actions>
+                <FluentButton Appearance="Appearance.Accent"
+                              @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
+                              aria-label="Add a transaction to this account">
+                    Add Transaction
+                </FluentButton>
+            </Actions>
+        </PageHeader>
 
-        <FluentGrid>
-            <FluentGridItem xs="12" sm="6" md="3">
-                <FluentCard aria-label="Account type">
-                    <strong>Type</strong>
-                    <p>@_account.AccountType — @_account.AccountSubType</p>
-                </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="12" sm="6" md="3">
-                <FluentCard aria-label="Institution">
-                    <strong>Institution</strong>
-                    <p>@(_account.Institution ?? "—")</p>
-                </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="12" sm="6" md="3">
-                <FluentCard aria-label="Current balance">
-                    <strong>Current Balance</strong>
-                    <p>@_account.CurrentBalance.ToString("C") @_account.Currency</p>
-                </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="12" sm="6" md="3">
-                <FluentCard aria-label="Opening date">
-                    <strong>Opened</strong>
-                    <p>@_account.OpeningDate.ToString("MMMM d, yyyy")</p>
-                </FluentCard>
-            </FluentGridItem>
-        </FluentGrid>
-
-        <FluentStack Orientation="Orientation.Horizontal" style="margin-top: 16px;">
-            <FluentButton    Appearance="Appearance.Accent"
-                             @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
-                             aria-label="Add a transaction to this account">
-                + Add Transaction
-            </FluentButton>
-        </FluentStack>
-    </article>
+        <div class="detail-grid">
+            <FluentCard Class="detail-card" aria-label="Account type">
+                <span class="detail-card__label">Type</span>
+                <strong>@_account.AccountType — @_account.AccountSubType</strong>
+            </FluentCard>
+            <FluentCard Class="detail-card" aria-label="Institution">
+                <span class="detail-card__label">Institution</span>
+                <strong>@(_account.Institution ?? "—")</strong>
+            </FluentCard>
+            <FluentCard Class="detail-card" aria-label="Current balance">
+                <span class="detail-card__label">Current balance</span>
+                <strong>@_account.CurrentBalance.ToString("C") @_account.Currency</strong>
+            </FluentCard>
+            <FluentCard Class="detail-card" aria-label="Opening date">
+                <span class="detail-card__label">Opened</span>
+                <strong>@_account.OpeningDate.ToString("MMMM d, yyyy")</strong>
+            </FluentCard>
+        </div>
+    </section>
 }
 
 @code {

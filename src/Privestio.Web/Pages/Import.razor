@@ -5,108 +5,138 @@
 
 <PageTitle>Import Transactions — Privestio</PageTitle>
 
-<FluentBreadcrumb aria-label="Breadcrumb navigation">
-    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
-    <FluentBreadcrumbItem>Import</FluentBreadcrumbItem>
-</FluentBreadcrumb>
+<section class="page-shell panel-stack">
+    <FluentBreadcrumb aria-label="Breadcrumb navigation">
+        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem>Import</FluentBreadcrumbItem>
+    </FluentBreadcrumb>
 
-<h1>Import Transactions</h1>
-
-@if (!string.IsNullOrEmpty(_errorMessage))
-{
-    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-        @_errorMessage
-    </FluentMessageBar>
-}
-
-@if (!string.IsNullOrEmpty(_successMessage))
-{
-    <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
-        @_successMessage
-    </FluentMessageBar>
-}
-
-@if (_step == ImportStep.Upload)
-{
-    <section aria-label="Upload file">
-        <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:600px; gap:16px;">
-            <FluentSelect TOption="string"
-                          Label="Account"
-                          @bind-Value="_selectedAccountIdStr"
-                          aria-required="true">
-                <FluentOption TOption="string" Value="">Select an account...</FluentOption>
-                @foreach (var account in _accounts)
-                {
-                    <FluentOption TOption="string" Value="@account.Id.ToString()">
-                        @account.Name (@account.AccountType)
-                    </FluentOption>
-                }
-            </FluentSelect>
-
-            <FluentInputFile @ref="_fileInput"
-                             Mode="InputFileMode.Stream"
-                             Accept=".csv,.ofx,.qfx,.qif"
-                             MaximumFileCount="1"
-                             MaximumFileSize="@(10 * 1024 * 1024)"
-                             Label="Select file to import"
-                             OnFileUploaded="HandleFileSelectedAsync"
-                             aria-label="Choose a file to import" />
-
-            @if (_selectedFile is not null)
-            {
-                <FluentBadge Appearance="Appearance.Neutral">
-                    @_selectedFileName
-                </FluentBadge>
-            }
-
-            <FluentStack Orientation="Orientation.Horizontal">
-                <FluentButton Appearance="Appearance.Accent"
-                              Disabled="@(_selectedAccountId is null || _selectedFile is null || _isLoading)"
-                              Loading="_isLoading"
-                              OnClick="PreviewFileAsync">
-                    Preview Import
+    <PageHeader Eyebrow="Import"
+                Title="Import transactions"
+                Description="Move from file upload to mapping, preview, and commit in a workflow that keeps context visible at each step."
+                Compact="true">
+        <Actions>
+            <div class="action-cluster">
+                <FluentButton Appearance="Appearance.Outline" OnClick="@(() => Navigation.NavigateTo("/import/mappings"))">
+                    Saved Mappings
                 </FluentButton>
-            </FluentStack>
-        </FluentStack>
-    </section>
-}
+                <FluentButton Appearance="Appearance.Outline" OnClick="@(() => Navigation.NavigateTo("/import/history"))">
+                    Import History
+                </FluentButton>
+            </div>
+        </Actions>
+    </PageHeader>
 
-@if (_step == ImportStep.ColumnMapping && _filePreview is not null)
-{
-    <section aria-label="Column mapping">
-        <h2>Column Mapping</h2>
-        <p>Map source columns to transaction fields. @_filePreview.TotalRows rows detected.</p>
-
-        <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:800px; gap:12px;">
-            @foreach (var column in _filePreview.DetectedColumns)
+    @if (!string.IsNullOrEmpty(_errorMessage) || !string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="message-stack">
+            @if (!string.IsNullOrEmpty(_errorMessage))
             {
-                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
-                    <FluentLabel Style="width:200px; font-weight:600;">@column</FluentLabel>
-                    <FluentSelect TOption="string"
-                                  Value="@GetMappingValue(column)"
-                                  ValueChanged="@(val => SetMappingValue(column, val))">
-                        <FluentOption TOption="string" Value="">— Skip —</FluentOption>
-                        <FluentOption TOption="string" Value="Date">Date</FluentOption>
-                        <FluentOption TOption="string" Value="Amount">Amount</FluentOption>
-                        <FluentOption TOption="string" Value="Description">Description</FluentOption>
-                        <FluentOption TOption="string" Value="Payee">Payee</FluentOption>
-                        <FluentOption TOption="string" Value="Category">Category</FluentOption>
-                        <FluentOption TOption="string" Value="Notes">Notes</FluentOption>
-                        <FluentOption TOption="string" Value="ExternalId">External ID</FluentOption>
-                    </FluentSelect>
-                </FluentStack>
+                <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+                    @_errorMessage
+                </FluentMessageBar>
             }
 
-            <h3>Sample Data</h3>
-            <FluentDataGrid Items="_sampleRows.AsQueryable()" aria-label="File preview data" TGridItem="SampleRow">
-                @foreach (var (col, idx) in _filePreview.DetectedColumns.Select((c, i) => (c, i)))
-                {
-                    var colIndex = idx;
-                    <PropertyColumn Property="@(r => r.Values.Count > colIndex ? r.Values[colIndex] : "")" Title="@col" />
-                }
-            </FluentDataGrid>
+            @if (!string.IsNullOrEmpty(_successMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+                    @_successMessage
+                </FluentMessageBar>
+            }
+        </div>
+    }
 
-            <FluentStack Orientation="Orientation.Horizontal" Style="gap:8px;">
+    @if (_step == ImportStep.Upload)
+    {
+        <FluentCard Class="surface-card form-card" aria-label="Upload file">
+            <span class="eyebrow">Step 1</span>
+            <h2 class="section-heading">Choose account and file</h2>
+            <p class="section-copy">Attach one supported file and preview the detected structure before any import writes happen.</p>
+
+            <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
+                <FluentSelect TOption="string"
+                              Label="Account"
+                              @bind-Value="_selectedAccountIdStr"
+                              aria-required="true">
+                    <FluentOption TOption="string" Value="">Select an account...</FluentOption>
+                    @foreach (var account in _accounts)
+                    {
+                        <FluentOption TOption="string" Value="@account.Id.ToString()">
+                            @account.Name (@account.AccountType)
+                        </FluentOption>
+                    }
+                </FluentSelect>
+
+                <FluentInputFile @ref="_fileInput"
+                                 Mode="InputFileMode.Stream"
+                                 Accept=".csv,.ofx,.qfx,.qif"
+                                 MaximumFileCount="1"
+                                 MaximumFileSize="@(10 * 1024 * 1024)"
+                                 Label="Select file to import"
+                                 OnFileUploaded="HandleFileSelectedAsync"
+                                 aria-label="Choose a file to import" />
+
+                @if (_selectedFile is not null)
+                {
+                    <FluentBadge Appearance="Appearance.Neutral">
+                        @_selectedFileName
+                    </FluentBadge>
+                }
+
+                <div class="action-cluster">
+                    <FluentButton Appearance="Appearance.Accent"
+                                  Disabled="@(_selectedAccountId is null || _selectedFile is null || _isLoading)"
+                                  Loading="_isLoading"
+                                  OnClick="PreviewFileAsync">
+                        Preview Import
+                    </FluentButton>
+                </div>
+            </FluentStack>
+        </FluentCard>
+    }
+
+    @if (_step == ImportStep.ColumnMapping && _filePreview is not null)
+    {
+        <FluentCard Class="surface-card panel-stack" aria-label="Column mapping">
+            <div>
+                <span class="eyebrow">Step 2</span>
+                <h2 class="section-heading">Map source columns</h2>
+                <p class="section-copy">@_filePreview.TotalRows rows detected. Confirm the field mapping before previewing the import outcome.</p>
+            </div>
+
+            <div class="mapping-grid">
+                @foreach (var column in _filePreview.DetectedColumns)
+                {
+                    <div class="mapping-row">
+                        <FluentLabel Class="mapping-row__label">@column</FluentLabel>
+                        <FluentSelect TOption="string"
+                                      Value="@GetMappingValue(column)"
+                                      ValueChanged="@(val => SetMappingValue(column, val))">
+                            <FluentOption TOption="string" Value="">Skip</FluentOption>
+                            <FluentOption TOption="string" Value="Date">Date</FluentOption>
+                            <FluentOption TOption="string" Value="Amount">Amount</FluentOption>
+                            <FluentOption TOption="string" Value="Description">Description</FluentOption>
+                            <FluentOption TOption="string" Value="Payee">Payee</FluentOption>
+                            <FluentOption TOption="string" Value="Category">Category</FluentOption>
+                            <FluentOption TOption="string" Value="Notes">Notes</FluentOption>
+                            <FluentOption TOption="string" Value="ExternalId">External ID</FluentOption>
+                        </FluentSelect>
+                    </div>
+                }
+            </div>
+
+            <div>
+                <h3 class="section-heading">Sample data</h3>
+                <FluentDataGrid Items="_sampleRows.AsQueryable()" aria-label="File preview data" TGridItem="SampleRow" Class="data-grid--elevated">
+                    @foreach (var (col, idx) in _filePreview.DetectedColumns.Select((c, i) => (c, i)))
+                    {
+                        var colIndex = idx;
+                        <PropertyColumn Property="@(r => r.Values.Count > colIndex ? r.Values[colIndex] : "")" Title="@col" />
+                    }
+                </FluentDataGrid>
+            </div>
+
+            <div class="action-cluster">
                 <FluentButton Appearance="Appearance.Accent"
                               Disabled="@(!HasRequiredMappings() || _isLoading)"
                               Loading="_isLoading"
@@ -119,114 +149,106 @@
                 <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.Upload)">
                     Back
                 </FluentButton>
-            </FluentStack>
-        </FluentStack>
-    </section>
-}
+            </div>
+        </FluentCard>
+    }
 
-@if (_step == ImportStep.Preview && _previewResult is not null)
-{
-    <section aria-label="Import preview">
-        <h2>Import Preview</h2>
+    @if (_step == ImportStep.Preview && _previewResult is not null)
+    {
+        <FluentCard Class="surface-card panel-stack" aria-label="Import preview">
+            <div>
+                <span class="eyebrow">Step 3</span>
+                <h2 class="section-heading">Preview import results</h2>
+            </div>
 
-        <FluentGrid>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard aria-label="Total rows">
-                    <strong>Total Rows</strong>
-                    <p>@_previewResult.TotalRows</p>
+            <div class="detail-grid">
+                <FluentCard Class="detail-card" aria-label="Total rows">
+                    <span class="detail-card__label">Total rows</span>
+                    <strong>@_previewResult.TotalRows</strong>
                 </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard aria-label="Will import">
-                    <strong>Will Import</strong>
-                    <p style="color: var(--accent-fill-rest);">@_previewResult.ImportedCount</p>
+                <FluentCard Class="detail-card" aria-label="Will import">
+                    <span class="detail-card__label">Will import</span>
+                    <strong>@_previewResult.ImportedCount</strong>
                 </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard aria-label="Duplicates">
-                    <strong>Duplicates</strong>
-                    <p>@_previewResult.DuplicateCount</p>
+                <FluentCard Class="detail-card" aria-label="Duplicates">
+                    <span class="detail-card__label">Duplicates</span>
+                    <strong>@_previewResult.DuplicateCount</strong>
                 </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard aria-label="Errors">
-                    <strong>Errors</strong>
-                    <p style="color: var(--error);">@_previewResult.ErrorCount</p>
+                <FluentCard Class="detail-card" aria-label="Errors">
+                    <span class="detail-card__label">Errors</span>
+                    <strong>@_previewResult.ErrorCount</strong>
                 </FluentCard>
-            </FluentGridItem>
-        </FluentGrid>
+            </div>
 
-        @if (_previewResult.Errors.Count > 0)
-        {
-            <h3>Errors</h3>
-            <FluentDataGrid Items="_previewResult.Errors.AsQueryable()" aria-label="Import errors" TGridItem="ImportErrorDetail">
-                <PropertyColumn Property="@(e => e.RowNumber)" Title="Row" />
-                <PropertyColumn Property="@(e => e.Message)" Title="Error" />
-                <PropertyColumn Property="@(e => e.RawData ?? "")" Title="Raw Data" />
-            </FluentDataGrid>
-        }
+            @if (_previewResult.Errors.Count > 0)
+            {
+                <div>
+                    <h3 class="section-heading">Errors</h3>
+                    <FluentDataGrid Items="_previewResult.Errors.AsQueryable()" aria-label="Import errors" TGridItem="ImportErrorDetail" Class="data-grid--elevated">
+                        <PropertyColumn Property="@(e => e.RowNumber)" Title="Row" />
+                        <PropertyColumn Property="@(e => e.Message)" Title="Error" />
+                        <PropertyColumn Property="@(e => e.RawData ?? "")" Title="Raw Data" />
+                    </FluentDataGrid>
+                </div>
+            }
 
-        <FluentStack Orientation="Orientation.Horizontal" Style="margin-top:16px; gap:8px;">
-            <FluentButton Appearance="Appearance.Accent"
-                          Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)"
-                          Loading="_isLoading"
-                          OnClick="CommitImportAsync">
-                Commit Import (@_previewResult.ImportedCount transactions)
-            </FluentButton>
-            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.ColumnMapping)">
-                Back to Mapping
-            </FluentButton>
-        </FluentStack>
-    </section>
-}
+            <div class="action-cluster">
+                <FluentButton Appearance="Appearance.Accent"
+                              Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)"
+                              Loading="_isLoading"
+                              OnClick="CommitImportAsync">
+                    Commit Import (@_previewResult.ImportedCount transactions)
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.ColumnMapping)">
+                    Back to Mapping
+                </FluentButton>
+            </div>
+        </FluentCard>
+    }
 
-@if (_step == ImportStep.Complete && _importResult is not null)
-{
-    <section aria-label="Import complete">
-        <h2>Import Complete</h2>
+    @if (_step == ImportStep.Complete && _importResult is not null)
+    {
+        <FluentCard Class="surface-card panel-stack" aria-label="Import complete">
+            <div>
+                <span class="eyebrow">Step 4</span>
+                <h2 class="section-heading">Import complete</h2>
+            </div>
 
-        <FluentGrid>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard>
-                    <strong>Imported</strong>
-                    <p style="color: var(--accent-fill-rest);">@_importResult.ImportedCount</p>
+            <div class="detail-grid">
+                <FluentCard Class="detail-card">
+                    <span class="detail-card__label">Imported</span>
+                    <strong>@_importResult.ImportedCount</strong>
                 </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard>
-                    <strong>Duplicates Skipped</strong>
-                    <p>@_importResult.DuplicateCount</p>
+                <FluentCard Class="detail-card">
+                    <span class="detail-card__label">Duplicates skipped</span>
+                    <strong>@_importResult.DuplicateCount</strong>
                 </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard>
-                    <strong>Errors</strong>
-                    <p>@_importResult.ErrorCount</p>
+                <FluentCard Class="detail-card">
+                    <span class="detail-card__label">Errors</span>
+                    <strong>@_importResult.ErrorCount</strong>
                 </FluentCard>
-            </FluentGridItem>
-            <FluentGridItem xs="6" sm="3">
-                <FluentCard>
-                    <strong>Status</strong>
-                    <p>@_importResult.Status</p>
+                <FluentCard Class="detail-card">
+                    <span class="detail-card__label">Status</span>
+                    <strong>@_importResult.Status</strong>
                 </FluentCard>
-            </FluentGridItem>
-        </FluentGrid>
+            </div>
 
-        <FluentStack Orientation="Orientation.Horizontal" Style="margin-top:16px; gap:8px;">
-            <FluentButton Appearance="Appearance.Accent"
-                          OnClick="@(() => Navigation.NavigateTo($"/accounts/{_selectedAccountId}"))">
-                View Account
-            </FluentButton>
-            <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
-                Import Another File
-            </FluentButton>
-            <FluentButton Appearance="Appearance.Stealth"
-                          OnClick="@(() => Navigation.NavigateTo("/import/history"))">
-                Import History
-            </FluentButton>
-        </FluentStack>
-    </section>
-}
+            <div class="action-cluster">
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="@(() => Navigation.NavigateTo($"/accounts/{_selectedAccountId}"))">
+                    View Account
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
+                    Import Another File
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Stealth"
+                              OnClick="@(() => Navigation.NavigateTo("/import/history"))">
+                    Import History
+                </FluentButton>
+            </div>
+        </FluentCard>
+    }
+</section>
 
 @code {
     private enum ImportStep { Upload, ColumnMapping, Preview, Complete }

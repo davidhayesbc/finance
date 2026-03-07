@@ -2,60 +2,70 @@
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 
-<FluentLayout>
-    <!-- Skip to main content for accessibility (Task 1.20) -->
+<div class="app-shell">
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <FluentHeader>
-        <nav aria-label="Top navigation">
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween"
-                         Width="100%">
-                <FluentStack Orientation="Orientation.Horizontal">
-                    <FluentAnchor Href="/" Appearance="Appearance.Hypertext">
+    <header class="app-header">
+        <div class="app-header__inner">
+            <div class="brand-block">
+                <FluentAnchor Href="/" Appearance="Appearance.Hypertext" Class="brand-link">
+                    <span class="brand-mark">P</span>
+                    <span>
                         <strong>Privestio</strong>
-                    </FluentAnchor>
-                    @if (AuthService.IsAuthenticated)
-                    {
-                        <FluentAnchor Href="/accounts">Accounts</FluentAnchor>
-                        <FluentAnchor Href="/import">Import</FluentAnchor>
-                        <FluentAnchor Href="/rules">Rules</FluentAnchor>
-                    }
-                </FluentStack>
-                <FluentStack Orientation="Orientation.Horizontal">
-                    @if (AuthService.IsAuthenticated)
-                    {
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="HandleLogoutAsync">
-                            Logout
-                        </FluentButton>
-                    }
-                    else
-                    {
-                        <FluentAnchor Href="/login">Login</FluentAnchor>
-                    }
-                </FluentStack>
-            </FluentStack>
-        </nav>
-    </FluentHeader>
+                        <span class="brand-tagline">Personal finance with clear signal</span>
+                    </span>
+                </FluentAnchor>
+            </div>
 
-    <FluentBodyContent>
-        <main id="main-content" role="main">
-            <ErrorBoundary>
-                <ChildContent>
-                    @Body
-                </ChildContent>
-                <ErrorContent>
+            <nav class="primary-nav" aria-label="Primary navigation">
+                <FluentAnchor Href="/" Class="nav-pill">Overview</FluentAnchor>
+                @if (AuthService.IsAuthenticated)
+                {
+                    <FluentAnchor Href="/accounts" Class="nav-pill">Accounts</FluentAnchor>
+                    <FluentAnchor Href="/import" Class="nav-pill">Import</FluentAnchor>
+                    <FluentAnchor Href="/rules" Class="nav-pill">Rules</FluentAnchor>
+                }
+            </nav>
+
+            <div class="header-actions">
+                @if (AuthService.IsAuthenticated)
+                {
+                    <FluentButton Appearance="Appearance.Outline" OnClick="HandleLogoutAsync">
+                        Sign out
+                    </FluentButton>
+                }
+                else
+                {
+                    <FluentAnchor Href="/login" Class="nav-pill nav-pill--accent">Sign in</FluentAnchor>
+                }
+            </div>
+        </div>
+    </header>
+
+    <div class="app-backdrop" aria-hidden="true">
+        <div class="app-backdrop__orb app-backdrop__orb--left"></div>
+        <div class="app-backdrop__orb app-backdrop__orb--right"></div>
+    </div>
+
+    <main id="main-content" class="app-main" role="main">
+        <ErrorBoundary>
+            <ChildContent>
+                @Body
+            </ChildContent>
+            <ErrorContent>
+                <FluentCard Class="surface-card page-shell">
                     <FluentMessageBar Intent="@MessageIntent.Error">
-                        An unexpected error occurred. Please try refreshing the page.
+                        An unexpected error occurred. Please refresh the page and try again.
                     </FluentMessageBar>
-                </ErrorContent>
-            </ErrorBoundary>
-        </main>
-    </FluentBodyContent>
+                </FluentCard>
+            </ErrorContent>
+        </ErrorBoundary>
+    </main>
 
-    <FluentFooter>
-        <p>Privestio &mdash; Personal Finance Tracker</p>
-    </FluentFooter>
-</FluentLayout>
+    <footer class="app-footer">
+        <p>Privestio keeps budgets, imports, and account snapshots in one consistent workspace.</p>
+    </footer>
+</div>
 
 @code {
     private async Task HandleLogoutAsync()

@@ -6,13 +6,13 @@
     <NotFound>
         <PageTitle>Not found</PageTitle>
         <LayoutView Layout="typeof(Layout.MainLayout)">
-            <main role="main">
-                <p role="alert">Sorry, there's nothing at this address.</p>
-            </main>
+            <EmptyStateCard Message="Sorry, there's nothing at this address." Intent="MessageIntent.Warning" AriaLive="polite" />
         </LayoutView>
     </NotFound>
 </Router>
 
 <FluentToastProvider />
 <FluentDialogProvider />
+<FluentMessageBarProvider />
 <FluentTooltipProvider />
+<FluentKeyCodeProvider />

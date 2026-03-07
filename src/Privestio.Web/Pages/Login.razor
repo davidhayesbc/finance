@@ -5,39 +5,48 @@
 
 <PageTitle>Login — Privestio</PageTitle>
 
-<FluentCard class="login-card">
-    <h1>Sign In</h1>
-    <p>Welcome back to Privestio.</p>
+<section class="auth-shell">
+    <div class="auth-shell__intro">
+        <span class="eyebrow">Sign in</span>
+        <h1>Pick up where you left off.</h1>
+        <p>
+            Return to your accounts, imports, and categorization workflow with the same consistent view across devices.
+        </p>
+    </div>
 
-    @if (!string.IsNullOrEmpty(_errorMessage))
-    {
-        <FluentMessageBar Intent="@MessageIntent.Error">
-            @_errorMessage
-        </FluentMessageBar>
-    }
+    <FluentCard Class="surface-card auth-card">
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <FluentMessageBar Intent="@MessageIntent.Error">
+                @_errorMessage
+            </FluentMessageBar>
+        }
 
-    <EditForm Model="_form" OnValidSubmit="HandleLoginAsync" aria-label="Login form">
-        <DataAnnotationsValidator />
+        <EditForm Model="_form" OnValidSubmit="HandleLoginAsync" aria-label="Login form">
+            <DataAnnotationsValidator />
+            <FluentValidationSummary />
 
-        <FluentStack Orientation="Orientation.Vertical" Width="100%">
-            <FluentTextField @bind-Value="_form.Email" Label="Email address" Placeholder="you@example.com"
-                             Required="true" id="email" />
-            <ValidationMessage For="@(() => _form.Email)" />
+            <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
+                <FluentTextField @bind-Value="_form.Email" Label="Email address" Placeholder="you@example.com"
+                                 Required="true" id="email" maxlength="254" />
+                <FluentValidationMessage For="@(() => _form.Email)" />
 
-            <FluentTextField @bind-Value="_form.Password" Label="Password" Placeholder="Password"
-                             TextFieldType="TextFieldType.Password" Required="true" id="password" />
-            <ValidationMessage For="@(() => _form.Password)" />
+                <FluentTextField @bind-Value="_form.Password" Label="Password" Placeholder="Password"
+                                 TextFieldType="TextFieldType.Password" Required="true" id="password" />
+                <FluentValidationMessage For="@(() => _form.Password)" />
 
-            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading"
-                          Style="width:100%">
-                Sign In
-            </FluentButton>
-        </FluentStack>
-    </EditForm>
+                <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading"
+                              Class="full-width-button">
+                    Sign In
+                </FluentButton>
+            </FluentStack>
+        </EditForm>
 
-    <p>Don't have an account? <FluentAnchor Href="/register">Register</FluentAnchor>
-    </p>
-</FluentCard>
+        <p class="auth-card__footer">
+            Don’t have an account? <FluentAnchor Href="/register" Class="inline-link">Register</FluentAnchor>
+        </p>
+    </FluentCard>
+</section>
 
 @code {
     private readonly LoginFormModel _form = new();

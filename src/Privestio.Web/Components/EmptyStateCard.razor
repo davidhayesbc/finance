@@ -1,0 +1,31 @@
+<FluentCard Class="@CardClass">
+    <FluentMessageBar Intent="@Intent" aria-live="@AriaLive">
+        @Message
+    </FluentMessageBar>
+
+    @if (Actions is not null)
+    {
+        <div class="action-cluster empty-state-shell__actions">
+            @Actions
+        </div>
+    }
+</FluentCard>
+
+@code {
+    private string CardClass => $"surface-card empty-state-shell {Class}".Trim();
+
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = string.Empty;
+
+    [Parameter]
+    public MessageIntent Intent { get; set; } = MessageIntent.Info;
+
+    [Parameter]
+    public string AriaLive { get; set; } = "polite";
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+}

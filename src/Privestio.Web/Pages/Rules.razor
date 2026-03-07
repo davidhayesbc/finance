@@ -4,107 +4,120 @@
 
 <PageTitle>Categorization Rules — Privestio</PageTitle>
 
-<FluentBreadcrumb aria-label="Breadcrumb navigation">
-    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
-    <FluentBreadcrumbItem>Rules</FluentBreadcrumbItem>
-</FluentBreadcrumb>
+<section class="page-shell panel-stack">
+    <FluentBreadcrumb aria-label="Breadcrumb navigation">
+        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem>Rules</FluentBreadcrumbItem>
+    </FluentBreadcrumb>
 
-<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
-    <h1>Categorization Rules</h1>
-    <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm" aria-label="Create new rule">
-        + New Rule
-    </FluentButton>
-</FluentStack>
+    <PageHeader Eyebrow="Rules"
+                Title="Categorization rules"
+                Description="Keep rule priority, JSON conditions, and enablement in an interface that feels like an operations panel instead of raw scaffolding."
+                Compact="true">
+        <Actions>
+            <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm" aria-label="Create new rule">
+                New Rule
+            </FluentButton>
+        </Actions>
+    </PageHeader>
 
-@if (!string.IsNullOrEmpty(_errorMessage))
-{
-    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-        @_errorMessage
-    </FluentMessageBar>
-}
+    @if (!string.IsNullOrEmpty(_errorMessage) || !string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="message-stack">
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+                    @_errorMessage
+                </FluentMessageBar>
+            }
 
-@if (!string.IsNullOrEmpty(_successMessage))
-{
-    <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
-        @_successMessage
-    </FluentMessageBar>
-}
+            @if (!string.IsNullOrEmpty(_successMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+                    @_successMessage
+                </FluentMessageBar>
+            }
+        </div>
+    }
 
-@if (_isLoading)
-{
-    <FluentProgressRing aria-label="Loading rules" />
-}
-else if (!_showForm && _rules.Count == 0)
-{
-    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
-        No categorization rules yet. Create your first rule to auto-categorize imported transactions.
-    </FluentMessageBar>
-}
+    @if (_isLoading)
+    {
+        <div class="empty-state-shell">
+            <FluentProgressRing aria-label="Loading rules" />
+        </div>
+    }
+    else if (!_showForm && _rules.Count == 0)
+    {
+        <EmptyStateCard Message="No categorization rules yet. Create your first rule to auto-categorize imported transactions." />
+    }
 
-@if (_showForm)
-{
-    <section aria-label="@(_editingRuleId.HasValue ? "Edit rule" : "Create rule")">
-        <h2>@(_editingRuleId.HasValue ? "Edit Rule" : "New Rule")</h2>
+    @if (_showForm)
+    {
+        <FluentCard Class="surface-card form-card" aria-label="@(_editingRuleId.HasValue ? "Edit rule" : "Create rule")">
+            <h2 class="section-heading">@(_editingRuleId.HasValue ? "Edit rule" : "New rule")</h2>
 
-        <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="max-width:700px; gap:12px;">
-            <FluentTextField @bind-Value="_formName" Label="Rule Name"
-                             Placeholder="e.g., Loblaws → Groceries" Required="true" />
+            <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
+                <FluentTextField @bind-Value="_formName" Label="Rule Name"
+                                 Placeholder="e.g., Loblaws to Groceries" Required="true" maxlength="200" />
 
-            <FluentNumberField @bind-Value="_formPriority" Label="Priority (lower = higher priority)"
-                               Min="1" Max="9999" Step="1" />
+                <FluentNumberField @bind-Value="_formPriority" Label="Priority (lower = higher priority)"
+                                   Min="1" Max="9999" Step="1" />
 
-            <FluentTextArea @bind-Value="_formConditions" Label="Conditions (JSON)"
-                            Placeholder='e.g., {"field":"Description","operator":"Contains","value":"Loblaws"}'
-                            Rows="4" Style="font-family:monospace;" />
+                <FluentTextArea @bind-Value="_formConditions" Label="Conditions (JSON)"
+                                Placeholder='e.g., {"field":"Description","operator":"Contains","value":"Loblaws"}'
+                                Rows="4" Class="code-field" />
 
-            <FluentTextArea @bind-Value="_formActions" Label="Actions (JSON)"
-                            Placeholder='e.g., {"categoryId":"...","payeeId":"..."}'
-                            Rows="4" Style="font-family:monospace;" />
+                <FluentTextArea @bind-Value="_formActions" Label="Actions (JSON)"
+                                Placeholder='e.g., {"categoryId":"...","payeeId":"..."}'
+                                Rows="4" Class="code-field" />
 
-            <FluentCheckbox @bind-Value="_formIsEnabled" Label="Enabled" />
+                <FluentCheckbox @bind-Value="_formIsEnabled" Label="Enabled" />
 
-            <FluentStack Orientation="Orientation.Horizontal" Style="gap:8px;">
-                <FluentButton Appearance="Appearance.Accent"
-                              Disabled="@(string.IsNullOrWhiteSpace(_formName) || _isSaving)"
-                              Loading="_isSaving"
-                              OnClick="SaveRuleAsync">
-                    @(_editingRuleId.HasValue ? "Update Rule" : "Create Rule")
-                </FluentButton>
-                <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">
-                    Cancel
-                </FluentButton>
+                <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
+                    <FluentButton Appearance="Appearance.Accent"
+                                  Disabled="@(string.IsNullOrWhiteSpace(_formName) || _isSaving)"
+                                  Loading="_isSaving"
+                                  OnClick="SaveRuleAsync">
+                        @(_editingRuleId.HasValue ? "Update Rule" : "Create Rule")
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">
+                        Cancel
+                    </FluentButton>
+                </FluentStack>
             </FluentStack>
-        </FluentStack>
-    </section>
-}
+        </FluentCard>
+    }
 
-@if (!_isLoading && _rules.Count > 0)
-{
-    <FluentDataGrid Items="_rules.AsQueryable()" aria-label="Categorization rules" TGridItem="CategorizationRuleResponse">
-        <PropertyColumn Property="@(r => r.Priority)" Title="Priority" Sortable="true" />
-        <PropertyColumn Property="@(r => r.Name)" Title="Name" />
-        <TemplateColumn Title="Status">
-            <FluentBadge Appearance="@(context.IsEnabled ? Appearance.Accent : Appearance.Neutral)">
-                @(context.IsEnabled ? "Enabled" : "Disabled")
-            </FluentBadge>
-        </TemplateColumn>
-        <PropertyColumn Property="@(r => r.UpdatedAt)" Title="Updated" Format="g" />
-        <TemplateColumn Title="">
-            <FluentStack Orientation="Orientation.Horizontal" Style="gap:4px;">
-                <FluentButton Appearance="Appearance.Stealth"
-                              OnClick="@(() => EditRule(context))"
-                              aria-label="@($"Edit rule {context.Name}")">
-                    Edit
-                </FluentButton>
-                <FluentButton Appearance="Appearance.Stealth"
-                              OnClick="@(() => DeleteRuleAsync(context.Id))"
-                              aria-label="@($"Delete rule {context.Name}")">
-                    Delete
-                </FluentButton>
-            </FluentStack>
-        </TemplateColumn>
-    </FluentDataGrid>
-}
+    @if (!_isLoading && _rules.Count > 0)
+    {
+        <FluentCard Class="surface-card data-card">
+            <FluentDataGrid Items="_rules.AsQueryable()" aria-label="Categorization rules" TGridItem="CategorizationRuleResponse" Class="data-grid--elevated">
+                <PropertyColumn Property="@(r => r.Priority)" Title="Priority" Sortable="true" />
+                <PropertyColumn Property="@(r => r.Name)" Title="Name" />
+                <TemplateColumn Title="Status">
+                    <FluentBadge Appearance="@(context.IsEnabled ? Appearance.Accent : Appearance.Neutral)">
+                        @(context.IsEnabled ? "Enabled" : "Disabled")
+                    </FluentBadge>
+                </TemplateColumn>
+                <PropertyColumn Property="@(r => r.UpdatedAt)" Title="Updated" Format="g" />
+                <TemplateColumn Title="">
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap:4px;">
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      OnClick="@(() => EditRule(context))"
+                                      aria-label="@($"Edit rule {context.Name}")">
+                            Edit
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      OnClick="@(() => DeleteRuleAsync(context.Id))"
+                                      aria-label="@($"Delete rule {context.Name}")">
+                            Delete
+                        </FluentButton>
+                    </FluentStack>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</section>
 
 @code {
     private List<CategorizationRuleResponse> _rules = [];

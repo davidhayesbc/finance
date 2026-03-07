@@ -9,42 +9,12 @@ namespace Privestio.E2E.Tests;
 /// Run with: BASE_URL=https://localhost:5001 dotnet test tests/Privestio.E2E.Tests/
 /// </summary>
 [Trait("Category", "E2E")]
-public class SmokeTests : IAsyncLifetime
+public class SmokeTests : PlaywrightTestBase
 {
-    private IPlaywright? _playwright;
-    private IBrowser? _browser;
-    private IBrowserContext? _context;
-    private IPage? _page;
-
-    private static string BaseUrl =>
-        Environment.GetEnvironmentVariable("BASE_URL") ?? "https://localhost:5001";
-
-    public async Task InitializeAsync()
-    {
-        _playwright = await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
-        {
-            Headless = true,
-        });
-        _context = await _browser.NewContextAsync(new BrowserNewContextOptions
-        {
-            IgnoreHTTPSErrors = true,
-        });
-        _page = await _context.NewPageAsync();
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_page is not null) await _page.CloseAsync();
-        if (_context is not null) await _context.CloseAsync();
-        if (_browser is not null) await _browser.CloseAsync();
-        _playwright?.Dispose();
-    }
-
     [Fact(Skip = "Requires running application and Playwright browsers installed. Run with `dotnet playwright install`.")]
     public async Task Login_CreateAccount_AddTransaction_SmokeTest()
     {
-        var page = _page!;
+        var page = Page;
 
         // --- Step 1: Navigate to login page ---
         await page.GotoAsync($"{BaseUrl}/login");
@@ -59,7 +29,7 @@ public class SmokeTests : IAsyncLifetime
         await page.WaitForURLAsync($"{BaseUrl}/accounts");
 
         // --- Step 2: Navigate to add account ---
-        await page.ClickAsync("text=+ Add Account");
+        await page.ClickAsync("text=Add Account");
         await page.WaitForURLAsync($"{BaseUrl}/accounts/new");
 
         // Fill account form
@@ -76,7 +46,7 @@ public class SmokeTests : IAsyncLifetime
         Assert.Contains("Test Chequing E2E", heading);
 
         // --- Step 3: Add a transaction ---
-        await page.ClickAsync("text=+ Add Transaction");
+        await page.ClickAsync("text=Add Transaction");
         await page.WaitForURLAsync(new Regex($"{Regex.Escape(BaseUrl)}/accounts/.+/transactions/new"));
 
         await page.FillAsync("fluent-text-field[label='Description'] input", "E2E Test Transaction");

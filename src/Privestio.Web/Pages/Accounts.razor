@@ -4,43 +4,70 @@
 
 <PageTitle>Accounts — Privestio</PageTitle>
 
-<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
-    <h1>Accounts</h1>
-    <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
-                  aria-label="Add new account">
-        + Add Account
-    </FluentButton>
-</FluentStack>
+<section class="page-shell">
+    <div class="page-header">
+        <div>
+            <span class="eyebrow">Accounts</span>
+            <h1>Account workspace</h1>
+            <p>Review balances, institutions, and account types in one consistently styled table.</p>
+        </div>
 
-@if (_isLoading)
-{
-    <FluentProgressRing aria-label="Loading accounts" />
-}
-else if (_accounts.Count == 0)
-{
-    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
-        No accounts yet. Add your first account to get started.
-    </FluentMessageBar>
-}
-else
-{
-    <FluentDataGrid Items="_accounts.AsQueryable()" aria-label="Accounts table" TGridItem="AccountResponse">
-        <PropertyColumn Property="a => a.Name" Title="Account Name" />
-        <PropertyColumn Property="a => a.AccountType" Title="Type" />
-        <PropertyColumn Property="a => a.Institution" Title="Institution" />
-        <TemplateColumn Title="Balance">
-            <FluentBadge Appearance="Appearance.Neutral">
-                @context.CurrentBalance.ToString("C") @context.Currency
-            </FluentBadge>
-        </TemplateColumn>
-        <TemplateColumn Title="">
-            <FluentButton Appearance="Appearance.Stealth"
-                          @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))" aria-label="@($"View {context.Name}")">
-                View
-            </FluentButton>
-        </TemplateColumn>
-    </FluentDataGrid>
-}
+        <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
+                      aria-label="Add new account">
+            Add Account
+        </FluentButton>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="empty-state-shell">
+            <FluentProgressRing aria-label="Loading accounts" />
+        </div>
+    }
+    else if (_accounts.Count == 0)
+    {
+        <FluentCard Class="surface-card empty-state-shell">
+            <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
+                No accounts yet. Add your first account to get started.
+            </FluentMessageBar>
+        </FluentCard>
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card">
+            <div class="summary-strip">
+                <div>
+                    <span class="summary-strip__label">Total accounts</span>
+                    <strong>@_accounts.Count</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Institutions</span>
+                    <strong>@_accounts.Select(a => a.Institution).Where(i =>
+                                            !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
+                    </div>
+                </div>
+
+                <FluentDataGrid Items="_accounts.AsQueryable()" aria-label="Accounts table" TGridItem="AccountResponse"
+                                Class="data-grid--elevated">
+                    <PropertyColumn Property="a => a.Name" Title="Account Name" />
+                    <PropertyColumn Property="a => a.AccountType" Title="Type" />
+                    <PropertyColumn Property="a => a.Institution ?? string.Empty" Title="Institution" />
+                    <TemplateColumn Title="Balance">
+                        <FluentBadge Appearance="Appearance.Neutral" Class="balance-badge">
+                            @context.CurrentBalance.ToString("C") @context.Currency
+                        </FluentBadge>
+                    </TemplateColumn>
+                    <TemplateColumn Title="">
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))"
+                                      aria-label="@($"View {context.Name}")">
+                            View
+                        </FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            </FluentCard>
+        }
+    </section>
 
 @code {
     private List<AccountResponse> _accounts = new();

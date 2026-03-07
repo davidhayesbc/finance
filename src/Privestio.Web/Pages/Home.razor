@@ -1,7 +1,55 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Overview — Privestio</PageTitle>
 
-<h1>Hello, world!</h1>
+<section class="page-shell hero-panel">
+    <div class="hero-copy">
+        <span class="eyebrow">Offline-first personal finance</span>
+        <h1>See your money clearly, not just your transactions.</h1>
+        <p>
+            Privestio brings accounts, imports, and categorization into a single workspace with a calmer, more
+            deliberate interface.
+        </p>
+        <div class="hero-actions">
+            <FluentAnchor Href="/accounts" Class="button-link button-link--primary">View Accounts</FluentAnchor>
+            <FluentAnchor Href="/import" Class="button-link button-link--secondary">Import Transactions</FluentAnchor>
+        </div>
+    </div>
 
-Welcome to your new app.
+    <div class="hero-metrics" aria-label="Key product highlights">
+        <FluentCard Class="metric-card metric-card--primary">
+            <span class="metric-card__label">Workflow</span>
+            <strong>Accounts, rules, and imports</strong>
+            <p>Built to keep onboarding and recurring cleanup in the same place.</p>
+        </FluentCard>
+        <FluentCard Class="metric-card">
+            <span class="metric-card__label">Default posture</span>
+            <strong>Private and self-hosted</strong>
+            <p>Designed for people who want direct control over financial data.</p>
+        </FluentCard>
+    </div>
+</section>
+
+<section class="page-shell content-grid">
+    <FluentCard Class="surface-card feature-card">
+        <span class="eyebrow">Accounts</span>
+        <h2>Track every balance with less friction</h2>
+        <p>Add banking, credit, investment, property, and loan accounts with a consistent form flow.</p>
+        <FluentAnchor Href="/accounts" Class="inline-link">Open account list</FluentAnchor>
+    </FluentCard>
+
+    <FluentCard Class="surface-card feature-card">
+        <span class="eyebrow">Import</span>
+        <h2>Map files once, reuse the workflow</h2>
+        <p>Preview files, inspect errors, and save mappings so repetitive imports take less effort.</p>
+        <FluentAnchor Href="/import" Class="inline-link">Go to import</FluentAnchor>
+    </FluentCard>
+
+    <FluentCard Class="surface-card feature-card">
+        <span class="eyebrow">Rules</span>
+        <h2>Keep categorization logic visible</h2>
+        <p>Edit rule priority and JSON conditions in a layout that reads like an operations surface instead of a raw
+            form.</p>
+            <FluentAnchor Href="/rules" Class="inline-link">Manage rules</FluentAnchor>
+        </FluentCard>
+    </section>

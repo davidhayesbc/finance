@@ -4,53 +4,60 @@
 
 <PageTitle>Saved Mappings — Privestio</PageTitle>
 
-<FluentBreadcrumb aria-label="Breadcrumb navigation">
-    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
-    <FluentBreadcrumbItem Href="/import">Import</FluentBreadcrumbItem>
-    <FluentBreadcrumbItem>Saved Mappings</FluentBreadcrumbItem>
-</FluentBreadcrumb>
+<section class="page-shell panel-stack">
+    <FluentBreadcrumb aria-label="Breadcrumb navigation">
+        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem Href="/import">Import</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem>Saved Mappings</FluentBreadcrumbItem>
+    </FluentBreadcrumb>
 
-<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
-    <h1>Saved Mappings</h1>
-</FluentStack>
+    <PageHeader Eyebrow="Import"
+                Title="Saved mappings"
+                Description="Review reusable file mappings and remove obsolete templates before the next import run."
+                Compact="true" />
 
-@if (_isLoading)
-{
-    <FluentProgressRing aria-label="Loading mappings" />
-}
-else if (_mappings.Count == 0)
-{
-    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
-        No saved mappings yet. Create a mapping during the import process.
-    </FluentMessageBar>
-}
-else
-{
-    <FluentDataGrid Items="_mappings.AsQueryable()" aria-label="Saved import mappings" TGridItem="ImportMappingResponse">
-        <PropertyColumn Property="@(m => m.Name)" Title="Name" />
-        <PropertyColumn Property="@(m => m.FileFormat)" Title="Format" />
-        <PropertyColumn Property="@(m => m.Institution ?? "—")" Title="Institution" />
-        <TemplateColumn Title="Mapped Columns">
-            <FluentBadge Appearance="Appearance.Neutral">
-                @context.ColumnMappings.Count columns
-            </FluentBadge>
-        </TemplateColumn>
-        <TemplateColumn Title="">
-            <FluentButton Appearance="Appearance.Stealth"
-                          OnClick="@(() => DeleteMappingAsync(context.Id))"
-                          aria-label="@($"Delete mapping {context.Name}")">
-                Delete
-            </FluentButton>
-        </TemplateColumn>
-    </FluentDataGrid>
-}
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="message-stack">
+            <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+                @_errorMessage
+            </FluentMessageBar>
+        </div>
+    }
 
-@if (!string.IsNullOrEmpty(_errorMessage))
-{
-    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-        @_errorMessage
-    </FluentMessageBar>
-}
+    @if (_isLoading)
+    {
+        <div class="empty-state-shell">
+            <FluentProgressRing aria-label="Loading mappings" />
+        </div>
+    }
+    else if (_mappings.Count == 0)
+    {
+        <EmptyStateCard Message="No saved mappings yet. Create a mapping during the import process." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card">
+            <FluentDataGrid Items="_mappings.AsQueryable()" aria-label="Saved import mappings" TGridItem="ImportMappingResponse" Class="data-grid--elevated">
+                <PropertyColumn Property="@(m => m.Name)" Title="Name" />
+                <PropertyColumn Property="@(m => m.FileFormat)" Title="Format" />
+                <PropertyColumn Property="@(m => m.Institution ?? "—")" Title="Institution" />
+                <TemplateColumn Title="Mapped Columns">
+                    <FluentBadge Appearance="Appearance.Neutral">
+                        @context.ColumnMappings.Count columns
+                    </FluentBadge>
+                </TemplateColumn>
+                <TemplateColumn Title="">
+                    <FluentButton Appearance="Appearance.Stealth"
+                                  OnClick="@(() => DeleteMappingAsync(context.Id))"
+                                  aria-label="@($"Delete mapping {context.Name}")">
+                        Delete
+                    </FluentButton>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</section>
 
 @code {
     private List<ImportMappingResponse> _mappings = [];

@@ -4,69 +4,82 @@
 
 <PageTitle>Import History — Privestio</PageTitle>
 
-<FluentBreadcrumb aria-label="Breadcrumb navigation">
-    <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
-    <FluentBreadcrumbItem Href="/import">Import</FluentBreadcrumbItem>
-    <FluentBreadcrumbItem>History</FluentBreadcrumbItem>
-</FluentBreadcrumb>
+<section class="page-shell panel-stack">
+    <FluentBreadcrumb aria-label="Breadcrumb navigation">
+        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem Href="/import">Import</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem>History</FluentBreadcrumbItem>
+    </FluentBreadcrumb>
 
-<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
-    <h1>Import History</h1>
-    <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Navigation.NavigateTo("/import"))">
-        New Import
-    </FluentButton>
-</FluentStack>
+    <PageHeader Eyebrow="Import"
+                Title="Import history"
+                Description="Inspect previous import batches, error counts, and rollback candidates in one table."
+                Compact="true">
+        <Actions>
+            <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Navigation.NavigateTo("/import"))">
+                New Import
+            </FluentButton>
+        </Actions>
+    </PageHeader>
 
-@if (_isLoading)
-{
-    <FluentProgressRing aria-label="Loading import history" />
-}
-else if (_batches.Count == 0)
-{
-    <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
-        No imports yet. Import your first file to get started.
-    </FluentMessageBar>
-}
-else
-{
-    <FluentDataGrid Items="_batches.AsQueryable()" aria-label="Import history" TGridItem="ImportBatchResponse">
-        <PropertyColumn Property="@(b => b.FileName)" Title="File" />
-        <PropertyColumn Property="@(b => b.FileFormat)" Title="Format" />
-        <PropertyColumn Property="@(b => b.ImportDate)" Title="Date" Format="g" />
-        <PropertyColumn Property="@(b => b.SuccessCount)" Title="Imported" />
-        <PropertyColumn Property="@(b => b.DuplicateCount)" Title="Duplicates" />
-        <PropertyColumn Property="@(b => b.ErrorCount)" Title="Errors" />
-        <TemplateColumn Title="Status">
-            <FluentBadge Appearance="@(GetStatusAppearance(context.Status))">
-                @context.Status
-            </FluentBadge>
-        </TemplateColumn>
-        <TemplateColumn Title="">
-            @if (context.Status is "Completed" or "CompletedWithErrors")
+    @if (!string.IsNullOrEmpty(_errorMessage) || !string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="message-stack">
+            @if (!string.IsNullOrEmpty(_errorMessage))
             {
-                <FluentButton Appearance="Appearance.Stealth"
-                              OnClick="@(() => RollbackAsync(context.Id))"
-                              aria-label="@($"Rollback import {context.FileName}")">
-                    Rollback
-                </FluentButton>
+                <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+                    @_errorMessage
+                </FluentMessageBar>
             }
-        </TemplateColumn>
-    </FluentDataGrid>
-}
 
-@if (!string.IsNullOrEmpty(_errorMessage))
-{
-    <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-        @_errorMessage
-    </FluentMessageBar>
-}
+            @if (!string.IsNullOrEmpty(_successMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+                    @_successMessage
+                </FluentMessageBar>
+            }
+        </div>
+    }
 
-@if (!string.IsNullOrEmpty(_successMessage))
-{
-    <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
-        @_successMessage
-    </FluentMessageBar>
-}
+    @if (_isLoading)
+    {
+        <div class="empty-state-shell">
+            <FluentProgressRing aria-label="Loading import history" />
+        </div>
+    }
+    else if (_batches.Count == 0)
+    {
+        <EmptyStateCard Message="No imports yet. Import your first file to get started." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card">
+            <FluentDataGrid Items="_batches.AsQueryable()" aria-label="Import history" TGridItem="ImportBatchResponse" Class="data-grid--elevated">
+                <PropertyColumn Property="@(b => b.FileName)" Title="File" />
+                <PropertyColumn Property="@(b => b.FileFormat)" Title="Format" />
+                <PropertyColumn Property="@(b => b.ImportDate)" Title="Date" Format="g" />
+                <PropertyColumn Property="@(b => b.SuccessCount)" Title="Imported" />
+                <PropertyColumn Property="@(b => b.DuplicateCount)" Title="Duplicates" />
+                <PropertyColumn Property="@(b => b.ErrorCount)" Title="Errors" />
+                <TemplateColumn Title="Status">
+                    <FluentBadge Appearance="@(GetStatusAppearance(context.Status))">
+                        @context.Status
+                    </FluentBadge>
+                </TemplateColumn>
+                <TemplateColumn Title="">
+                    @if (context.Status is "Completed" or "CompletedWithErrors")
+                    {
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      OnClick="@(() => RollbackAsync(context.Id))"
+                                      aria-label="@($"Rollback import {context.FileName}")">
+                            Rollback
+                        </FluentButton>
+                    }
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</section>
 
 @code {
     private List<ImportBatchResponse> _batches = [];
