@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <Sdk Name="Aspire.AppHost.Sdk" Version="13.1.2" />
 
   <PropertyGroup>
@@ -16,6 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Privestio.Api\Privestio.Api.csproj" />
+    <ProjectReference Include="..\Privestio.Web\Privestio.Web.csproj" />
   </ItemGroup>
-
 </Project>
