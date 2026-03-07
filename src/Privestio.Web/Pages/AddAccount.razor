@@ -11,13 +11,8 @@
         <FluentBreadcrumbItem>New Account</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <div class="page-header page-header--compact">
-        <div>
-            <span class="eyebrow">New account</span>
-            <h1>Add an account</h1>
-            <p>Use a compact, consistent form for onboarding balances and institutions.</p>
-        </div>
-    </div>
+    <PageHeader Eyebrow="New account"                Title="Add an account"
+                Description="Use a compact, consistent form for onboarding balances and institutions."                Compact="true" />
 
     <FluentCard Class="surface-card form-card">
         @if (!string.IsNullOrEmpty(_errorMessage))
@@ -33,10 +28,10 @@
 
             <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
                 <FluentTextField @bind-Value="_form.Name" Label="Account name" Placeholder="e.g., Main Chequing"
-                                 Required="true" maxlength="200" />
+                                 Required="true" maxlength="200" id="account-name" />
                 <FluentValidationMessage For="@(() => _form.Name)" />
 
-                <FluentSelect TOption="string" @bind-Value="_form.AccountType" Label="Account type">
+                <FluentSelect TOption="string" @bind-Value="_form.AccountType" Label="Account type" id="account-type">
                     <FluentOption TOption="string" Value="">Select type...</FluentOption>
                     <FluentOption TOption="string" Value="Banking">Banking</FluentOption>
                     <FluentOption TOption="string" Value="Credit">Credit</FluentOption>
@@ -46,7 +41,7 @@
                 </FluentSelect>
                 <FluentValidationMessage For="@(() => _form.AccountType)" />
 
-                <FluentSelect TOption="string" @bind-Value="_form.AccountSubType" Label="Sub-type">
+                <FluentSelect TOption="string" @bind-Value="_form.AccountSubType" Label="Sub-type" id="account-subtype">
                     <FluentOption TOption="string" Value="">Select sub-type...</FluentOption>
                     <FluentOption TOption="string" Value="Chequing">Chequing</FluentOption>
                     <FluentOption TOption="string" Value="Savings">Savings</FluentOption>
@@ -60,15 +55,16 @@
                     <FluentOption TOption="string" Value="Mortgage">Mortgage</FluentOption>
                 </FluentSelect>
 
-                <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency">
+                <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency" id="account-currency">
                     <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
                     <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
                 </FluentSelect>
 
                 <FluentTextField @bind-Value="_form.Institution" Label="Institution" Placeholder="e.g., RBC, TD"
-                                 maxlength="200" />
+                                 maxlength="200" id="account-institution" />
 
-                <FluentNumberField @bind-Value="_form.OpeningBalance" Label="Opening balance" Step="1" />
+                <FluentNumberField @bind-Value="_form.OpeningBalance" Label="Opening balance" Step="1"
+                                   id="account-opening-balance" />
 
                 <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
                     <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading">

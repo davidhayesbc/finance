@@ -13,7 +13,7 @@
         <FluentBreadcrumbItem>New Transaction</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="New transaction"                Title="Add a transaction"
+    <PageHeader Eyebrow="New transaction" Title="Add a transaction"
                 Description="Capture a clean description, amount, and transaction type without leaving the account workflow."
                 Compact="true" />
 
@@ -30,17 +30,20 @@
             <FluentValidationSummary />
 
             <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                <FluentDatePicker @bind-Value="_date" Label="Transaction date" />
+                <FluentDatePicker @bind-Value="_date" Label="Transaction date" id="transaction-date" />
                 <FluentValidationMessage For="@(() => _form.Date)" />
 
                 <FluentTextField @bind-Value="_form.Description" Label="Description"
-                                 Placeholder="e.g., Loblaws, Payroll Deposit" Required="true" maxlength="500" />
+                                 Placeholder="e.g., Loblaws, Payroll Deposit" Required="true" maxlength="500"
+                                 id="transaction-description" />
                 <FluentValidationMessage For="@(() => _form.Description)" />
 
-                <FluentNumberField @bind-Value="_form.Amount" Label="Amount" Step="0.01" Min="0.01" />
+                <FluentNumberField @bind-Value="_form.Amount" Label="Amount" Step="0.01" Min="0.01"
+                                   id="transaction-amount" />
                 <FluentValidationMessage For="@(() => _form.Amount)" />
 
-                <FluentSelect TOption="string" @bind-Value="_form.TransactionType" Label="Transaction type">
+                <FluentSelect TOption="string" @bind-Value="_form.TransactionType" Label="Transaction type"
+                              id="transaction-type">
                     <FluentOption TOption="string" Value="">Select type...</FluentOption>
                     <FluentOption TOption="string" Value="Debit">Debit (expense)</FluentOption>
                     <FluentOption TOption="string" Value="Credit">Credit (income)</FluentOption>
@@ -49,7 +52,7 @@
                 <FluentValidationMessage For="@(() => _form.TransactionType)" />
 
                 <FluentTextField @bind-Value="_form.Notes" Label="Notes (optional)" Placeholder="Optional notes"
-                                 maxlength="500" />
+                                 maxlength="500" id="transaction-notes" />
 
                 <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
                     <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading">

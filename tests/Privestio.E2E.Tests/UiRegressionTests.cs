@@ -1,11 +1,12 @@
 namespace Privestio.E2E.Tests;
 
+[Collection("E2E")]
 public class UiRegressionTests : PlaywrightTestBase
 {
-    private const string RequiresRunningApp =
-        "Requires a running application, configured BASE_URL, and Playwright browsers installed.";
+    public UiRegressionTests(AppHostFixture appHostFixture)
+        : base(appHostFixture) { }
 
-    [Fact(Skip = RequiresRunningApp)]
+    [Fact]
     public async Task HomePage_ShowsHeroAndFeatureCards()
     {
         await GotoRelativeAsync("/");
@@ -18,7 +19,7 @@ public class UiRegressionTests : PlaywrightTestBase
         );
     }
 
-    [Fact(Skip = RequiresRunningApp)]
+    [Fact]
     public async Task LoginPage_ShowsSignInShell()
     {
         await GotoRelativeAsync("/login");
@@ -29,7 +30,7 @@ public class UiRegressionTests : PlaywrightTestBase
         Assert.True(await Page.Locator("input#password").IsVisibleAsync());
     }
 
-    [Fact(Skip = RequiresRunningApp)]
+    [Fact]
     public async Task RegisterPage_AllowsFullLengthEmailInput()
     {
         await GotoRelativeAsync("/register");
@@ -41,7 +42,7 @@ public class UiRegressionTests : PlaywrightTestBase
         Assert.Equal(254, value.Length);
     }
 
-    [Fact(Skip = RequiresRunningApp)]
+    [Fact]
     public async Task UnknownRoute_ShowsFriendlyEmptyState()
     {
         await GotoRelativeAsync("/definitely-not-a-route");
@@ -51,19 +52,19 @@ public class UiRegressionTests : PlaywrightTestBase
         );
     }
 
-    [Fact(Skip = RequiresRunningApp)]
+    [Fact]
     public async Task AccountsPage_ShowsWorkspaceHeader_WhenAuthenticated()
     {
-        await LoginIfConfiguredAsync();
+        await RegisterAndReachAccountsAsync();
 
         var heading = await Page.TextContentAsync("h1");
         Assert.Contains("Account workspace", heading);
     }
 
-    [Fact(Skip = RequiresRunningApp)]
+    [Fact]
     public async Task ImportPage_ShowsWorkflowHeader_WhenAuthenticated()
     {
-        await LoginIfConfiguredAsync();
+        await RegisterAndReachAccountsAsync();
         await GotoRelativeAsync("/import");
 
         var heading = await Page.TextContentAsync("h1");

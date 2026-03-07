@@ -8,36 +8,28 @@ namespace Privestio.E2E.Tests;
 /// These tests require a running application and a configured BASE_URL environment variable.
 /// Run with: BASE_URL=https://localhost:5001 dotnet test tests/Privestio.E2E.Tests/
 /// </summary>
+[Collection("E2E")]
 [Trait("Category", "E2E")]
 public class SmokeTests : PlaywrightTestBase
 {
-    [Fact(
-        Skip = "Requires running application and Playwright browsers installed. Run with `dotnet playwright install`."
-    )]
+    public SmokeTests(AppHostFixture appHostFixture)
+        : base(appHostFixture) { }
+
+    [Fact]
     public async Task Login_CreateAccount_AddTransaction_SmokeTest()
     {
         var page = Page;
 
-        // --- Step 1: Navigate to login page ---
-        await page.GotoAsync($"{BaseUrl}/login");
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-
-        // Fill login form
-        await page.FillAsync("input#email", "admin@privestio.test");
-        await page.FillAsync("input#password", "Admin@Privestio123!");
-        await page.ClickAsync("button[type=submit]");
-
-        // Wait for redirect to accounts
-        await page.WaitForURLAsync($"{BaseUrl}/accounts");
+        await RegisterAndReachAccountsAsync(displayName: "Smoke Test User");
 
         // --- Step 2: Navigate to add account ---
-        await page.ClickAsync("text=Add Account");
+        await page.ClickAsync("[aria-label='Add new account']");
         await page.WaitForURLAsync($"{BaseUrl}/accounts/new");
 
         // Fill account form
-        await page.FillAsync("fluent-text-field[label='Account name'] input", "Test Chequing E2E");
-        await page.SelectOptionAsync("fluent-select[label='Account type']", "Banking");
-        await page.SelectOptionAsync("fluent-select[label='Sub-type']", "Chequing");
+        await page.FillAsync("input#account-name", "Test Chequing E2E");
+        await page.SelectOptionAsync("#account-type", "Banking");
+        await page.SelectOptionAsync("#account-subtype", "Chequing");
         await page.ClickAsync("fluent-button[type=submit]");
 
         // Wait for redirect to account detail
@@ -53,12 +45,9 @@ public class SmokeTests : PlaywrightTestBase
             new Regex($"{Regex.Escape(BaseUrl)}/accounts/.+/transactions/new")
         );
 
-        await page.FillAsync(
-            "fluent-text-field[label='Description'] input",
-            "E2E Test Transaction"
-        );
-        await page.FillAsync("fluent-number-field[label='Amount'] input", "100.00");
-        await page.SelectOptionAsync("fluent-select[label='Transaction type']", "Debit");
+        await page.FillAsync("input#transaction-description", "E2E Test Transaction");
+        await page.FillAsync("input#transaction-amount", "100.00");
+        await page.SelectOptionAsync("#transaction-type", "Debit");
         await page.ClickAsync("fluent-button[type=submit]");
 
         // Should redirect back to account detail

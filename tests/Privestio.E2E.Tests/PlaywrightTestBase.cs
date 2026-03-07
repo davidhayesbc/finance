@@ -5,13 +5,18 @@ namespace Privestio.E2E.Tests;
 [Trait("Category", "E2E")]
 public abstract class PlaywrightTestBase : IAsyncLifetime
 {
+    private readonly AppHostFixture _appHostFixture;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
     private IBrowserContext? _context;
     private IPage? _page;
 
-    protected static string BaseUrl =>
-        Environment.GetEnvironmentVariable("BASE_URL") ?? "https://localhost:5001";
+    protected PlaywrightTestBase(AppHostFixture appHostFixture)
+    {
+        _appHostFixture = appHostFixture;
+    }
+
+    protected string BaseUrl => _appHostFixture.BaseUrl;
 
     protected IPage Page =>
         _page ?? throw new InvalidOperationException("Playwright page not initialized.");
@@ -60,6 +65,24 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
         await GotoRelativeAsync("/login");
         await Page.FillAsync("input#email", email);
         await Page.FillAsync("input#password", password);
+        await Page.ClickAsync("button[type=submit]");
+        await Page.WaitForURLAsync($"{BaseUrl}/accounts");
+    }
+
+    protected async Task RegisterAndReachAccountsAsync(
+        string? displayName = null,
+        string? email = null,
+        string? password = null
+    )
+    {
+        var resolvedDisplayName = displayName ?? "E2E Test User";
+        var resolvedEmail = email ?? $"e2e.{Guid.NewGuid():N}@example.test";
+        var resolvedPassword = password ?? "Admin@Privestio123!";
+
+        await GotoRelativeAsync("/register");
+        await Page.FillAsync("input#displayName", resolvedDisplayName);
+        await Page.FillAsync("input#email", resolvedEmail);
+        await Page.FillAsync("input#password", resolvedPassword);
         await Page.ClickAsync("button[type=submit]");
         await Page.WaitForURLAsync($"{BaseUrl}/accounts");
     }

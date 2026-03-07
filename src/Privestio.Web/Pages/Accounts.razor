@@ -5,18 +5,15 @@
 <PageTitle>Accounts — Privestio</PageTitle>
 
 <section class="page-shell">
-    <div class="page-header">
-        <div>
-            <span class="eyebrow">Accounts</span>
-            <h1>Account workspace</h1>
-            <p>Review balances, institutions, and account types in one consistently styled table.</p>
-        </div>
-
-        <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
-                      aria-label="Add new account">
-            Add Account
-        </FluentButton>
-    </div>
+    <PageHeader Eyebrow="Accounts"     Title="Account workspace"
+                Description="Review balances, institutions, and account types in one consistently styled table.">
+        <Actions>
+            <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
+                          aria-label="Add new account">
+                Add Account
+            </FluentButton>
+        </Actions>
+    </PageHeader>
 
     @if (_isLoading)
     {
@@ -26,11 +23,13 @@
     }
     else if (_accounts.Count == 0)
     {
-        <FluentCard Class="surface-card empty-state-shell">
-            <FluentMessageBar Intent="MessageIntent.Info" aria-live="polite">
-                No accounts yet. Add your first account to get started.
-            </FluentMessageBar>
-        </FluentCard>
+        <EmptyStateCard Message="No accounts yet. Add your first account to get started.">
+            <Actions>
+                <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))">
+                    Add Account
+                </FluentButton>
+            </Actions>
+        </EmptyStateCard>
     }
     else
     {
@@ -43,7 +42,7 @@
                 <div>
                     <span class="summary-strip__label">Institutions</span>
                     <strong>@_accounts.Select(a => a.Institution).Where(i =>
-                                            !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
+                                                                    !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
                     </div>
                 </div>
 
