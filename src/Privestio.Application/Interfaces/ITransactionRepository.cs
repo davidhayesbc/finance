@@ -45,4 +45,15 @@ public interface ITransactionRepository
         int maxResults = 50,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Gets all transactions (with splits) for a user's accounts in a date range.
+    /// Used for split-aware budget tracking.
+    /// </summary>
+    Task<IReadOnlyList<Transaction>> GetByOwnerAndDateRangeAsync(
+        Guid ownerId,
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default
+    );
 }

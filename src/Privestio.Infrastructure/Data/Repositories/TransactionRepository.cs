@@ -177,4 +177,23 @@ public class TransactionRepository : ITransactionRepository
             .Take(maxResults)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Transaction>> GetByOwnerAndDateRangeAsync(
+        Guid ownerId,
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Transactions.Include(t => t.Splits)
+            .Include(t => t.Category)
+            .Include(t => t.Account)
+            .Where(t =>
+                t.Account != null
+                && t.Account.OwnerId == ownerId
+                && t.Date >= startDate
+                && t.Date <= endDate
+            )
+            .OrderByDescending(t => t.Date)
+            .ToListAsync(cancellationToken);
 }

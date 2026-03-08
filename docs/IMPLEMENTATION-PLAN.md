@@ -814,23 +814,23 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 | Task | Description | Estimate | Done |
 |------|-------------|----------|:----:|
-| 3.1 | Implement Budget entity and CRUD endpoints | 3h | [ ] |
-| 3.2 | Build Budget UI: set budgets per category, monthly view | 4h | [ ] |
-| 3.3 | Split-aware budget tracking: use split line categories (not parent) for accurate per-category spend | 3h | [ ] |
-| 3.4 | Budget vs Actual calculations and display (including split-aware totals) | 4h | [ ] |
-| 3.5 | Category management (create, group, reorder categories) | 3h | [ ] |
-| 3.6 | Implement SinkingFund entity: target amount, due date, frequency, funding account | 3h | [ ] |
-| 3.7 | Sinking fund calculation service: compute monthly set-aside, track accumulated vs target | 3h | [ ] |
-| 3.8 | Sinking fund UI: create/edit funds, progress bars, alerts when behind schedule | 4h | [ ] |
-| 3.9 | Implement RecurringTransaction entity and CRUD | 3h | [ ] |
-| 3.10 | Build Recurring Transactions UI: define patterns, preview schedule | 4h | [ ] |
-| 3.11 | Auto-generation of future expected transactions | 3h | [ ] |
-| 3.12 | Cash flow forecasting engine (project balances including recurring, budgets, and sinking fund contributions) | 6h | [ ] |
-| 3.13 | Forecast visualization (line chart with actual vs projected) | 4h | [ ] |
-| 3.14 | Minimum balance alerts | 2h | [ ] |
-| 3.15 | Notification infrastructure: Notification entity, in-app notification center component, alert generation service | 5h | [ ] |
-| 3.16 | Notification preferences: per-alert-type enable/disable, threshold configuration, snooze/dismiss actions | 3h | [ ] |
-| 3.17 | Tests for budgeting, sinking funds, forecasting logic, and notification delivery | 6h | [ ] |
+| 3.1 | Implement Budget entity and CRUD endpoints | 3h | [x] |
+| 3.2 | Build Budget UI: set budgets per category, monthly view | 4h | [x] |
+| 3.3 | Split-aware budget tracking: use split line categories (not parent) for accurate per-category spend | 3h | [x] |
+| 3.4 | Budget vs Actual calculations and display (including split-aware totals) | 4h | [x] |
+| 3.5 | Category management (create, group, reorder categories) | 3h | [x] |
+| 3.6 | Implement SinkingFund entity: target amount, due date, frequency, funding account | 3h | [x] |
+| 3.7 | Sinking fund calculation service: compute monthly set-aside, track accumulated vs target | 3h | [x] |
+| 3.8 | Sinking fund UI: create/edit funds, progress bars, alerts when behind schedule | 4h | [x] |
+| 3.9 | Implement RecurringTransaction entity and CRUD | 3h | [x] |
+| 3.10 | Build Recurring Transactions UI: define patterns, preview schedule | 4h | [x] |
+| 3.11 | Auto-generation of future expected transactions | 3h | [x] |
+| 3.12 | Cash flow forecasting engine (project balances including recurring, budgets, and sinking fund contributions) | 6h | [x] |
+| 3.13 | Forecast visualization (line chart with actual vs projected) | 4h | [x] |
+| 3.14 | Minimum balance alerts | 2h | [x] |
+| 3.15 | Notification infrastructure: Notification entity, in-app notification center component, alert generation service | 5h | [x] |
+| 3.16 | Notification preferences: per-alert-type enable/disable, threshold configuration, snooze/dismiss actions | 3h | [x] |
+| 3.17 | Tests for budgeting, sinking funds, forecasting logic, and notification delivery | 6h | [x] |
 
 **Deliverable:** Split-aware budgets, sinking funds, recurring transactions, reliable cash flow forecasting, in-app notification center with user-configurable preferences.
 

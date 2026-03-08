@@ -32,6 +32,9 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Valuation> Valuations => Set<Valuation>();
     public DbSet<ImportMapping> ImportMappings => Set<ImportMapping>();
     public DbSet<CategorizationRule> CategorizationRules => Set<CategorizationRule>();
+    public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<SinkingFund> SinkingFunds => Set<SinkingFund>();
+    public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +60,9 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Valuation>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ImportMapping>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<CategorizationRule>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Budget>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SinkingFund>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<RecurringTransaction>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

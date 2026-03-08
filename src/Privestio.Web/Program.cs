@@ -22,5 +22,9 @@ builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IRuleService, RuleService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<ISinkingFundService, SinkingFundService>();
+builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
+builder.Services.AddScoped<INotificationWebService, NotificationWebService>();
 
 await builder.Build().RunAsync();

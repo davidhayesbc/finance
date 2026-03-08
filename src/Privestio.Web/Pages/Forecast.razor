@@ -1,0 +1,127 @@
+@page "/forecast"
+@inject INotificationWebService NotificationService
+
+<PageTitle>Cash Flow Forecast — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Forecasting" Title="Cash flow forecast" Description="Project future income, expenses, and balances based on recurring transactions and budgets." />
+
+    <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem;">
+            <FluentSelect TOption="string" @bind-Value="_monthsStr" Label="Forecast period" Style="min-width: 150px;">
+                <FluentOption TOption="string" Value="3">3 months</FluentOption>
+                <FluentOption TOption="string" Value="6">6 months</FluentOption>
+                <FluentOption TOption="string" Value="12">12 months</FluentOption>
+                <FluentOption TOption="string" Value="24">24 months</FluentOption>
+            </FluentSelect>
+            <FluentButton Appearance="Appearance.Outline" OnClick="LoadForecastAsync" Style="align-self: flex-end;">
+                Refresh
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (_forecast is null || _forecast.Periods.Count == 0)
+    {
+        <EmptyStateCard Message="No forecast data available. Add recurring transactions and budgets to generate a forecast." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Forecast Summary</h3>
+
+            <div class="summary-strip">
+                <div>
+                    <span class="summary-strip__label">Total projected income</span>
+                    <strong>@_forecast.Periods.Sum(p => p.ProjectedIncome).ToString("C")</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Total projected expenses</span>
+                    <strong>@_forecast.Periods.Sum(p => p.ProjectedExpenses).ToString("C")</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Net projected</span>
+                    <strong>@_forecast.Periods.Sum(p => p.ProjectedNet).ToString("C")</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">End balance</span>
+                    <strong>@_forecast.Periods.Last().ProjectedBalance.ToString("C")</strong>
+                </div>
+            </div>
+        </FluentCard>
+
+        <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Monthly Breakdown</h3>
+
+            <FluentDataGrid Items="_forecast.Periods.AsQueryable()" TGridItem="CashFlowPeriod" Class="data-grid--elevated">
+                <TemplateColumn Title="Period">
+                    @(new DateTime(context.Year, context.Month, 1).ToString("MMM yyyy"))
+                </TemplateColumn>
+                <TemplateColumn Title="Income" SortBy="@(GridSort<CashFlowPeriod>.ByAscending(p => p.ProjectedIncome))">
+                    <span style="color: #107c10;">@context.ProjectedIncome.ToString("C")</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Expenses" SortBy="@(GridSort<CashFlowPeriod>.ByAscending(p => p.ProjectedExpenses))">
+                    <span style="color: #c50f1f;">@context.ProjectedExpenses.ToString("C")</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Budgeted Expenses">
+                    @context.BudgetedExpenses.ToString("C")
+                </TemplateColumn>
+                <TemplateColumn Title="Sinking Funds">
+                    @context.SinkingFundContributions.ToString("C")
+                </TemplateColumn>
+                <TemplateColumn Title="Net">
+                    <FluentBadge Appearance="@(context.ProjectedNet >= 0 ? Appearance.Accent : Appearance.Neutral)"
+                                 BackgroundColor="@(context.ProjectedNet < 0 ? "#c50f1f" : null)"
+                                 Color="@(context.ProjectedNet < 0 ? "white" : null)">
+                        @context.ProjectedNet.ToString("C")
+                    </FluentBadge>
+                </TemplateColumn>
+                <TemplateColumn Title="Balance">
+                    <strong>@context.ProjectedBalance.ToString("C")</strong>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+
+        <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Balance Trend</h3>
+            <div style="display: flex; align-items: flex-end; gap: 2px; height: 200px; padding: 0.5rem;">
+                @{ var maxBalance = _forecast.Periods.Max(p => Math.Abs(p.ProjectedBalance)); }
+                @foreach (var period in _forecast.Periods)
+                {
+                    var heightPercent = maxBalance > 0 ? Math.Abs(period.ProjectedBalance) / maxBalance * 100 : 0;
+                    var barColor = period.ProjectedBalance >= 0 ? "#107c10" : "#c50f1f";
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <div style="width: 100%; max-width: 60px; height: @(heightPercent)%; background: @barColor; border-radius: 4px 4px 0 0; min-height: 2px;"
+                             title="@(new DateTime(period.Year, period.Month, 1).ToString("MMM yyyy")): @period.ProjectedBalance.ToString("C")">
+                        </div>
+                        <span style="font-size: 0.7rem; margin-top: 4px; writing-mode: vertical-lr; transform: rotate(180deg);">
+                            @(new DateTime(period.Year, period.Month, 1).ToString("MMM"))
+                        </span>
+                    </div>
+                }
+            </div>
+        </FluentCard>
+    }
+</section>
+
+@code {
+    private CashFlowForecastResponse? _forecast;
+    private bool _isLoading = true;
+    private string _monthsStr = "6";
+    private int _months => int.TryParse(_monthsStr, out var m) ? m : 6;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadForecastAsync();
+    }
+
+    private async Task LoadForecastAsync()
+    {
+        _isLoading = true;
+        _forecast = await NotificationService.GetCashFlowForecastAsync(_months);
+        _isLoading = false;
+    }
+}

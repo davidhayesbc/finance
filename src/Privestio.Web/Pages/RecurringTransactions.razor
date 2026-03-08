@@ -1,0 +1,302 @@
+@page "/recurring-transactions"
+@inject IRecurringTransactionService RecurringTransactionService
+@inject ICategoryService CategoryService
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<PageTitle>Recurring Transactions — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Recurring" Title="Recurring transactions" Description="Define repeating income and expenses for forecasting and auto-generation.">
+        <Actions>
+            <FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem;">
+                <FluentButton Appearance="Appearance.Outline" OnClick="GenerateTransactionsAsync" Loading="_isGenerating">
+                    Generate Due Transactions
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">
+                    Add Recurring
+                </FluentButton>
+            </FluentStack>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <FluentMessageBar Intent="@MessageIntent.Success" Style="margin-bottom: 1rem;">
+            @_statusMessage
+        </FluentMessageBar>
+    }
+
+    @if (_showForm)
+    {
+        <FluentCard Class="surface-card form-card" style="margin-bottom: 1.5rem;">
+            <h3>@(_editingId.HasValue ? "Edit Recurring Transaction" : "New Recurring Transaction")</h3>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error">@_errorMessage</FluentMessageBar>
+            }
+
+            <EditForm Model="_form" OnValidSubmit="SaveAsync" aria-label="Recurring transaction form">
+                <DataAnnotationsValidator />
+                <FluentValidationSummary />
+
+                <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
+                    <FluentSelect TOption="string" @bind-Value="_form.AccountId" Label="Account" Required="true">
+                        <FluentOption TOption="string" Value="">Select account...</FluentOption>
+                        @foreach (var acct in _accounts)
+                        {
+                            <FluentOption TOption="string" Value="@acct.Id.ToString()">@acct.Name</FluentOption>
+                        }
+                    </FluentSelect>
+                    <FluentValidationMessage For="@(() => _form.AccountId)" />
+
+                    <FluentTextField @bind-Value="_form.Description" Label="Description" Placeholder="e.g., Monthly rent" Required="true" maxlength="500" />
+                    <FluentValidationMessage For="@(() => _form.Description)" />
+
+                    <FluentNumberField @bind-Value="_form.Amount" Label="Amount" Step="0.01m" Required="true" />
+                    <FluentValidationMessage For="@(() => _form.Amount)" />
+
+                    <FluentSelect TOption="string" @bind-Value="_form.TransactionType" Label="Type" Required="true">
+                        <FluentOption TOption="string" Value="Income">Income</FluentOption>
+                        <FluentOption TOption="string" Value="Expense">Expense</FluentOption>
+                        <FluentOption TOption="string" Value="Transfer">Transfer</FluentOption>
+                    </FluentSelect>
+
+                    <FluentSelect TOption="string" @bind-Value="_form.Frequency" Label="Frequency" Required="true">
+                        <FluentOption TOption="string" Value="Weekly">Weekly</FluentOption>
+                        <FluentOption TOption="string" Value="BiWeekly">Bi-Weekly</FluentOption>
+                        <FluentOption TOption="string" Value="Monthly">Monthly</FluentOption>
+                        <FluentOption TOption="string" Value="Quarterly">Quarterly</FluentOption>
+                        <FluentOption TOption="string" Value="SemiAnnually">Semi-Annually</FluentOption>
+                        <FluentOption TOption="string" Value="Annually">Annually</FluentOption>
+                    </FluentSelect>
+
+                    <FluentDatePicker @bind-Value="_formStartDate" Label="Start date" Required="true" />
+                    <FluentDatePicker @bind-Value="_formEndDate" Label="End date (optional)" />
+
+                    <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency">
+                        <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
+                        <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
+                    </FluentSelect>
+
+                    <FluentSelect TOption="string" @bind-Value="_form.CategoryId" Label="Category (optional)">
+                        <FluentOption TOption="string" Value="">None</FluentOption>
+                        @foreach (var cat in _categories)
+                        {
+                            <FluentOption TOption="string" Value="@cat.Id.ToString()">@cat.Name</FluentOption>
+                        }
+                    </FluentSelect>
+
+                    <FluentTextArea @bind-Value="_form.Notes" Label="Notes" Rows="2" />
+
+                    <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
+                        <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isSaving">
+                            @(_editingId.HasValue ? "Update" : "Create")
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Cancel</FluentButton>
+                    </FluentStack>
+                </FluentStack>
+            </EditForm>
+        </FluentCard>
+    }
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (_items.Count == 0)
+    {
+        <EmptyStateCard Message="No recurring transactions defined yet.">
+            <Actions>
+                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">Add Recurring</FluentButton>
+            </Actions>
+        </EmptyStateCard>
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card">
+            <div class="summary-strip">
+                <div>
+                    <span class="summary-strip__label">Active</span>
+                    <strong>@_items.Count(i => i.IsActive)</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Monthly income</span>
+                    <strong>@_items.Where(i => i.IsActive && i.TransactionType == "Income" && i.Frequency == "Monthly").Sum(i => i.Amount).ToString("C")</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Monthly expenses</span>
+                    <strong>@_items.Where(i => i.IsActive && i.TransactionType == "Expense" && i.Frequency == "Monthly").Sum(i => i.Amount).ToString("C")</strong>
+                </div>
+            </div>
+
+            <FluentDataGrid Items="_items.AsQueryable()" TGridItem="RecurringTransactionResponse" Class="data-grid--elevated">
+                <PropertyColumn Property="@(r => r.Description)" Title="Description" Sortable="true" />
+                <TemplateColumn Title="Amount">
+                    <FluentBadge Appearance="@(context.TransactionType == "Income" ? Appearance.Accent : Appearance.Neutral)">
+                        @context.Amount.ToString("C") @context.Currency
+                    </FluentBadge>
+                </TemplateColumn>
+                <PropertyColumn Property="@(r => r.TransactionType)" Title="Type" />
+                <PropertyColumn Property="@(r => r.Frequency)" Title="Frequency" />
+                <TemplateColumn Title="Next Due">
+                    @context.NextOccurrence.ToString("MMM d, yyyy")
+                </TemplateColumn>
+                <TemplateColumn Title="Category">
+                    @(context.CategoryName ?? "—")
+                </TemplateColumn>
+                <TemplateColumn Title="Status">
+                    <FluentBadge Appearance="@(context.IsActive ? Appearance.Accent : Appearance.Neutral)">
+                        @(context.IsActive ? "Active" : "Inactive")
+                    </FluentBadge>
+                </TemplateColumn>
+                <TemplateColumn Title="">
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditItem(context))">Edit</FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteItemAsync(context.Id))">Delete</FluentButton>
+                    </FluentStack>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</section>
+
+@code {
+    private List<RecurringTransactionResponse> _items = [];
+    private List<CategoryResponse> _categories = [];
+    private List<AccountResponse> _accounts = [];
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isGenerating;
+    private bool _showForm;
+    private Guid? _editingId;
+    private string? _errorMessage;
+    private string? _statusMessage;
+
+    private CreateRecurringTransactionFormModel _form = new();
+    private DateTime? _formStartDate;
+    private DateTime? _formEndDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var categoriesTask = CategoryService.GetCategoriesAsync();
+        var accountsTask = AccountService.GetAccountsAsync();
+        await Task.WhenAll(categoriesTask, accountsTask);
+        _categories = (await categoriesTask).ToList();
+        _accounts = (await accountsTask).ToList();
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _items = (await RecurringTransactionService.GetRecurringTransactionsAsync()).ToList();
+        _isLoading = false;
+    }
+
+    private void ShowCreateForm()
+    {
+        _editingId = null;
+        _form = new CreateRecurringTransactionFormModel();
+        _formStartDate = _form.StartDate;
+        _formEndDate = null;
+        _errorMessage = null;
+        _statusMessage = null;
+        _showForm = true;
+    }
+
+    private void EditItem(RecurringTransactionResponse item)
+    {
+        _editingId = item.Id;
+        _form = new CreateRecurringTransactionFormModel
+        {
+            AccountId = item.AccountId.ToString(),
+            Description = item.Description,
+            Amount = item.Amount,
+            TransactionType = item.TransactionType,
+            Frequency = item.Frequency,
+            StartDate = item.StartDate,
+            EndDate = item.EndDate,
+            Currency = item.Currency,
+            CategoryId = item.CategoryId?.ToString(),
+            Notes = item.Notes
+        };
+        _formStartDate = item.StartDate;
+        _formEndDate = item.EndDate;
+        _errorMessage = null;
+        _statusMessage = null;
+        _showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _errorMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        _form.StartDate = _formStartDate ?? DateTime.Today;
+        _form.EndDate = _formEndDate;
+
+        Guid? categoryId = string.IsNullOrEmpty(_form.CategoryId) ? null : Guid.Parse(_form.CategoryId);
+        Guid? payeeId = string.IsNullOrEmpty(_form.PayeeId) ? null : Guid.Parse(_form.PayeeId);
+
+        if (_editingId.HasValue)
+        {
+            var result = await RecurringTransactionService.UpdateAsync(
+                _editingId.Value,
+                new UpdateRecurringTransactionRequest(
+                    _form.Description, _form.Amount, _form.TransactionType, _form.Frequency,
+                    _form.StartDate, _form.EndDate, _form.Currency, categoryId, payeeId, _form.Notes
+                )
+            );
+            if (result is null)
+            {
+                _errorMessage = "Failed to update recurring transaction.";
+                _isSaving = false;
+                return;
+            }
+        }
+        else
+        {
+            var result = await RecurringTransactionService.CreateAsync(
+                new CreateRecurringTransactionRequest(
+                    Guid.Parse(_form.AccountId), _form.Description, _form.Amount, _form.TransactionType,
+                    _form.Frequency, _form.StartDate, _form.EndDate, _form.Currency, categoryId, payeeId, _form.Notes
+                )
+            );
+            if (result is null)
+            {
+                _errorMessage = "Failed to create recurring transaction.";
+                _isSaving = false;
+                return;
+            }
+        }
+
+        _isSaving = false;
+        _showForm = false;
+        await LoadDataAsync();
+    }
+
+    private async Task GenerateTransactionsAsync()
+    {
+        _isGenerating = true;
+        _statusMessage = null;
+        var count = await RecurringTransactionService.GenerateAsync();
+        _statusMessage = count > 0
+            ? $"Generated {count} transaction(s) from recurring definitions."
+            : "No transactions were due for generation.";
+        _isGenerating = false;
+        await LoadDataAsync();
+    }
+
+    private async Task DeleteItemAsync(Guid id)
+    {
+        await RecurringTransactionService.DeleteAsync(id);
+        await LoadDataAsync();
+    }
+}

@@ -10,5 +10,9 @@ public interface IUnitOfWork
     ITagRepository Tags { get; }
     ICategorizationRuleRepository CategorizationRules { get; }
     IImportMappingRepository ImportMappings { get; }
+    IBudgetRepository Budgets { get; }
+    ISinkingFundRepository SinkingFunds { get; }
+    IRecurringTransactionRepository RecurringTransactions { get; }
+    INotificationRepository Notifications { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

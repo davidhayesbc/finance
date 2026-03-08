@@ -216,6 +216,10 @@ try
     app.MapImportEndpoints();
     app.MapImportMappingEndpoints();
     app.MapRuleEndpoints();
+    app.MapBudgetEndpoints();
+    app.MapSinkingFundEndpoints();
+    app.MapRecurringTransactionEndpoints();
+    app.MapNotificationEndpoints();
 
     // Health check endpoints (Task 1.17)
     app.MapHealthChecks("/healthz");

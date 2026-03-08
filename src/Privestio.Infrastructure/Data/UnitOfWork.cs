@@ -18,6 +18,10 @@ public class UnitOfWork : IUnitOfWork
         Tags = new TagRepository(context);
         CategorizationRules = new CategorizationRuleRepository(context);
         ImportMappings = new ImportMappingRepository(context);
+        Budgets = new BudgetRepository(context);
+        SinkingFunds = new SinkingFundRepository(context);
+        RecurringTransactions = new RecurringTransactionRepository(context);
+        Notifications = new NotificationRepository(context);
     }
 
     public IAccountRepository Accounts { get; }
@@ -28,6 +32,10 @@ public class UnitOfWork : IUnitOfWork
     public ITagRepository Tags { get; }
     public ICategorizationRuleRepository CategorizationRules { get; }
     public IImportMappingRepository ImportMappings { get; }
+    public IBudgetRepository Budgets { get; }
+    public ISinkingFundRepository SinkingFunds { get; }
+    public IRecurringTransactionRepository RecurringTransactions { get; }
+    public INotificationRepository Notifications { get; }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         await _context.SaveChangesAsync(cancellationToken);

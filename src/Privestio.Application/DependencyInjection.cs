@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Privestio.Application.Services;
 
 namespace Privestio.Application;
 
@@ -15,6 +16,8 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+
+        services.AddScoped<NotificationService>();
 
         return services;
     }
