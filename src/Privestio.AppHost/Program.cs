@@ -4,7 +4,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // PostgreSQL database
-var postgres = builder.AddPostgres("postgres").WithPgAdmin();
+var postgres = builder.AddPostgres("postgres").WithPgAdmin().WithDataVolume();
 
 var privestioDb = postgres.AddDatabase("privestio");
 
