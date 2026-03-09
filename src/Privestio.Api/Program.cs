@@ -228,6 +228,8 @@ try
     app.MapExchangeRateEndpoints();
     app.MapOperationsEndpoints();
     app.MapSyncEndpoints();
+    app.MapValuationEndpoints();
+    app.MapPriceHistoryEndpoints();
 
     // Health check endpoints (Task 1.17)
     app.MapHealthChecks("/healthz");

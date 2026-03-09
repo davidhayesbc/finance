@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Privestio.Application.Commands.CreateAccount;
+using Privestio.Application.Commands.UpdateAccount;
 using Privestio.Application.Queries.GetAccountById;
 using Privestio.Application.Queries.GetAccounts;
 using Privestio.Contracts.Requests;
@@ -29,6 +30,11 @@ public static class AccountEndpoints
             .MapPost("/", CreateAccountAsync)
             .WithName("CreateAccount")
             .WithSummary("Create a new account");
+
+        group
+            .MapPut("/{id:guid}", UpdateAccountAsync)
+            .WithName("UpdateAccount")
+            .WithSummary("Update an existing account");
 
         return app;
     }
@@ -100,6 +106,45 @@ public static class AccountEndpoints
                 ex.Errors.GroupBy(e => e.PropertyName)
                     .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
             );
+        }
+    }
+
+    private static async Task<IResult> UpdateAccountAsync(
+        Guid id,
+        [FromBody] UpdateAccountRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var command = new UpdateAccountCommand(
+                id,
+                userId.Value,
+                request.Name,
+                request.Institution,
+                request.Notes,
+                request.IsShared
+            );
+
+            var result = await mediator.Send(command, cancellationToken);
+            return Results.Ok(result);
+        }
+        catch (ValidationException ex)
+        {
+            return Results.ValidationProblem(
+                ex.Errors.GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            );
+        }
+        catch (InvalidOperationException)
+        {
+            return Results.NotFound();
         }
     }
 }

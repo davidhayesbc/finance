@@ -32,6 +32,8 @@ public class UnitOfWork : IUnitOfWork
         SyncCheckpoints = new SyncCheckpointRepository(context);
         SyncConflicts = new SyncConflictRepository(context);
         IdempotencyRecords = new IdempotencyRecordRepository(context);
+        Valuations = new ValuationRepository(context);
+        PriceHistories = new PriceHistoryRepository(context);
     }
 
     public IAccountRepository Accounts { get; }
@@ -56,6 +58,8 @@ public class UnitOfWork : IUnitOfWork
     public ISyncCheckpointRepository SyncCheckpoints { get; }
     public ISyncConflictRepository SyncConflicts { get; }
     public IIdempotencyRecordRepository IdempotencyRecords { get; }
+    public IValuationRepository Valuations { get; }
+    public IPriceHistoryRepository PriceHistories { get; }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         await _context.SaveChangesAsync(cancellationToken);

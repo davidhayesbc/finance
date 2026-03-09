@@ -24,5 +24,7 @@ public interface IUnitOfWork
     ISyncCheckpointRepository SyncCheckpoints { get; }
     ISyncConflictRepository SyncConflicts { get; }
     IIdempotencyRecordRepository IdempotencyRecords { get; }
+    IValuationRepository Valuations { get; }
+    IPriceHistoryRepository PriceHistories { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

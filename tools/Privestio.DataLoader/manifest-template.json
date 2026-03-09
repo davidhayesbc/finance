@@ -1,0 +1,142 @@
+{
+  // Privestio Data Loader Manifest Template
+  // Copy this to your private data directory and fill in your details.
+  // This file should NOT be committed to the repository.
+
+  "auth": {
+    "email": "your-email@example.com",
+    "password": "YourSecurePassword123!",
+    "displayName": "Your Name",
+    "register": true
+  },
+
+  "categories": [
+    { "name": "Groceries", "type": "Expense" },
+    { "name": "Dining Out", "type": "Expense" },
+    { "name": "Transportation", "type": "Expense" },
+    { "name": "Housing", "type": "Expense" },
+    { "name": "Utilities", "type": "Expense" },
+    { "name": "Employment Income", "type": "Income" }
+  ],
+
+  "payees": [
+    { "displayName": "Loblaws", "defaultCategory": "Groceries" },
+    { "displayName": "Tim Hortons", "defaultCategory": "Dining Out" }
+  ],
+
+  "tags": [
+    { "name": "tax-deductible" },
+    { "name": "recurring" }
+  ],
+
+  "importMappings": [
+    {
+      "name": "RBC Chequing CSV",
+      "fileFormat": "csv",
+      "institution": "RBC",
+      "columnMappings": {
+        "Date": "Account Txn Date",
+        "Amount": "CAD$",
+        "Description": "Description 1"
+      },
+      "dateFormat": "M/d/yyyy",
+      "hasHeaderRow": true
+    }
+  ],
+
+  "accounts": [
+    {
+      "name": "RBC Chequing",
+      "accountType": "Banking",
+      "accountSubType": "Chequing",
+      "currency": "CAD",
+      "institution": "RBC",
+      "accountNumber": "****1234",
+      "openingBalance": 1500.00,
+      "openingDate": "2024-01-01",
+      "imports": [
+        {
+          "file": "rbc-chequing-2024.csv",
+          "mappingName": "RBC Chequing CSV",
+          "policy": "SkipInvalid"
+        }
+      ],
+      "valuations": [],
+      "adjustments": {
+        "notes": "Primary chequing account"
+      }
+    },
+    {
+      "name": "Visa Infinite",
+      "accountType": "Credit",
+      "accountSubType": "CreditCard",
+      "currency": "CAD",
+      "institution": "RBC",
+      "openingBalance": -250.00,
+      "openingDate": "2024-01-01",
+      "imports": [
+        {
+          "file": "visa-2024.csv",
+          "mappingName": "RBC Chequing CSV"
+        }
+      ],
+      "valuations": []
+    },
+    {
+      "name": "TFSA",
+      "accountType": "Investment",
+      "accountSubType": "TFSA",
+      "currency": "CAD",
+      "institution": "TD",
+      "openingBalance": 25000.00,
+      "openingDate": "2024-01-01",
+      "imports": [],
+      "valuations": []
+    },
+    {
+      "name": "House",
+      "accountType": "Property",
+      "accountSubType": "RealEstate",
+      "currency": "CAD",
+      "openingBalance": 450000.00,
+      "openingDate": "2020-06-15",
+      "imports": [],
+      "valuations": [
+        {
+          "amount": 475000.00,
+          "effectiveDate": "2023-01-01",
+          "source": "Municipal assessment"
+        },
+        {
+          "amount": 490000.00,
+          "effectiveDate": "2024-01-01",
+          "source": "Municipal assessment"
+        }
+      ]
+    },
+    {
+      "name": "Mortgage",
+      "accountType": "Loan",
+      "accountSubType": "Mortgage",
+      "currency": "CAD",
+      "institution": "RBC",
+      "openingBalance": -350000.00,
+      "openingDate": "2020-06-15",
+      "imports": [],
+      "valuations": []
+    }
+  ],
+
+  "priceHistory": [
+    {
+      "symbol": "VFV.TO",
+      "currency": "CAD",
+      "source": "Yahoo Finance",
+      "prices": [
+        { "date": "2024-01-02", "price": 105.23 },
+        { "date": "2024-01-03", "price": 104.87 },
+        { "date": "2024-01-04", "price": 106.12 }
+      ]
+    }
+  ]
+}

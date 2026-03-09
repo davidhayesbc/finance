@@ -16,4 +16,7 @@
         <Project Path="tests/Privestio.E2E.Tests/Privestio.E2E.Tests.csproj" />
         <Project Path="tests/Privestio.Infrastructure.Tests/Privestio.Infrastructure.Tests.csproj" />
     </Folder>
+    <Folder Name="/tools/">
+        <Project Path="tools/Privestio.DataLoader/Privestio.DataLoader.csproj" />
+    </Folder>
 </Solution>
