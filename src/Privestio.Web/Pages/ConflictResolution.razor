@@ -1,0 +1,99 @@
+@page "/sync/conflicts"
+@inject IConflictResolutionWebService ConflictService
+
+<PageTitle>Sync Conflicts — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Sync" Title="Conflict Resolution"
+                Description="Review and resolve sync conflicts between local and server data." />
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (_conflicts.Count == 0)
+    {
+        <EmptyStateCard Message="No pending sync conflicts. All data is in sync." />
+    }
+    else
+    {
+        @foreach (var conflict in _conflicts)
+        {
+            <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
+                <FluentStack Orientation="Orientation.Vertical" Style="gap: 0.75rem;">
+                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                                 Style="gap: 1rem;">
+                        <h3 style="margin: 0;">@conflict.EntityType</h3>
+                        <FluentBadge Appearance="Appearance.Neutral">@conflict.Status</FluentBadge>
+                        <span style="opacity: 0.6; font-size: 0.85rem;">Detected @conflict.DetectedAt.ToString("MMM dd, yyyy      HH:mm")</span>
+                    </FluentStack>
+
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 1rem; width: 100%;">
+                        <FluentCard Style="flex: 1; background: var(--neutral-layer-2);">
+                            <h4 style="margin: 0 0 0.5rem 0;">Local Data</h4>
+                            <pre style="white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; max-height: 300px; overflow-y: auto;">@FormatJson(conflict.LocalData)</pre>
+                        </FluentCard>
+                        <FluentCard Style="flex: 1; background: var(--neutral-layer-2);">
+                            <h4 style="margin: 0 0 0.5rem 0;">Server Data</h4>
+                            <pre style="white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; max-height: 300px; overflow-y: auto;">@FormatJson(conflict.ServerData)</pre>
+                        </FluentCard>
+                    </FluentStack>
+
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem;">
+                        <FluentButton Appearance="Appearance.Accent"                                     OnClick="@(() => ResolveAsync(conflict.Id, "KeepLocal"))"
+                                      Loading="@(_resolvingId == conflict.Id)">
+                            Keep Local
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Outline"                                   OnClick="@(() => ResolveAsync(conflict.Id, "KeepServer"))"
+                                      Loading="@(_resolvingId == conflict.Id)">
+                            Keep Server
+                        </FluentButton>
+                    </FluentStack>
+                </FluentStack>
+            </FluentCard>
+        }
+    }
+</section>
+
+@code {
+    private List<SyncConflictResponse> _conflicts = [];
+    private bool _isLoading = true;
+    private Guid? _resolvingId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _conflicts = (await ConflictService.GetPendingConflictsAsync()).ToList();
+        _isLoading = false;
+    }
+
+    private async Task ResolveAsync(Guid conflictId, string resolution)
+    {
+        _resolvingId = conflictId;
+        var result = await ConflictService.ResolveConflictAsync(
+            new ResolveConflictRequest(conflictId, resolution)
+        );
+
+        if (result is not null)
+        {
+            _conflicts.RemoveAll(c => c.Id == conflictId);
+        }
+
+        _resolvingId = null;
+    }
+
+    private static string FormatJson(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+}

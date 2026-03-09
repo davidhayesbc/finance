@@ -1,0 +1,113 @@
+@page "/spending"
+@inject IAnalyticsService AnalyticsService
+
+<PageTitle>Spending Analysis — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Analytics" Title="Spending analysis"
+                Description="Understand where your money goes with category breakdowns and trends." />
+
+    <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                     Style="gap: 1rem;">
+            <FluentDatePicker @bind-Value="_startDate" Label="Start date" />
+            <FluentDatePicker @bind-Value="_endDate" Label="End date" />
+            <FluentButton Appearance="Appearance.Outline" OnClick="LoadDataAsync" Style="align-self: flex-end;">
+                Refresh
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (_analysis is null)
+    {
+        <EmptyStateCard Message="No spending data available for the selected period." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
+            <div class="summary-strip">
+                <div>
+                    <span class="summary-strip__label">Total spent</span>
+                    <strong>@_analysis.TotalSpent.ToString("C") @_analysis.Currency</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Categories</span>
+                    <strong>@_analysis.CategoryBreakdown.Count</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Top payees</span>
+                    <strong>@_analysis.PayeeRanking.Count</strong>
+                </div>
+            </div>
+        </FluentCard>
+
+        @if (_analysis.CategoryBreakdown.Count > 0)
+        {
+            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0;">Category Breakdown</h3>
+
+                <ApexChart TItem="CategoryBreakdownItem"                       Title=""                         Height="350">
+                    <ApexPointSeries TItem="CategoryBreakdownItem"                   Items="_analysis.CategoryBreakdown.ToList()"
+                                     SeriesType="SeriesType.Pie"                         Name="Spending"           XValue="@(item => item.CategoryName)"
+                                     YAggregate="@(items => items.Sum(i => i.Amount))" />
+                </ApexChart>
+            </FluentCard>
+        }
+
+        @if (_analysis.PayeeRanking.Count > 0)
+        {
+            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0;">Payee Ranking</h3>
+
+                <FluentDataGrid Items="_analysis.PayeeRanking.AsQueryable()" TGridItem="PayeeRankingItem"
+                                Class="data-grid--elevated">
+                    <PropertyColumn Property="@(p => p.PayeeName)" Title="Payee" Sortable="true" />
+                    <TemplateColumn Title="Amount" Sortable="true"
+                                    SortBy="@(GridSort<PayeeRankingItem>.ByDescending(p => p.Amount))">
+                        @context.Amount.ToString("C")
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(p => p.TransactionCount)" Title="Transactions" Sortable="true" />
+                </FluentDataGrid>
+            </FluentCard>
+        }
+
+        @if (_analysis.MonthlyTrends.Count > 0)
+        {
+            <FluentCard Class="surface-card data-card">
+                <h3 style="margin: 0 0 1rem 0;">Monthly Trends</h3>
+
+                <ApexChart TItem="MonthlyTrendItem"                          Title=""  Height="350">
+                    <ApexPointSeries TItem="MonthlyTrendItem"                     Items="_analysis.MonthlyTrends.ToList()"
+                                     SeriesType="SeriesType.Bar"   Name="Spending"
+                                     XValue="@(item => new DateTime(item.Year, item.Month, 1).ToString("MMM yyyy"))"
+                                     YAggregate="@(items => items.Sum(i => i.Amount))" />
+                </ApexChart>
+            </FluentCard>
+        }
+    }
+</section>
+
+@code {
+    private SpendingAnalysisResponse? _analysis;
+    private bool _isLoading = true;
+    private DateTime? _startDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-5);
+    private DateTime? _endDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        var start = DateOnly.FromDateTime(_startDate ?? DateTime.Today.AddMonths(-5));
+        var end = DateOnly.FromDateTime(_endDate ?? DateTime.Today);
+        _analysis = await AnalyticsService.GetSpendingAnalysisAsync(start, end);
+        _isLoading = false;
+    }
+}

@@ -36,6 +36,20 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SinkingFund> SinkingFunds => Set<SinkingFund>();
     public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
 
+    // Phase 4 entities
+    public DbSet<ForecastScenario> ForecastScenarios => Set<ForecastScenario>();
+    public DbSet<ReconciliationPeriod> ReconciliationPeriods => Set<ReconciliationPeriod>();
+    public DbSet<ContributionRoom> ContributionRooms => Set<ContributionRoom>();
+    public DbSet<AmortizationEntry> AmortizationEntries => Set<AmortizationEntry>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<FxConversion> FxConversions => Set<FxConversion>();
+
+    // Sync engine entities
+    public DbSet<SyncTombstone> SyncTombstones => Set<SyncTombstone>();
+    public DbSet<SyncCheckpoint> SyncCheckpoints => Set<SyncCheckpoint>();
+    public DbSet<SyncConflict> SyncConflicts => Set<SyncConflict>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -63,6 +77,28 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Budget>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<SinkingFund>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<RecurringTransaction>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ForecastScenario>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ReconciliationPeriod>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ContributionRoom>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<AmortizationEntry>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ExchangeRate>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<FxConversion>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SyncTombstone>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SyncCheckpoint>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SyncConflict>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<IdempotencyRecord>().HasQueryFilter(e => !e.IsDeleted);
+
+        // Configure Version as concurrency token for all BaseEntity types
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder
+                    .Entity(entityType.ClrType)
+                    .Property(nameof(BaseEntity.Version))
+                    .IsConcurrencyToken();
+            }
+        }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

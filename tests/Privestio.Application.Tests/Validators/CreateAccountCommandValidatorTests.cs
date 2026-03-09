@@ -19,7 +19,8 @@ public class CreateAccountCommandValidatorTests
             Currency: "CAD",
             OpeningBalance: 0m,
             OpeningDate: DateTime.UtcNow.AddYears(-1),
-            OwnerId: Guid.NewGuid());
+            OwnerId: Guid.NewGuid()
+        );
 
         var result = _validator.TestValidate(command);
         result.ShouldNotHaveAnyValidationErrors();
@@ -37,7 +38,8 @@ public class CreateAccountCommandValidatorTests
             Currency: "CAD",
             OpeningBalance: 0m,
             OpeningDate: DateTime.UtcNow,
-            OwnerId: Guid.NewGuid());
+            OwnerId: Guid.NewGuid()
+        );
 
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(c => c.Name);
@@ -53,7 +55,8 @@ public class CreateAccountCommandValidatorTests
             Currency: "CAD",
             OpeningBalance: 0m,
             OpeningDate: DateTime.UtcNow,
-            OwnerId: Guid.NewGuid());
+            OwnerId: Guid.NewGuid()
+        );
 
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(c => c.AccountType);
@@ -72,7 +75,8 @@ public class CreateAccountCommandValidatorTests
             Currency: currency,
             OpeningBalance: 0m,
             OpeningDate: DateTime.UtcNow,
-            OwnerId: Guid.NewGuid());
+            OwnerId: Guid.NewGuid()
+        );
 
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(c => c.Currency);
@@ -88,7 +92,8 @@ public class CreateAccountCommandValidatorTests
             Currency: "CAD",
             OpeningBalance: 0m,
             OpeningDate: DateTime.UtcNow.AddDays(10),
-            OwnerId: Guid.NewGuid());
+            OwnerId: Guid.NewGuid()
+        );
 
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(c => c.OpeningDate);

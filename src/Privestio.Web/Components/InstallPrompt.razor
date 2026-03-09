@@ -1,0 +1,65 @@
+@inject IJSRuntime JSRuntime
+
+<div class="install-prompt">
+    @if (_showInstallButton)
+    {
+        <FluentButton Appearance="Appearance.Outline"                      Size="ButtonSize.Small"                      OnClick="HandleInstallClickAsync"
+                      Title="Install Privestio as an app">
+            Install App
+        </FluentButton>
+    }
+</div>
+
+@code {
+    private bool _showInstallButton;
+    private System.Threading.Timer? _checkTimer;
+
+    protected override void OnInitialized()
+    {
+        // Periodically check if install is available since the beforeinstallprompt
+        // event may fire at any time
+        _checkTimer = new System.Threading.Timer(async _ =>
+        {
+            await CheckInstallAvailableAsync();
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+    }
+
+    private async Task CheckInstallAvailableAsync()
+    {
+        try
+        {
+            var available = await JSRuntime.InvokeAsync<bool>("pwaInstallFunctions.isInstallAvailable");
+            if (available != _showInstallButton)
+            {
+                _showInstallButton = available;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch
+        {
+            // JS interop may not be ready yet
+        }
+    }
+
+    private async Task HandleInstallClickAsync()
+    {
+        try
+        {
+            var accepted = await JSRuntime.InvokeAsync<bool>("pwaInstallFunctions.promptInstall");
+            if (accepted)
+            {
+                _showInstallButton = false;
+            }
+        }
+        catch
+        {
+            // Install prompt may have been consumed already
+            _showInstallButton = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _checkTimer?.Dispose();
+    }
+}

@@ -1,0 +1,112 @@
+@page "/contribution-room"
+@inject IContributionRoomService ContributionRoomService
+@inject IAccountService AccountService
+
+<PageTitle>Contribution Room — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Account Management" Title="Contribution room"
+                Description="Track contribution limits for registered accounts (RRSP, TFSA, RESP, LIRA)." />
+
+    <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                     Style="gap: 1rem;">
+            <FluentSelect TOption="string" @bind-Value="_selectedAccountIdStr" Label="Account"
+                          Style="min-width: 250px;">
+                <FluentOption TOption="string" Value="">Select a registered account...</FluentOption>
+                @foreach (var account in _filteredAccounts)
+                {
+                    <FluentOption TOption="string" Value="@account.Id.ToString()">@account.Name (@account.AccountSubType)
+                    </FluentOption>
+                }
+            </FluentSelect>
+            <FluentButton Appearance="Appearance.Outline" OnClick="LoadRoomAsync" Style="align-self: flex-end;">
+                Load
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (string.IsNullOrEmpty(_selectedAccountIdStr))
+    {
+        <EmptyStateCard Message="Select a registered account to view contribution room details." />
+    }
+    else if (_rooms.Count == 0)
+    {
+        <EmptyStateCard Message="No contribution room data found for this account." />
+    }
+    else
+    {
+        @foreach (var room in _rooms)
+        {
+            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0;">@room.AccountName — @room.Year</h3>
+
+                <div class="summary-strip" style="margin-bottom: 1rem;">
+                    <div>
+                        <span class="summary-strip__label">Annual limit</span>
+                        <strong>@room.AnnualLimitAmount.ToString("C") @room.Currency</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Carry forward</span>
+                        <strong>@room.CarryForwardAmount.ToString("C")</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Contributed YTD</span>
+                        <strong>@room.ContributionsYtdAmount.ToString("C")</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Remaining room</span>
+                        <strong style="color: @(room.RemainingRoomAmount > 0 ? "#107c10" : "#c50f1f")">
+                            @room.RemainingRoomAmount.ToString("C")
+                        </strong>
+                    </div>
+                </div>
+
+                @{
+                    var totalRoom = room.AnnualLimitAmount + room.CarryForwardAmount;
+                    var usedPercent = totalRoom > 0 ? (int)Math.Min(room.ContributionsYtdAmount / totalRoom * 100, 100) : 0;
+                }
+
+                <div style="margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.85rem;">Room used: @usedPercent%</span>
+                </div>
+                <FluentProgress Value="@usedPercent" Min="0" Max="100" />
+            </FluentCard>
+        }
+    }
+</section>
+
+@code {
+    private static readonly HashSet<string> RegisteredSubTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "RRSP", "TFSA", "RESP", "LIRA"
+    };
+
+    private List<AccountResponse> _accounts = [];
+    private List<AccountResponse> _filteredAccounts = [];
+    private List<ContributionRoomResponse> _rooms = [];
+    private bool _isLoading;
+    private string _selectedAccountIdStr = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accounts = (await AccountService.GetAccountsAsync()).ToList();
+        _filteredAccounts = _accounts
+            .Where(a => RegisteredSubTypes.Contains(a.AccountSubType))
+            .ToList();
+    }
+
+    private async Task LoadRoomAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedAccountIdStr) || !Guid.TryParse(_selectedAccountIdStr, out var accountId))
+            return;
+
+        _isLoading = true;
+        _rooms = (await ContributionRoomService.GetByAccountIdAsync(accountId)).ToList();
+        _isLoading = false;
+    }
+}

@@ -1,0 +1,74 @@
+@page "/dashboard"
+@inject IAnalyticsService AnalyticsService
+
+<PageTitle>Dashboard — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Analytics" Title="Dashboard" Description="Overview of your financial position at a glance." />
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (_summary is null)
+    {
+        <EmptyStateCard Message="Unable to load dashboard data. Please try again later." />
+    }
+    else
+    {
+        <div class="summary-strip" style="margin-bottom: 1.5rem;">
+            <FluentCard Class="surface-card">
+                <span class="summary-strip__label">Total Assets</span>
+                <strong style="color: #107c10;">@_summary.TotalAssets.ToString("C") @_summary.Currency</strong>
+            </FluentCard>
+            <FluentCard Class="surface-card">
+                <span class="summary-strip__label">Total Liabilities</span>
+                <strong style="color: #c50f1f;">@_summary.TotalLiabilities.ToString("C") @_summary.Currency</strong>
+            </FluentCard>
+            <FluentCard Class="surface-card">
+                <span class="summary-strip__label">Net Worth</span>
+                <strong>@_summary.NetWorth.ToString("C") @_summary.Currency</strong>
+            </FluentCard>
+        </div>
+
+        @if (_summary.AssetAllocation.Count > 0)
+        {
+            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0;">Asset Allocation</h3>
+                <ApexChart TItem="AssetAllocationItem"  Title=""             Height="350">
+                    <ApexPointSeries TItem="AssetAllocationItem"             Items="_summary.AssetAllocation.ToList()"
+                                     SeriesType="SeriesType.Donut"          Name="Allocation"                XValue="@(item => item.AccountType)"
+                                     YAggregate="@(items => items.Sum(i => i.Amount))" />
+                </ApexChart>
+            </FluentCard>
+        }
+
+        @if (_summary.AccountSummaries.Count > 0)
+        {
+            <FluentCard Class="surface-card data-card">
+                <h3 style="margin: 0 0 1rem 0;">Account Summary</h3>
+
+                <FluentDataGrid Items="_summary.AccountSummaries.AsQueryable()" TGridItem="AccountSummary"
+                                Class="data-grid--elevated">
+                    <PropertyColumn Property="@(a => a.Name)" Title="Account" Sortable="true" />
+                    <PropertyColumn Property="@(a => a.AccountType)" Title="Type" Sortable="true" />
+                    <TemplateColumn Title="Balance" Sortable="true"
+                                    SortBy="@(GridSort<AccountSummary>.ByAscending(a => a.Balance))">
+                        @context.Balance.ToString("C") @context.Currency
+                    </TemplateColumn>
+                </FluentDataGrid>
+            </FluentCard>
+        }
+    }
+</section>
+
+@code {
+    private NetWorthSummaryResponse? _summary;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _summary = await AnalyticsService.GetNetWorthSummaryAsync();
+        _isLoading = false;
+    }
+}

@@ -18,6 +18,11 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddScoped<NotificationService>();
+        services.AddScoped<NetWorthForecastingService>();
+        services.AddScoped<AmortizationScheduleService>();
+        services.AddScoped<ResourcePermissionService>();
+        services.AddScoped<IDataExportService, DataExportService>();
+        services.AddScoped<IConflictResolutionService, ConflictResolutionService>();
 
         return services;
     }

@@ -33,6 +33,8 @@
             </nav>
 
             <div class="header-actions">
+                <OnlineIndicator />
+                <InstallPrompt />
                 @if (AuthService.IsAuthenticated)
                 {
                     <FluentButton Appearance="Appearance.Outline" OnClick="HandleLogoutAsync">

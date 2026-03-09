@@ -22,6 +22,16 @@ public class UnitOfWork : IUnitOfWork
         SinkingFunds = new SinkingFundRepository(context);
         RecurringTransactions = new RecurringTransactionRepository(context);
         Notifications = new NotificationRepository(context);
+        ForecastScenarios = new ForecastScenarioRepository(context);
+        ReconciliationPeriods = new ReconciliationPeriodRepository(context);
+        ContributionRooms = new ContributionRoomRepository(context);
+        AmortizationEntries = new AmortizationEntryRepository(context);
+        ExchangeRates = new ExchangeRateRepository(context);
+        FxConversions = new FxConversionRepository(context);
+        SyncTombstones = new SyncTombstoneRepository(context);
+        SyncCheckpoints = new SyncCheckpointRepository(context);
+        SyncConflicts = new SyncConflictRepository(context);
+        IdempotencyRecords = new IdempotencyRecordRepository(context);
     }
 
     public IAccountRepository Accounts { get; }
@@ -36,6 +46,16 @@ public class UnitOfWork : IUnitOfWork
     public ISinkingFundRepository SinkingFunds { get; }
     public IRecurringTransactionRepository RecurringTransactions { get; }
     public INotificationRepository Notifications { get; }
+    public IForecastScenarioRepository ForecastScenarios { get; }
+    public IReconciliationPeriodRepository ReconciliationPeriods { get; }
+    public IContributionRoomRepository ContributionRooms { get; }
+    public IAmortizationEntryRepository AmortizationEntries { get; }
+    public IExchangeRateRepository ExchangeRates { get; }
+    public IFxConversionRepository FxConversions { get; }
+    public ISyncTombstoneRepository SyncTombstones { get; }
+    public ISyncCheckpointRepository SyncCheckpoints { get; }
+    public ISyncConflictRepository SyncConflicts { get; }
+    public IIdempotencyRecordRepository IdempotencyRecords { get; }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         await _context.SaveChangesAsync(cancellationToken);

@@ -15,7 +15,8 @@ public class NotificationTests
             "BudgetExceeded",
             NotificationSeverity.Warning,
             "Budget Alert",
-            "You have exceeded your groceries budget.");
+            "You have exceeded your groceries budget."
+        );
 
         notification.UserId.Should().Be(_userId);
         notification.Type.Should().Be("BudgetExceeded");
@@ -27,7 +28,13 @@ public class NotificationTests
     [Fact]
     public void MarkAsRead_UnreadNotification_SetsIsReadTrue()
     {
-        var notification = new Notification(_userId, "Test", NotificationSeverity.Info, "Title", "Message");
+        var notification = new Notification(
+            _userId,
+            "Test",
+            NotificationSeverity.Info,
+            "Title",
+            "Message"
+        );
 
         notification.MarkAsRead();
 
@@ -38,7 +45,13 @@ public class NotificationTests
     [Fact]
     public void MarkAsRead_AlreadyRead_DoesNotChangeReadAt()
     {
-        var notification = new Notification(_userId, "Test", NotificationSeverity.Info, "Title", "Message");
+        var notification = new Notification(
+            _userId,
+            "Test",
+            NotificationSeverity.Info,
+            "Title",
+            "Message"
+        );
         notification.MarkAsRead();
         var firstReadAt = notification.ReadAt;
 
@@ -50,7 +63,13 @@ public class NotificationTests
     [Fact]
     public void MarkAsUnread_ReadNotification_SetsIsReadFalse()
     {
-        var notification = new Notification(_userId, "Test", NotificationSeverity.Info, "Title", "Message");
+        var notification = new Notification(
+            _userId,
+            "Test",
+            NotificationSeverity.Info,
+            "Title",
+            "Message"
+        );
         notification.MarkAsRead();
 
         notification.MarkAsUnread();

@@ -26,5 +26,15 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<ISinkingFundService, SinkingFundService>();
 builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
 builder.Services.AddScoped<INotificationWebService, NotificationWebService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IForecastScenarioService, ForecastScenarioService>();
+builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
+builder.Services.AddScoped<IContributionRoomService, ContributionRoomService>();
+builder.Services.AddScoped<IAmortizationService, AmortizationService>();
+builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();
+builder.Services.AddScoped<IIndexedDbService, IndexedDbService>();
+builder.Services.AddScoped<IConnectivityService, ConnectivityService>();
+builder.Services.AddScoped<ISyncService, SyncService>();
+builder.Services.AddScoped<IConflictResolutionWebService, ConflictResolutionWebService>();
 
 await builder.Build().RunAsync();

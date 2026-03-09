@@ -19,7 +19,8 @@ public class CreateAccountCommandTests
         _accountRepoMock = new Mock<IAccountRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _unitOfWorkMock.Setup(u => u.Accounts).Returns(_accountRepoMock.Object);
-        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+        _unitOfWorkMock
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         _accountRepoMock
@@ -42,7 +43,8 @@ public class CreateAccountCommandTests
             OpeningBalance: 1000.00m,
             OpeningDate: DateTime.UtcNow.AddYears(-1),
             OwnerId: ownerId,
-            Institution: "RBC");
+            Institution: "RBC"
+        );
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -68,7 +70,8 @@ public class CreateAccountCommandTests
             Currency: "CAD",
             OpeningBalance: 0m,
             OpeningDate: DateTime.UtcNow.AddYears(-2),
-            OwnerId: Guid.NewGuid());
+            OwnerId: Guid.NewGuid()
+        );
 
         // Act
         await _handler.Handle(command, CancellationToken.None);

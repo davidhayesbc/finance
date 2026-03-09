@@ -26,6 +26,7 @@ public abstract class BaseEntity : IAuditableEntity
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public uint Version { get; set; }
 
     public void SoftDelete()
     {

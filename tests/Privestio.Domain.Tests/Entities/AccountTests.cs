@@ -20,7 +20,8 @@ public class AccountTests
             opening,
             DateTime.UtcNow,
             _ownerId,
-            "RBC");
+            "RBC"
+        );
 
         account.Name.Should().Be("My Chequing");
         account.AccountType.Should().Be(AccountType.Banking);
@@ -35,14 +36,16 @@ public class AccountTests
     [Fact]
     public void Constructor_EmptyName_ThrowsArgumentException()
     {
-        var act = () => new Account(
-            "",
-            AccountType.Banking,
-            AccountSubType.Chequing,
-            "CAD",
-            Money.Zero(),
-            DateTime.UtcNow,
-            _ownerId);
+        var act = () =>
+            new Account(
+                "",
+                AccountType.Banking,
+                AccountSubType.Chequing,
+                "CAD",
+                Money.Zero(),
+                DateTime.UtcNow,
+                _ownerId
+            );
 
         act.Should().Throw<ArgumentException>();
     }
@@ -57,7 +60,8 @@ public class AccountTests
             "cad",
             Money.Zero(),
             DateTime.UtcNow,
-            _ownerId);
+            _ownerId
+        );
 
         account.Currency.Should().Be("CAD");
     }
@@ -72,7 +76,8 @@ public class AccountTests
             "CAD",
             Money.Zero(),
             DateTime.UtcNow,
-            _ownerId);
+            _ownerId
+        );
 
         account.Rename("New Name");
 
@@ -89,7 +94,8 @@ public class AccountTests
             "CAD",
             Money.Zero(),
             DateTime.UtcNow,
-            _ownerId);
+            _ownerId
+        );
 
         var act = () => account.Rename("");
 
@@ -106,7 +112,8 @@ public class AccountTests
             "CAD",
             Money.Zero(),
             DateTime.UtcNow,
-            _ownerId);
+            _ownerId
+        );
 
         account.Deactivate();
 
@@ -123,7 +130,8 @@ public class AccountTests
             "CAD",
             Money.Zero(),
             DateTime.UtcNow,
-            _ownerId);
+            _ownerId
+        );
 
         account.SoftDelete();
 

@@ -1,0 +1,179 @@
+@page "/forecast-scenarios"
+@inject IForecastScenarioService ForecastScenarioService
+
+<PageTitle>Forecast Scenarios — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Forecasting" Title="Forecast scenarios"
+                Description="Create scenarios to project your net worth over time.">
+        <Actions>
+            <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">
+                New Scenario
+            </FluentButton>
+        </Actions>
+    </PageHeader>
+
+    @if (_showForm)
+    {
+        <FluentCard Class="surface-card form-card" style="margin-bottom: 1.5rem;">
+            <h3>New Scenario</h3>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error">
+                    @_errorMessage
+                </FluentMessageBar>
+            }
+
+            <EditForm Model="_form" OnValidSubmit="SaveScenarioAsync" aria-label="Scenario form">
+                <DataAnnotationsValidator />
+                <FluentValidationSummary />
+
+                <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
+                    <FluentTextField @bind-Value="_form.Name" Label="Scenario name" Required="true" />
+                    <FluentValidationMessage For="@(() => _form.Name)" />
+
+                    <FluentTextArea @bind-Value="_form.Description" Label="Description" Rows="2" />
+
+                    <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
+                        <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isSaving">
+                            Create Scenario
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Cancel</FluentButton>
+                    </FluentStack>
+                </FluentStack>
+            </EditForm>
+        </FluentCard>
+    }
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (_scenarios.Count == 0)
+    {
+        <EmptyStateCard Message="No forecast scenarios found. Create a scenario to start projecting your net worth.">
+            <Actions>
+                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">New Scenario</FluentButton>
+            </Actions>
+        </EmptyStateCard>
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0;">Scenarios</h3>
+
+            <FluentDataGrid Items="_scenarios.AsQueryable()" TGridItem="ForecastScenarioResponse"
+                            Class="data-grid--elevated">
+                <PropertyColumn Property="@(s => s.Name)" Title="Name" Sortable="true" />
+                <PropertyColumn Property="@(s => s.Description)" Title="Description" />
+                <TemplateColumn Title="Default">
+                    <FluentBadge Appearance="@(context.IsDefault? Appearance.Accent: Appearance.Neutral)">
+                        @(context.IsDefault ? "Yes" : "No")
+                    </FluentBadge>
+                </TemplateColumn>
+                <TemplateColumn Title="Created">
+                    @context.CreatedAt.ToString("MMM dd, yyyy")
+                </TemplateColumn>
+                <TemplateColumn Title="">
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => LoadForecastAsync(context))">
+                            View Forecast
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteScenarioAsync(context.Id))">
+                            Delete
+                        </FluentButton>
+                    </FluentStack>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+
+        @if (_selectedForecast is not null && _selectedForecast.Periods.Count > 0)
+        {
+            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0;">Net Worth Projection — @_selectedForecast.ScenarioName</h3>
+
+                <ApexChart TItem="NetWorthForecastPeriod"               Title=""     Height="400">
+                    <ApexPointSeries TItem="NetWorthForecastPeriod"             Items="_selectedForecast.Periods.ToList()"
+                                     SeriesType="SeriesType.Line"                                  Name="Net Worth"                                  XValue="@(p => p.Date.ToString("MMM yyyy"))"
+                                     YAggregate="@(items => items.Sum(i => i.ProjectedNetWorth))" />
+                    <ApexPointSeries TItem="NetWorthForecastPeriod"                          Items="_selectedForecast.Periods.ToList()"
+                                     SeriesType="SeriesType.Line"          Name="Assets"                                     XValue="@(p => p.Date.ToString("MMM yyyy"))"
+                                     YAggregate="@(items => items.Sum(i => i.ProjectedAssets))" />
+                    <ApexPointSeries TItem="NetWorthForecastPeriod"                                     Items="_selectedForecast.Periods.ToList()"
+                                     SeriesType="SeriesType.Line"                                     Name="Liabilities"                                     XValue="@(p => p.Date.ToString("MMM yyyy"))"
+                                     YAggregate="@(items => items.Sum(i => i.ProjectedLiabilities))" />
+                </ApexChart>
+            </FluentCard>
+        }
+    }
+</section>
+
+@code {
+    private List<ForecastScenarioResponse> _scenarios = [];
+    private NetWorthForecastResponse? _selectedForecast;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _showForm;
+    private string? _errorMessage;
+
+    private CreateForecastScenarioFormModel _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadScenariosAsync();
+    }
+
+    private async Task LoadScenariosAsync()
+    {
+        _isLoading = true;
+        _scenarios = (await ForecastScenarioService.GetAllAsync()).ToList();
+        _isLoading = false;
+    }
+
+    private void ShowCreateForm()
+    {
+        _form = new CreateForecastScenarioFormModel();
+        _errorMessage = null;
+        _showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _errorMessage = null;
+    }
+
+    private async Task SaveScenarioAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        var result = await ForecastScenarioService.CreateAsync(
+            new CreateForecastScenarioRequest(_form.Name, _form.Description, [])
+        );
+
+        if (result is null)
+        {
+            _errorMessage = "Failed to create scenario.";
+            _isSaving = false;
+            return;
+        }
+
+        _isSaving = false;
+        _showForm = false;
+        await LoadScenariosAsync();
+    }
+
+    private async Task LoadForecastAsync(ForecastScenarioResponse scenario)
+    {
+        _selectedForecast = await ForecastScenarioService.GetForecastAsync(scenario.Id);
+    }
+
+    private async Task DeleteScenarioAsync(Guid id)
+    {
+        await ForecastScenarioService.DeleteAsync(id);
+        _selectedForecast = null;
+        await LoadScenariosAsync();
+    }
+}

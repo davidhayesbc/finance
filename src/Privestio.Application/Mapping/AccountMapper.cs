@@ -8,21 +8,22 @@ namespace Privestio.Application.Mapping;
 /// </summary>
 public static class AccountMapper
 {
-    public static AccountResponse ToResponse(Account account) => new()
-    {
-        Id = account.Id,
-        Name = account.Name,
-        AccountType = account.AccountType.ToString(),
-        AccountSubType = account.AccountSubType.ToString(),
-        Currency = account.Currency,
-        Institution = account.Institution,
-        OpeningBalance = account.OpeningBalance.Amount,
-        CurrentBalance = account.CurrentBalance.Amount,
-        OpeningDate = account.OpeningDate,
-        IsActive = account.IsActive,
-        IsShared = account.IsShared,
-        Notes = account.Notes,
-        CreatedAt = account.CreatedAt,
-        UpdatedAt = account.UpdatedAt,
-    };
+    public static AccountResponse ToResponse(Account account) =>
+        new()
+        {
+            Id = account.Id,
+            Name = account.Name,
+            AccountType = account.AccountType.ToString(),
+            AccountSubType = account.AccountSubType.ToString(),
+            Currency = account.Currency,
+            Institution = account.Institution,
+            OpeningBalance = account.OpeningBalance.Amount,
+            CurrentBalance = account.CurrentBalance.Amount,
+            OpeningDate = account.OpeningDate,
+            IsActive = account.IsActive,
+            IsShared = account.IsShared,
+            Notes = account.Notes,
+            CreatedAt = account.CreatedAt,
+            UpdatedAt = account.UpdatedAt,
+        };
 }

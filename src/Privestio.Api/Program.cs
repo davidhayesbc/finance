@@ -220,6 +220,14 @@ try
     app.MapSinkingFundEndpoints();
     app.MapRecurringTransactionEndpoints();
     app.MapNotificationEndpoints();
+    app.MapForecastScenarioEndpoints();
+    app.MapAnalyticsEndpoints();
+    app.MapReconciliationEndpoints();
+    app.MapContributionRoomEndpoints();
+    app.MapAmortizationEndpoints();
+    app.MapExchangeRateEndpoints();
+    app.MapOperationsEndpoints();
+    app.MapSyncEndpoints();
 
     // Health check endpoints (Task 1.17)
     app.MapHealthChecks("/healthz");

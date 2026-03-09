@@ -1,0 +1,73 @@
+@page "/debt"
+@inject IAnalyticsService AnalyticsService
+
+<PageTitle>Debt Overview — Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Analytics" Title="Debt overview"
+                Description="Track all outstanding debts, interest rates, and payments." />
+
+    @if (_isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (_overview is null || _overview.Debts.Count == 0)
+    {
+        <EmptyStateCard Message="No debts found. This is a good thing!" />
+    }
+    else
+    {
+        <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
+            <div class="summary-strip">
+                <div>
+                    <span class="summary-strip__label">Total debt</span>
+                    <strong style="color: #c50f1f;">@_overview.TotalDebt.ToString("C") @_overview.Currency</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Number of debts</span>
+                    <strong>@_overview.Debts.Count</strong>
+                </div>
+                <div>
+                    <span class="summary-strip__label">Monthly payments</span>
+                    <strong>@_overview.Debts.Sum(d => d.MonthlyPayment).ToString("C")</strong>
+                </div>
+            </div>
+        </FluentCard>
+
+        <FluentCard Class="surface-card data-card">
+            <h3 style="margin: 0 0 1rem 0;">Debt Details</h3>
+
+            <FluentDataGrid Items="_overview.Debts.AsQueryable()" TGridItem="DebtDetailItem" Class="data-grid--elevated">
+                <PropertyColumn Property="@(d => d.Name)" Title="Name" Sortable="true" />
+                <TemplateColumn Title="Balance" Sortable="true"
+                                SortBy="@(GridSort<DebtDetailItem>.ByDescending(d => d.Balance))">
+                    @context.Balance.ToString("C")
+                </TemplateColumn>
+                <TemplateColumn Title="Interest rate" Sortable="true"
+                                SortBy="@(GridSort<DebtDetailItem>.ByDescending(d => d.AnnualInterestRate))">
+                    @context.AnnualInterestRate.ToString("F2")%
+                </TemplateColumn>
+                <TemplateColumn Title="Monthly payment" Sortable="true"
+                                SortBy="@(GridSort<DebtDetailItem>.ByDescending(d => d.MonthlyPayment))">
+                    @context.MonthlyPayment.ToString("C")
+                </TemplateColumn>
+                <TemplateColumn Title="Remaining payments">
+                    <FluentBadge Appearance="Appearance.Neutral">
+                        @context.RemainingPayments months
+                    </FluentBadge>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</section>
+
+@code {
+    private DebtOverviewResponse? _overview;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _overview = await AnalyticsService.GetDebtOverviewAsync();
+        _isLoading = false;
+    }
+}

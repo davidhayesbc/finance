@@ -12,7 +12,13 @@ public class TransactionTests
     public void Constructor_WithValidArgs_CreatesTransaction()
     {
         var amount = new Money(100.00m, "CAD");
-        var txn = new Transaction(_accountId, DateTime.UtcNow, amount, "Test transaction", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            amount,
+            "Test transaction",
+            TransactionType.Debit
+        );
 
         txn.AccountId.Should().Be(_accountId);
         txn.Amount.Should().Be(amount);
@@ -26,7 +32,8 @@ public class TransactionTests
     {
         var amount = new Money(100.00m, "CAD");
 
-        var act = () => new Transaction(_accountId, DateTime.UtcNow, amount, "", TransactionType.Debit);
+        var act = () =>
+            new Transaction(_accountId, DateTime.UtcNow, amount, "", TransactionType.Debit);
 
         act.Should().Throw<ArgumentException>();
     }
@@ -34,7 +41,13 @@ public class TransactionTests
     [Fact]
     public void AddSplit_AddsSplitToTransaction()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
         var split = new TransactionSplit(txn.Id, new Money(100.00m), Guid.NewGuid());
 
         txn.AddSplit(split);
@@ -46,7 +59,13 @@ public class TransactionTests
     [Fact]
     public void AddSplit_NullSplit_ThrowsArgumentNullException()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
 
         var act = () => txn.AddSplit(null!);
 
@@ -56,7 +75,13 @@ public class TransactionTests
     [Fact]
     public void ValidateSplitInvariant_SplitsSumToParent_ReturnsTrue()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
         var split1 = new TransactionSplit(txn.Id, new Money(60.00m), Guid.NewGuid());
         var split2 = new TransactionSplit(txn.Id, new Money(40.00m), Guid.NewGuid());
 
@@ -69,7 +94,13 @@ public class TransactionTests
     [Fact]
     public void ValidateSplitInvariant_SplitsDoNotSumToParent_ReturnsFalse()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
         var split1 = new TransactionSplit(txn.Id, new Money(60.00m), Guid.NewGuid());
         var split2 = new TransactionSplit(txn.Id, new Money(30.00m), Guid.NewGuid());
 
@@ -82,7 +113,13 @@ public class TransactionTests
     [Fact]
     public void ValidateSplitInvariant_NoSplits_ReturnsTrue()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
 
         txn.ValidateSplitInvariant().Should().BeTrue();
     }
@@ -90,7 +127,13 @@ public class TransactionTests
     [Fact]
     public void ClearSplits_RemovesAllSplits()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
         txn.AddSplit(new TransactionSplit(txn.Id, new Money(100.00m), Guid.NewGuid()));
 
         txn.ClearSplits();
@@ -102,7 +145,13 @@ public class TransactionTests
     [Fact]
     public void AddTag_AddsTagToTransaction()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
         var tag = new Tag("groceries", Guid.NewGuid());
 
         txn.AddTag(tag);
@@ -113,7 +162,13 @@ public class TransactionTests
     [Fact]
     public void AddTag_DuplicateTag_DoesNotAddTwice()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
         var tag = new Tag("groceries", Guid.NewGuid());
 
         txn.AddTag(tag);
@@ -125,7 +180,13 @@ public class TransactionTests
     [Fact]
     public void RemoveTag_ExistingTag_RemovesTag()
     {
-        var txn = new Transaction(_accountId, DateTime.UtcNow, new Money(100.00m), "Test", TransactionType.Debit);
+        var txn = new Transaction(
+            _accountId,
+            DateTime.UtcNow,
+            new Money(100.00m),
+            "Test",
+            TransactionType.Debit
+        );
         var tag = new Tag("groceries", Guid.NewGuid());
         txn.AddTag(tag);
 

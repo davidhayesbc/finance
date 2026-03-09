@@ -851,32 +851,32 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 | Task | Description | Estimate | Done |
 |------|-------------|----------|:----:|
-| 4.0 | **Sync spike prototype** (1-week time-box): IndexedDB CRUD, basic queue/flush sync, single conflict scenario, go/no-go decision doc | 8h | [ ] |
-| 4.1 | Net Worth dashboard: summary cards, time-series chart, asset allocation | 6h | [ ] |
-| 4.2 | Net Worth forecasting: ForecastScenario entity, growth rate assumptions per account/asset class | 4h | [ ] |
-| 4.3 | NetWorthForecastingService: project future net worth using scheduled payments, growth rates, inflation | 6h | [ ] |
-| 4.4 | Scenario comparison UI: define named scenarios (conservative/moderate/aggressive), overlay on chart | 4h | [ ] |
-| 4.5 | Spending analysis: category breakdown (split-aware), trends, payee ranking | 6h | [ ] |
-| 4.6 | Cash flow dashboard: income vs expenses, savings rate | 4h | [ ] |
-| 4.7 | Debt overview: balances, rates, amortization charts | 4h | [ ] |
-| 4.8 | Implement service worker for app shell caching | 4h | [ ] |
-| 4.9 | Implement IndexedDB local store (account summaries, recent txns) | 6h | [ ] |
-| 4.10 | Build sync engine: queue offline changes, sync on reconnect | 8h | [ ] |
-| 4.10a | Add optimistic concurrency/version metadata (`RowVersion`/`Version`) to syncable entities and enforce conditional updates | 4h | [ ] |
-| 4.10b | Add tombstone model for soft-deleted records and sync propagation semantics | 4h | [ ] |
-| 4.10c | Implement incremental sync change feed with server cursors/checkpoints (`sinceToken`) | 4h | [ ] |
-| 4.11 | ConflictResolutionService: field-aware merge policies and explicit conflict queue for financial edits | 6h | [ ] |
-| 4.11a | Conflict Resolution UI: dedicated page with side-by-side diff view (local vs server), per-field accept/merge actions | 5h | [ ] |
-| 4.12 | Sync idempotency: client operation IDs and replay-safe server handlers | 3h | [ ] |
-| 4.13 | Offline/online status indicator in UI | 2h | [ ] |
-| 4.14 | PWA manifest and install prompt | 2h | [ ] |
-| 4.14a | ReconciliationPeriod entity, reconciliation workflow endpoints and UI (statement open/close/lock) | 5h | [ ] |
-| 4.14b | ContributionRoom entity and tracking for registered accounts (RRSP, TFSA) with annual limit management | 4h | [ ] |
-| 4.14c | AmortizationEntry entity and schedule generation for mortgages/loans (principal/interest split per payment) | 4h | [ ] |
-| 4.14d | Multi-currency foundation: base currency settings, `ExchangeRate` dual-date model (`AsOfDate`, `RecordedAt`), and `FxConversion` records for cross-currency transactions | 5h | [ ] |
-| 4.14e | Resource-level permissions matrix baseline enforcement for `Account`, `Transaction`, `ImportBatch`, `Rule`, and `Report` | 5h | [ ] |
-| 4.14f | Core operations hardening: health checks, manual backup/export, and restore entry points for self-hosted operators | 4h | [ ] |
-| 4.15 | Tests for sync engine, conflict resolution, offline scenarios, net worth forecasting, reconciliation, and contribution room | 8h | [ ] |
+| 4.0 | **Sync spike prototype** (1-week time-box): IndexedDB CRUD, basic queue/flush sync, single conflict scenario, go/no-go decision doc | 8h | [x] |
+| 4.1 | Net Worth dashboard: summary cards, time-series chart, asset allocation | 6h | [x] |
+| 4.2 | Net Worth forecasting: ForecastScenario entity, growth rate assumptions per account/asset class | 4h | [x] |
+| 4.3 | NetWorthForecastingService: project future net worth using scheduled payments, growth rates, inflation | 6h | [x] |
+| 4.4 | Scenario comparison UI: define named scenarios (conservative/moderate/aggressive), overlay on chart | 4h | [x] |
+| 4.5 | Spending analysis: category breakdown (split-aware), trends, payee ranking | 6h | [x] |
+| 4.6 | Cash flow dashboard: income vs expenses, savings rate | 4h | [x] |
+| 4.7 | Debt overview: balances, rates, amortization charts | 4h | [x] |
+| 4.8 | Implement service worker for app shell caching | 4h | [x] |
+| 4.9 | Implement IndexedDB local store (account summaries, recent txns) | 6h | [x] |
+| 4.10 | Build sync engine: queue offline changes, sync on reconnect | 8h | [x] |
+| 4.10a | Add optimistic concurrency/version metadata (`RowVersion`/`Version`) to syncable entities and enforce conditional updates | 4h | [x] |
+| 4.10b | Add tombstone model for soft-deleted records and sync propagation semantics | 4h | [x] |
+| 4.10c | Implement incremental sync change feed with server cursors/checkpoints (`sinceToken`) | 4h | [x] |
+| 4.11 | ConflictResolutionService: field-aware merge policies and explicit conflict queue for financial edits | 6h | [x] |
+| 4.11a | Conflict Resolution UI: dedicated page with side-by-side diff view (local vs server), per-field accept/merge actions | 5h | [x] |
+| 4.12 | Sync idempotency: client operation IDs and replay-safe server handlers | 3h | [x] |
+| 4.13 | Offline/online status indicator in UI | 2h | [x] |
+| 4.14 | PWA manifest and install prompt | 2h | [x] |
+| 4.14a | ReconciliationPeriod entity, reconciliation workflow endpoints and UI (statement open/close/lock) | 5h | [x] |
+| 4.14b | ContributionRoom entity and tracking for registered accounts (RRSP, TFSA) with annual limit management | 4h | [x] |
+| 4.14c | AmortizationEntry entity and schedule generation for mortgages/loans (principal/interest split per payment) | 4h | [x] |
+| 4.14d | Multi-currency foundation: base currency settings, `ExchangeRate` dual-date model (`AsOfDate`, `RecordedAt`), and `FxConversion` records for cross-currency transactions | 5h | [x] |
+| 4.14e | Resource-level permissions matrix baseline enforcement for `Account`, `Transaction`, `ImportBatch`, `Rule`, and `Report` | 5h | [x] |
+| 4.14f | Core operations hardening: health checks, manual backup/export, and restore entry points for self-hosted operators | 4h | [x] |
+| 4.15 | Tests for sync engine, conflict resolution, offline scenarios, net worth forecasting, reconciliation, and contribution room | 8h | [x] |
 
 **Deliverable:** Full dashboard suite. App works offline, syncs when back online with conflict resolution UI. Statement reconciliation. Contribution room tracking. Mortgage/loan amortization schedules.
 
