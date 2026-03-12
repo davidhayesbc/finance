@@ -12,12 +12,19 @@ public class TransactionFingerprintService
     /// <summary>
     /// Generates a SHA-256 fingerprint from the core transaction fields.
     /// </summary>
+    /// <param name="occurrenceIndex">
+    /// Zero for the first occurrence of a given transaction in a batch.
+    /// Pass 1, 2, … for subsequent rows that are otherwise identical within the
+    /// same batch (e.g. two $5 coffee purchases on the same day). The default
+    /// of 0 preserves backward-compatibility with fingerprints already stored.
+    /// </param>
     public string GenerateFingerprint(
         Guid accountId,
         DateTime date,
         Money amount,
         string description,
-        string? externalId = null
+        string? externalId = null,
+        int occurrenceIndex = 0
     )
     {
         var normalizedDescription = description.Trim().ToUpperInvariant();
@@ -30,6 +37,11 @@ public class TransactionFingerprintService
         if (!string.IsNullOrWhiteSpace(externalId))
         {
             input += $"|{externalId.Trim()}";
+        }
+
+        if (occurrenceIndex > 0)
+        {
+            input += $"|occ{occurrenceIndex}";
         }
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));

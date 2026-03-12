@@ -277,6 +277,74 @@ public class ImportTransactionsCommandTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task Handle_IdenticalSameDayTransactions_ImportsBothWithDistinctFingerprints()
+    {
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(DateTime.Parse("2025-01-15"), -5.00m, "COFFEE SHOP"),
+            new(DateTime.Parse("2025-01-15"), -5.00m, "COFFEE SHOP"),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.ImportedCount.Should().Be(2);
+        result.DuplicateCount.Should().Be(0);
+        result.ErrorCount.Should().Be(0);
+        _transactionRepo.Verify(
+            r =>
+                r.AddRangeAsync(
+                    It.Is<IEnumerable<Transaction>>(txns =>
+                        txns.Select(t => t.ImportFingerprint).Distinct().Count() == 2
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_IdenticalSameDayTransactions_ReimportDetectsAllAsDuplicates()
+    {
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(DateTime.Parse("2025-01-15"), -5.00m, "COFFEE SHOP"),
+            new(DateTime.Parse("2025-01-15"), -5.00m, "COFFEE SHOP"),
+        };
+        SetupParseResult(rows);
+
+        // Simulate both fingerprints already existing from a prior import
+        var fp0 = _fingerprintService.GenerateFingerprint(
+            _accountId,
+            DateTime.Parse("2025-01-15"),
+            new Domain.ValueObjects.Money(-5.00m),
+            "COFFEE SHOP"
+        );
+        var fp1 = _fingerprintService.GenerateFingerprint(
+            _accountId,
+            DateTime.Parse("2025-01-15"),
+            new Domain.ValueObjects.Money(-5.00m),
+            "COFFEE SHOP",
+            occurrenceIndex: 1
+        );
+        _transactionRepo
+            .Setup(r =>
+                r.GetExistingFingerprintsAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(new HashSet<string> { fp0, fp1 } as IReadOnlySet<string>);
+
+        var command = CreateCommand("transactions.csv");
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.ImportedCount.Should().Be(0);
+        result.DuplicateCount.Should().Be(2);
+    }
+
     private ImportTransactionsCommand CreateCommand(string fileName) =>
         new(Stream.Null, fileName, _accountId, _userId);
 

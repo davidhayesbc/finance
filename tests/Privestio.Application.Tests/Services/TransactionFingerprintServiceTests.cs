@@ -163,4 +163,51 @@ public class TransactionFingerprintServiceTests
         // SHA-256 hex string = 64 characters
         fp.Should().HaveLength(64);
     }
+
+    [Fact]
+    public void GenerateFingerprint_OccurrenceIndex0_MatchesDefault()
+    {
+        var date = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc);
+        var amount = new Money(42.99m, "CAD");
+        var accountId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        var fpDefault = _service.GenerateFingerprint(accountId, date, amount, "GROCERY");
+        var fpExplicit = _service.GenerateFingerprint(
+            accountId,
+            date,
+            amount,
+            "GROCERY",
+            occurrenceIndex: 0
+        );
+
+        fpDefault.Should().Be(fpExplicit);
+    }
+
+    [Fact]
+    public void GenerateFingerprint_DifferentOccurrenceIndexes_DifferentOutput()
+    {
+        var date = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc);
+        var amount = new Money(42.99m, "CAD");
+        var accountId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        var fp0 = _service.GenerateFingerprint(accountId, date, amount, "GROCERY");
+        var fp1 = _service.GenerateFingerprint(
+            accountId,
+            date,
+            amount,
+            "GROCERY",
+            occurrenceIndex: 1
+        );
+        var fp2 = _service.GenerateFingerprint(
+            accountId,
+            date,
+            amount,
+            "GROCERY",
+            occurrenceIndex: 2
+        );
+
+        fp0.Should().NotBe(fp1);
+        fp1.Should().NotBe(fp2);
+        fp0.Should().NotBe(fp2);
+    }
 }

@@ -101,20 +101,36 @@ public class ImportTransactionsCommandHandler
             };
         }
 
-        // Generate fingerprints for all parsed rows
-        var rowsWithFingerprints = parseResult
-            .Rows.Select(row => new
-            {
-                Row = row,
-                Fingerprint = _fingerprintService.GenerateFingerprint(
-                    request.AccountId,
-                    row.Date,
-                    new Money(row.Amount),
-                    row.Description,
-                    row.ExternalId
-                ),
-            })
-            .ToList();
+        // Generate fingerprints for all parsed rows, tracking per-base-fingerprint
+        // occurrence counts so that legitimate repeated identical transactions on the
+        // same day (e.g. two $5 coffee purchases) get distinct, stable fingerprints.
+        var baseOccurrences = new Dictionary<string, int>();
+        var rowsWithFingerprints = new List<(ImportedTransactionRow Row, string Fingerprint)>();
+        foreach (var row in parseResult.Rows)
+        {
+            var baseFingerprint = _fingerprintService.GenerateFingerprint(
+                request.AccountId,
+                row.Date,
+                new Money(row.Amount),
+                row.Description,
+                row.ExternalId
+            );
+            var occurrence = baseOccurrences.GetValueOrDefault(baseFingerprint, 0);
+            baseOccurrences[baseFingerprint] = occurrence + 1;
+
+            var fingerprint =
+                occurrence == 0
+                    ? baseFingerprint
+                    : _fingerprintService.GenerateFingerprint(
+                        request.AccountId,
+                        row.Date,
+                        new Money(row.Amount),
+                        row.Description,
+                        row.ExternalId,
+                        occurrence
+                    );
+            rowsWithFingerprints.Add((row, fingerprint));
+        }
 
         // Batch check for existing fingerprints (duplicate detection)
         var allFingerprints = rowsWithFingerprints.Select(r => r.Fingerprint);
