@@ -55,7 +55,7 @@ public static class SeedDataGenerator
             AccountSubType.Chequing,
             "CAD",
             new Money(2500.00m),
-            DateTime.UtcNow.AddYears(-2),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2)),
             user.Id,
             "RBC"
         );
@@ -66,7 +66,7 @@ public static class SeedDataGenerator
             AccountSubType.Savings,
             "CAD",
             new Money(10000.00m),
-            DateTime.UtcNow.AddYears(-2),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2)),
             user.Id,
             "RBC"
         );
@@ -77,7 +77,7 @@ public static class SeedDataGenerator
             AccountSubType.CreditCard,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             user.Id,
             "RBC"
         );
@@ -88,7 +88,7 @@ public static class SeedDataGenerator
             AccountSubType.RRSP,
             "CAD",
             new Money(25000.00m),
-            DateTime.UtcNow.AddYears(-5),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-5)),
             user.Id,
             "TD"
         );

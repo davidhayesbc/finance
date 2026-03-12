@@ -43,7 +43,7 @@ public class ReconciliationPeriodCommandTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
 

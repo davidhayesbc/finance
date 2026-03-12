@@ -36,7 +36,7 @@ public class DebtOverviewQueryTests
             AccountSubType.Mortgage,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-5),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-5)),
             userId
         );
         mortgage.CurrentBalance = new Money(-250000m);
@@ -47,7 +47,7 @@ public class DebtOverviewQueryTests
             AccountSubType.CreditCard,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-2),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2)),
             userId
         );
         creditCard.CurrentBalance = new Money(-3000m);
@@ -114,7 +114,7 @@ public class DebtOverviewQueryTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         chequing.CurrentBalance = new Money(5000m);

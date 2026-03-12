@@ -81,7 +81,7 @@ public class ChangeFeedQueryTests
             AccountSubType.Chequing,
             "CAD",
             new Money(1000m, "CAD"),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             ownerId
         );
 

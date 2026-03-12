@@ -340,7 +340,7 @@ public class LoaderOrchestrator
                     Institution = account.Institution,
                     AccountNumber = account.AccountNumber,
                     OpeningBalance = account.OpeningBalance,
-                    OpeningDate = DateTime.Parse(account.OpeningDate),
+                    OpeningDate = DateOnly.Parse(account.OpeningDate),
                     Notes = account.Notes,
                 }
             );

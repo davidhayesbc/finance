@@ -38,7 +38,7 @@ public class DataExportServiceTests
                 AccountSubType.Chequing,
                 "CAD",
                 new Money(0m),
-                DateTime.UtcNow,
+                DateOnly.FromDateTime(DateTime.UtcNow),
                 userId
             ),
         };

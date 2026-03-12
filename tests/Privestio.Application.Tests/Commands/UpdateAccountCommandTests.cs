@@ -31,7 +31,7 @@ public class UpdateAccountCommandTests
             AccountSubType.Chequing,
             "CAD",
             new Money(1500m, "CAD"),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _userId,
             "RBC"
         );

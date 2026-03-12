@@ -11,8 +11,8 @@
         <FluentBreadcrumbItem>New Account</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="New account"                Title="Add an account"
-                Description="Use a compact, consistent form for onboarding balances and institutions."                Compact="true" />
+    <PageHeader Eyebrow="New account" Title="Add an account"
+                Description="Use a compact, consistent form for onboarding balances and institutions." Compact="true" />
 
     <FluentCard Class="surface-card form-card">
         @if (!string.IsNullOrEmpty(_errorMessage))
@@ -102,7 +102,7 @@
             Institution = _form.Institution,
             AccountNumber = _form.AccountNumber,
             OpeningBalance = _form.OpeningBalance,
-            OpeningDate = _form.OpeningDate,
+            OpeningDate = DateOnly.FromDateTime(_form.OpeningDate),
             Notes = _form.Notes,
         });
         _isLoading = false;

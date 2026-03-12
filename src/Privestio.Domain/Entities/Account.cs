@@ -20,7 +20,7 @@ public class Account : BaseEntity
         AccountSubType accountSubType,
         string currency,
         Money openingBalance,
-        DateTime openingDate,
+        DateOnly openingDate,
         Guid ownerId,
         string? institution = null
     )
@@ -45,7 +45,7 @@ public class Account : BaseEntity
     public string? Institution { get; set; }
     public string? AccountNumber { get; set; }
     public Money OpeningBalance { get; private set; }
-    public DateTime OpeningDate { get; private set; }
+    public DateOnly OpeningDate { get; private set; }
 
     /// <summary>
     /// Cached computed balance. Updated by the infrastructure layer.

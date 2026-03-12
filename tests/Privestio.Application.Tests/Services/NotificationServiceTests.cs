@@ -57,7 +57,7 @@ public class NotificationServiceTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         account.CurrentBalance = new Money(200m);
@@ -88,7 +88,7 @@ public class NotificationServiceTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         account.CurrentBalance = new Money(1000m);
@@ -118,7 +118,7 @@ public class NotificationServiceTests
             AccountSubType.RRSP,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         account.CurrentBalance = new Money(100m);

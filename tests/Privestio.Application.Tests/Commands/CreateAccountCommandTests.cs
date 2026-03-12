@@ -41,7 +41,7 @@ public class CreateAccountCommandTests
             AccountSubType: "Chequing",
             Currency: "CAD",
             OpeningBalance: 1000.00m,
-            OpeningDate: DateTime.UtcNow.AddYears(-1),
+            OpeningDate: DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             OwnerId: ownerId,
             Institution: "RBC"
         );
@@ -69,7 +69,7 @@ public class CreateAccountCommandTests
             AccountSubType: "TFSA",
             Currency: "CAD",
             OpeningBalance: 0m,
-            OpeningDate: DateTime.UtcNow.AddYears(-2),
+            OpeningDate: DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2)),
             OwnerId: Guid.NewGuid()
         );
 

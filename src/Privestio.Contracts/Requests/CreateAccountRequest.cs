@@ -9,6 +9,6 @@ public record CreateAccountRequest
     public string? Institution { get; init; }
     public string? AccountNumber { get; init; }
     public decimal OpeningBalance { get; init; }
-    public DateTime OpeningDate { get; init; } = DateTime.UtcNow;
+    public DateOnly OpeningDate { get; init; } = DateOnly.FromDateTime(DateTime.UtcNow);
     public string? Notes { get; init; }
 }

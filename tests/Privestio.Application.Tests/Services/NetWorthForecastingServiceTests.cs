@@ -43,7 +43,7 @@ public class NetWorthForecastingServiceTests
             AccountSubType.Chequing,
             "CAD",
             new Money(10000m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         account.CurrentBalance = new Money(10000m);
@@ -97,7 +97,7 @@ public class NetWorthForecastingServiceTests
             AccountSubType.RRSP,
             "CAD",
             new Money(100000m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         account.CurrentBalance = new Money(100000m);
@@ -149,7 +149,7 @@ public class NetWorthForecastingServiceTests
             AccountSubType.Chequing,
             "CAD",
             new Money(5000m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         account.CurrentBalance = new Money(5000m);

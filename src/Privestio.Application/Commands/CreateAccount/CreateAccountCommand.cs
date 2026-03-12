@@ -9,7 +9,7 @@ public record CreateAccountCommand(
     string AccountSubType,
     string Currency,
     decimal OpeningBalance,
-    DateTime OpeningDate,
+    DateOnly OpeningDate,
     Guid OwnerId,
     string? Institution = null,
     string? AccountNumber = null,

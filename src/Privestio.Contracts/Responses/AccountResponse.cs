@@ -10,7 +10,7 @@ public record AccountResponse
     public string? Institution { get; init; }
     public decimal OpeningBalance { get; init; }
     public decimal CurrentBalance { get; init; }
-    public DateTime OpeningDate { get; init; }
+    public DateOnly OpeningDate { get; init; }
     public bool IsActive { get; init; }
     public bool IsShared { get; init; }
     public string? Notes { get; init; }

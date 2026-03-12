@@ -79,7 +79,6 @@ public class ImportTransactionsCommandHandler
 
             if (request.Policy != ImportPolicy.PreviewOnly)
             {
-                await _unitOfWork.ImportBatches.UpdateAsync(batch, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
 
@@ -201,7 +200,6 @@ public class ImportTransactionsCommandHandler
                 })
             );
         }
-        await _unitOfWork.ImportBatches.UpdateAsync(batch, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ImportResultResponse

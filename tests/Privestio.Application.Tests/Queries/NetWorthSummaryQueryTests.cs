@@ -33,7 +33,7 @@ public class NetWorthSummaryQueryTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         chequing.CurrentBalance = new Money(5000m);
@@ -44,7 +44,7 @@ public class NetWorthSummaryQueryTests
             AccountSubType.RRSP,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         rrsp.CurrentBalance = new Money(50000m);
@@ -55,7 +55,7 @@ public class NetWorthSummaryQueryTests
             AccountSubType.CreditCard,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         creditCard.CurrentBalance = new Money(-2000m);
@@ -66,7 +66,7 @@ public class NetWorthSummaryQueryTests
             AccountSubType.Mortgage,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-5),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-5)),
             userId
         );
         mortgage.CurrentBalance = new Money(-300000m);
@@ -125,7 +125,7 @@ public class NetWorthSummaryQueryTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         chequing.CurrentBalance = new Money(20000m);
@@ -136,7 +136,7 @@ public class NetWorthSummaryQueryTests
             AccountSubType.RRSP,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
         rrsp.CurrentBalance = new Money(80000m);

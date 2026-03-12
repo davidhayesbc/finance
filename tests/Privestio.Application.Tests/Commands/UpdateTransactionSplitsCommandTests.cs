@@ -56,7 +56,7 @@ public class UpdateTransactionSplitsCommandTests
             accountSubType: AccountSubType.Chequing,
             currency: "CAD",
             openingBalance: new Money(0, "CAD"),
-            openingDate: DateTime.UtcNow.AddYears(-1),
+            openingDate: DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             ownerId: _userId
         );
     }

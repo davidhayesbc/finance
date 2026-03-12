@@ -34,7 +34,7 @@ public class CreateValuationCommandTests
             AccountSubType.RealEstate,
             "CAD",
             new Money(450000m, "CAD"),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _userId
         );
     }

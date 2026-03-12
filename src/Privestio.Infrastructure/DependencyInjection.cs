@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Domain.Interfaces;
@@ -23,9 +24,13 @@ public static class DependencyInjection
             configuration.GetConnectionString("privestio")
             ?? throw new InvalidOperationException("Connection string 'privestio' not found.");
 
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+        dataSourceBuilder.EnableDynamicJson();
+        var dataSource = dataSourceBuilder.Build();
+
         services.AddDbContext<PrivestioDbContext>(options =>
             options.UseNpgsql(
-                connectionString,
+                dataSource,
                 npgsql => npgsql.MigrationsAssembly(typeof(PrivestioDbContext).Assembly.FullName)
             )
         );

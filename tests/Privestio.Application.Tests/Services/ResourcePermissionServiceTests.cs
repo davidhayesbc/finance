@@ -33,7 +33,7 @@ public class ResourcePermissionServiceTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             userId
         );
 
@@ -50,7 +50,7 @@ public class ResourcePermissionServiceTests
             AccountSubType.Chequing,
             "CAD",
             new Money(0m),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             Guid.NewGuid()
         );
 

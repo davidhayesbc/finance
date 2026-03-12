@@ -43,7 +43,7 @@ public class AmortizationCommandTests
             AccountSubType.Mortgage,
             "CAD",
             new Money(200000m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
 
@@ -90,7 +90,7 @@ public class AmortizationCommandTests
             AccountSubType.Mortgage,
             "CAD",
             new Money(200000m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             userId
         );
 
@@ -143,7 +143,7 @@ public class AmortizationCommandTests
             AccountSubType.Mortgage,
             "CAD",
             new Money(200000m),
-            DateTime.UtcNow.AddYears(-1),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             Guid.NewGuid() // Different owner
         );
 

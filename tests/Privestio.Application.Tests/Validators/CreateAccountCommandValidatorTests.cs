@@ -18,7 +18,7 @@ public class CreateAccountCommandValidatorTests
             AccountSubType: "Chequing",
             Currency: "CAD",
             OpeningBalance: 0m,
-            OpeningDate: DateTime.UtcNow.AddYears(-1),
+            OpeningDate: DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             OwnerId: Guid.NewGuid()
         );
 
@@ -37,7 +37,7 @@ public class CreateAccountCommandValidatorTests
             AccountSubType: "Chequing",
             Currency: "CAD",
             OpeningBalance: 0m,
-            OpeningDate: DateTime.UtcNow,
+            OpeningDate: DateOnly.FromDateTime(DateTime.UtcNow),
             OwnerId: Guid.NewGuid()
         );
 
@@ -54,7 +54,7 @@ public class CreateAccountCommandValidatorTests
             AccountSubType: "Chequing",
             Currency: "CAD",
             OpeningBalance: 0m,
-            OpeningDate: DateTime.UtcNow,
+            OpeningDate: DateOnly.FromDateTime(DateTime.UtcNow),
             OwnerId: Guid.NewGuid()
         );
 
@@ -74,7 +74,7 @@ public class CreateAccountCommandValidatorTests
             AccountSubType: "Chequing",
             Currency: currency,
             OpeningBalance: 0m,
-            OpeningDate: DateTime.UtcNow,
+            OpeningDate: DateOnly.FromDateTime(DateTime.UtcNow),
             OwnerId: Guid.NewGuid()
         );
 
@@ -91,7 +91,7 @@ public class CreateAccountCommandValidatorTests
             AccountSubType: "Chequing",
             Currency: "CAD",
             OpeningBalance: 0m,
-            OpeningDate: DateTime.UtcNow.AddDays(10),
+            OpeningDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)),
             OwnerId: Guid.NewGuid()
         );
 

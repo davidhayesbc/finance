@@ -53,7 +53,7 @@ public class CreateAccountCommandValidator : AbstractValidator<CreateAccountComm
             .WithMessage("Currency must be a 3-letter ISO code (e.g., CAD, USD).");
 
         RuleFor(x => x.OpeningDate)
-            .LessThanOrEqualTo(DateTime.UtcNow.AddDays(1))
+            .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
             .WithMessage("Opening date cannot be in the future.");
 
         RuleFor(x => x.OwnerId).NotEmpty();
