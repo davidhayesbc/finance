@@ -122,7 +122,7 @@ public class QifTransactionImporter : ITransactionImporter
             )
         )
         {
-            return parsed;
+            return DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
         }
 
         throw new FormatException($"Unrecognized QIF date format: {dateStr}");

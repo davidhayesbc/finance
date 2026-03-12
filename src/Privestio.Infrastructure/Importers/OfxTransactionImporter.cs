@@ -79,12 +79,14 @@ public partial class OfxTransactionImporter : ITransactionImporter
         // OFX dates: YYYYMMDDHHMMSS or YYYYMMDD or YYYYMMDDHHMMSS.XXX[TZ]
         var cleaned = dateStr.Split('[')[0].Split('.')[0].Trim();
 
-        return cleaned.Length switch
+        var parsed = cleaned.Length switch
         {
             8 => DateTime.ParseExact(cleaned, "yyyyMMdd", CultureInfo.InvariantCulture),
             14 => DateTime.ParseExact(cleaned, "yyyyMMddHHmmss", CultureInfo.InvariantCulture),
             _ => throw new FormatException($"Unrecognized OFX date format: {dateStr}"),
         };
+
+        return DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
     }
 
     private static string? GetTagValue(string block, string tagName)

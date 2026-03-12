@@ -105,17 +105,26 @@ public class CsvTransactionImporter : ITransactionImporter
 
     private static DateTime ParseDate(string dateStr, string? dateFormat)
     {
+        DateTime parsed;
         if (!string.IsNullOrEmpty(dateFormat))
         {
-            return DateTime.ParseExact(
+            parsed = DateTime.ParseExact(
                 dateStr.Trim(),
                 dateFormat,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None
             );
         }
+        else
+        {
+            parsed = DateTime.Parse(
+                dateStr.Trim(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None
+            );
+        }
 
-        return DateTime.Parse(dateStr.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None);
+        return DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
     }
 
     private static decimal ParseAmount(
