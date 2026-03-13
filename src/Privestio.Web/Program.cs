@@ -37,4 +37,8 @@ builder.Services.AddScoped<IConnectivityService, ConnectivityService>();
 builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddScoped<IConflictResolutionWebService, ConflictResolutionWebService>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+await host.Services.GetRequiredService<IAuthService>().InitializeAsync();
+
+await host.RunAsync();

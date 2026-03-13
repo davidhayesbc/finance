@@ -11,6 +11,7 @@ public interface IAuthService
     bool IsAuthenticated { get; }
     string? AccessToken { get; }
     AuthResponse? CurrentUser { get; }
+    Task InitializeAsync();
     Task<AuthResponse?> LoginAsync(LoginRequest request);
     Task<AuthResponse?> RegisterAsync(RegisterRequest request);
     Task LogoutAsync();
@@ -94,6 +95,10 @@ public class AuthService : IAuthService
         );
         if (!string.IsNullOrEmpty(token))
         {
+            _currentUser = new AuthResponse
+            {
+                AccessToken = token,
+            };
             SetAuthorizationHeader(token);
         }
     }
