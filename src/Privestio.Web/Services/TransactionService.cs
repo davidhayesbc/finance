@@ -13,7 +13,8 @@ public interface ITransactionService
         string? cursor = null,
         DateTime? fromDate = null,
         DateTime? toDate = null,
-        Guid? categoryId = null
+        Guid? categoryId = null,
+        string? searchTerm = null
     );
     Task<TransactionResponse?> GetTransactionByIdAsync(Guid id);
     Task<IReadOnlyList<TransactionSplitResponse>?> UpdateSplitsAsync(
@@ -34,7 +35,8 @@ public class TransactionService : ITransactionService
         string? cursor = null,
         DateTime? fromDate = null,
         DateTime? toDate = null,
-        Guid? categoryId = null
+        Guid? categoryId = null,
+        string? searchTerm = null
     )
     {
         try
@@ -48,6 +50,8 @@ public class TransactionService : ITransactionService
                 url += $"&toDate={toDate.Value:yyyy-MM-dd}";
             if (categoryId.HasValue)
                 url += $"&categoryId={categoryId.Value}";
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+                url += $"&searchTerm={Uri.EscapeDataString(searchTerm.Trim())}";
 
             var result = await _httpClient.GetFromJsonAsync<PagedResponse<TransactionResponse>>(
                 url

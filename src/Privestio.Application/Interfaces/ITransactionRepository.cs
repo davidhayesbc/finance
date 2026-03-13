@@ -12,6 +12,7 @@ public interface ITransactionRepository
         string? cursor,
         DateRange? dateFilter = null,
         Guid? categoryId = null,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default
     );
     Task<Transaction> AddAsync(

@@ -1,5 +1,6 @@
 @page "/accounts/{Id:guid}"
 @inject IAccountService AccountService
+@inject ITransactionService TransactionService
 @inject NavigationManager Navigation
 
 <PageTitle>@(_account?.Name ?? "Account") — Privestio</PageTitle>
@@ -58,6 +59,134 @@ else
                 <strong>@_account.OpeningDate.ToString("MMMM d, yyyy")</strong>
             </FluentCard>
         </div>
+
+        <FluentCard Class="surface-card transaction-panel" aria-labelledby="recent-transactions-title">
+            <div class="section-heading-row">
+                <div>
+                    <h2 id="recent-transactions-title" class="section-heading">Recent transactions</h2>
+                    <p class="section-copy">Filter by time range, narrow with search, and page through account activity without leaving the drilldown.</p>
+                </div>
+                <div class="summary-strip summary-strip--compact">
+                    <div>
+                        <span class="summary-strip__label">Visible items</span>
+                        <strong>@_transactions.Count</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Range</span>
+                        <strong>@GetRangeSummary()</strong>
+                    </div>
+                </div>
+            </div>
+
+            <form class="transaction-filters" @onsubmit="HandleFilterSubmitAsync" @onsubmit:preventDefault="true">
+                <div class="transaction-filters__search">
+                    <label class="filter-label" for="transaction-search">Search</label>
+                    <input id="transaction-search"
+                           class="filter-input"
+                           type="search"
+                           placeholder="Description, payee, category, or notes"
+                           @bind="_searchTerm"
+                           @bind:event="oninput" />
+                </div>
+
+                <div class="transaction-filters__dates">
+                    <div>
+                        <label class="filter-label" for="from-date">From</label>
+                        <input id="from-date" class="filter-input" type="date" value="@_fromDateInput" @onchange="HandleFromDateChanged" />
+                    </div>
+                    <div>
+                        <label class="filter-label" for="to-date">To</label>
+                        <input id="to-date" class="filter-input" type="date" value="@_toDateInput" @onchange="HandleToDateChanged" />
+                    </div>
+                </div>
+
+                <div class="transaction-filters__actions">
+                    <button type="submit" class="app-button app-button--primary">Apply</button>
+                    <button type="button" class="app-button app-button--secondary" @onclick="ResetFiltersAsync">Reset</button>
+                </div>
+            </form>
+
+            <div class="filter-chip-row" role="group" aria-label="Date range presets">
+                @foreach (var preset in _datePresets)
+                {
+                    <button type="button"
+                            class="filter-chip @(preset.Key == _selectedDatePreset ? "filter-chip--active" : string.Empty)"
+                            @onclick='() => ApplyDatePresetAsync(preset.Key)'>
+                        @preset.Label
+                    </button>
+                }
+            </div>
+
+            @if (_isLoadingTransactions)
+            {
+                <div class="empty-state-shell">
+                    <FluentProgressRing aria-label="Loading transactions" />
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_transactionErrorMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Warning">@_transactionErrorMessage</FluentMessageBar>
+            }
+            else if (_transactions.Count == 0)
+            {
+                <div class="empty-inline">
+                    <strong>No transactions match these filters.</strong>
+                    <span>Try a wider date range or clear the search term.</span>
+                </div>
+            }
+            else
+            {
+                <div class="transaction-list" role="list" aria-label="Recent transactions list">
+                    @foreach (var transaction in _transactions)
+                    {
+                        <article class="transaction-row" role="listitem">
+                            <div class="transaction-row__main">
+                                <div class="transaction-row__header">
+                                    <div>
+                                        <h3>@transaction.Description</h3>
+                                        <p>@GetTransactionSupportingText(transaction)</p>
+                                    </div>
+                                    <div class="transaction-amount @GetTransactionAmountClass(transaction)">@FormatTransactionAmount(transaction)</div>
+                                </div>
+
+                                <div class="transaction-row__meta">
+                                    <span class="transaction-meta-pill">@transaction.Date.ToString("MMM d, yyyy")</span>
+                                    <span class="transaction-meta-pill">@transaction.TransactionType</span>
+                                    @if (!string.IsNullOrWhiteSpace(transaction.CategoryName))
+                                    {
+                                        <span class="transaction-meta-pill">@transaction.CategoryName</span>
+                                    }
+                                    @if (transaction.IsReconciled)
+                                    {
+                                        <span class="transaction-meta-pill transaction-meta-pill--success">Reconciled</span>
+                                    }
+                                    @if (transaction.IsSplit)
+                                    {
+                                        <span class="transaction-meta-pill">Split</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <button type="button"
+                                    class="app-button app-button--secondary transaction-row__action"
+                                    @onclick='() => Navigation.NavigateTo($"/transactions/{transaction.Id}")'>
+                                View
+                            </button>
+                        </article>
+                    }
+                </div>
+            }
+
+            <div class="pager-row">
+                <button type="button" class="app-button app-button--secondary" disabled="@(!_hasPreviousPage || _isLoadingTransactions)" @onclick="LoadPreviousPageAsync">
+                    Previous
+                </button>
+                <span class="pager-status">Page @(_cursorHistory.Count + 1)</span>
+                <button type="button" class="app-button app-button--secondary" disabled="@(!_hasNextPage || _isLoadingTransactions)" @onclick="LoadNextPageAsync">
+                    Next
+                </button>
+            </div>
+        </FluentCard>
     </section>
 }
 
@@ -65,12 +194,234 @@ else
     [Parameter] public Guid Id { get; set; }
 
     private AccountResponse? _account;
+    private readonly List<TransactionResponse> _transactions = new();
+    private readonly List<string?> _cursorHistory = [];
+    private readonly IReadOnlyList<DatePreset> _datePresets =
+    [
+        new("30d", "30D"),
+        new("90d", "90D"),
+        new("ytd", "YTD"),
+        new("1y", "1Y"),
+        new("all", "All")
+    ];
+
     private bool _isLoading = true;
+    private bool _isLoadingTransactions = true;
+    private bool _hasNextPage;
+    private bool _hasPreviousPage;
+    private string? _nextCursor;
+    private string? _currentCursor;
+    private string? _transactionErrorMessage;
+    private string _searchTerm = string.Empty;
+    private string _appliedSearchTerm = string.Empty;
+    private string _selectedDatePreset = "90d";
+    private string _fromDateInput = string.Empty;
+    private string _toDateInput = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
         _isLoading = true;
         _account = await AccountService.GetAccountByIdAsync(Id);
         _isLoading = false;
+
+        if (_account is not null)
+        {
+            SetDatePreset("90d");
+            await LoadTransactionsAsync(resetPaging: true);
+        }
     }
+
+    private async Task HandleFilterSubmitAsync()
+    {
+        if (!TryParseDateInputs(out var fromDate, out var toDate))
+        {
+            _transactionErrorMessage = "Enter a valid date range before applying filters.";
+            return;
+        }
+
+        _transactionErrorMessage = null;
+        _appliedSearchTerm = _searchTerm.Trim();
+        _selectedDatePreset = string.Empty;
+        _fromDateInput = FormatDateInput(fromDate);
+        _toDateInput = FormatDateInput(toDate);
+        await LoadTransactionsAsync(resetPaging: true);
+    }
+
+    private async Task ApplyDatePresetAsync(string presetKey)
+    {
+        SetDatePreset(presetKey);
+        await LoadTransactionsAsync(resetPaging: true);
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        _searchTerm = string.Empty;
+        _appliedSearchTerm = string.Empty;
+        SetDatePreset("90d");
+        await LoadTransactionsAsync(resetPaging: true);
+    }
+
+    private void HandleFromDateChanged(ChangeEventArgs args)
+    {
+        _fromDateInput = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void HandleToDateChanged(ChangeEventArgs args)
+    {
+        _toDateInput = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task LoadNextPageAsync()
+    {
+        if (!_hasNextPage || _nextCursor is null)
+            return;
+
+        _cursorHistory.Add(_currentCursor);
+        _currentCursor = _nextCursor;
+        await LoadTransactionsAsync(resetPaging: false);
+    }
+
+    private async Task LoadPreviousPageAsync()
+    {
+        if (_cursorHistory.Count == 0)
+            return;
+
+        _currentCursor = _cursorHistory[^1];
+        _cursorHistory.RemoveAt(_cursorHistory.Count - 1);
+        await LoadTransactionsAsync(resetPaging: false);
+    }
+
+    private async Task LoadTransactionsAsync(bool resetPaging)
+    {
+        _isLoadingTransactions = true;
+        _transactionErrorMessage = null;
+
+        if (resetPaging)
+        {
+            _currentCursor = null;
+            _nextCursor = null;
+            _cursorHistory.Clear();
+        }
+
+        try
+        {
+            var fromDate = ParseDateInput(_fromDateInput);
+            var toDate = ParseDateInput(_toDateInput);
+            var result = await TransactionService.GetTransactionsAsync(
+                Id,
+                pageSize: 15,
+                cursor: _currentCursor,
+                fromDate: fromDate,
+                toDate: toDate,
+                searchTerm: _appliedSearchTerm
+            );
+
+            _transactions.Clear();
+            _transactions.AddRange(result.Items);
+            _nextCursor = result.NextCursor;
+            _hasNextPage = result.HasNextPage;
+            _hasPreviousPage = _cursorHistory.Count > 0;
+        }
+        catch
+        {
+            _transactions.Clear();
+            _nextCursor = null;
+            _hasNextPage = false;
+            _hasPreviousPage = _cursorHistory.Count > 0;
+            _transactionErrorMessage = "Transactions could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoadingTransactions = false;
+        }
+    }
+
+    private void SetDatePreset(string presetKey)
+    {
+        _selectedDatePreset = presetKey;
+        var today = DateTime.Today;
+
+        var range = presetKey switch
+        {
+            "30d" => ((DateTime?)today.AddDays(-30), (DateTime?)today),
+            "90d" => ((DateTime?)today.AddDays(-90), (DateTime?)today),
+            "ytd" => ((DateTime?)new DateTime(today.Year, 1, 1), (DateTime?)today),
+            "1y" => ((DateTime?)today.AddYears(-1), (DateTime?)today),
+            _ => ((DateTime?)null, (DateTime?)null),
+        };
+
+        var (fromDate, toDate) = range;
+
+        _fromDateInput = FormatDateInput(fromDate);
+        _toDateInput = FormatDateInput(toDate);
+    }
+
+    private bool TryParseDateInputs(out DateTime? fromDate, out DateTime? toDate)
+    {
+        fromDate = ParseDateInput(_fromDateInput);
+        toDate = ParseDateInput(_toDateInput);
+
+        if ((_fromDateInput.Length > 0 && !fromDate.HasValue) || (_toDateInput.Length > 0 && !toDate.HasValue))
+            return false;
+
+        if (fromDate.HasValue && toDate.HasValue && fromDate > toDate)
+            return false;
+
+        return true;
+    }
+
+    private static DateTime? ParseDateInput(string value) =>
+        DateTime.TryParse(value, out var parsed) ? parsed : null;
+
+    private static string FormatDateInput(DateTime? value) =>
+        value.HasValue ? value.Value.ToString("yyyy-MM-dd") : string.Empty;
+
+    private string GetRangeSummary()
+    {
+        var fromDate = ParseDateInput(_fromDateInput);
+        var toDate = ParseDateInput(_toDateInput);
+
+        return (fromDate, toDate) switch
+        {
+            (null, null) => "All time",
+            (not null, null) => $"Since {fromDate.Value:MMM d}",
+            (null, not null) => $"Until {toDate.Value:MMM d}",
+            _ => $"{fromDate.Value:MMM d} to {toDate.Value:MMM d}",
+        };
+    }
+
+    private static string GetTransactionSupportingText(TransactionResponse transaction)
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(transaction.PayeeName))
+            parts.Add(transaction.PayeeName);
+
+        if (!string.IsNullOrWhiteSpace(transaction.Notes))
+            parts.Add(transaction.Notes);
+
+        return parts.Count == 0 ? "No additional notes" : string.Join(" • ", parts);
+    }
+
+    private static string FormatTransactionAmount(TransactionResponse transaction)
+    {
+        var prefix = transaction.TransactionType switch
+        {
+            "Credit" => "+",
+            "Debit" => "-",
+            _ => string.Empty,
+        };
+
+        return $"{prefix}{Math.Abs(transaction.Amount):C} {transaction.Currency}";
+    }
+
+    private static string GetTransactionAmountClass(TransactionResponse transaction) =>
+        transaction.TransactionType switch
+        {
+            "Credit" => "transaction-amount--positive",
+            "Debit" => "transaction-amount--negative",
+            _ => string.Empty,
+        };
+
+    private sealed record DatePreset(string Key, string Label);
 }

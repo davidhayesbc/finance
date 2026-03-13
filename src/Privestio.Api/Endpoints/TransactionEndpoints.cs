@@ -68,6 +68,7 @@ public static class TransactionEndpoints
         [FromQuery] DateTime? fromDate,
         [FromQuery] DateTime? toDate,
         [FromQuery] Guid? categoryId,
+        [FromQuery] string? searchTerm,
         IMediator mediator,
         ClaimsPrincipal user,
         CancellationToken cancellationToken
@@ -87,7 +88,8 @@ public static class TransactionEndpoints
                 cursor,
                 fromDate,
                 toDate,
-                categoryId
+                categoryId,
+                searchTerm
             ),
             cancellationToken
         );

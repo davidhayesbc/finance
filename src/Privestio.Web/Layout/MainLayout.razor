@@ -1,20 +1,63 @@
 @inherits LayoutComponentBase
 @inject IAuthService AuthService
+@inject IThemeService ThemeService
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="app-shell">
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <header class="app-header">
         <div class="app-header__inner">
-            <div class="brand-block">
-                <FluentAnchor Href="/" Appearance="Appearance.Hypertext" Class="brand-link">
-                    <span class="brand-mark">P</span>
-                    <span>
-                        <strong>Privestio</strong>
-                        <span class="brand-tagline">Personal finance with clear signal</span>
-                    </span>
-                </FluentAnchor>
+            <div class="app-header__top">
+                <div class="brand-block">
+                    <FluentAnchor Href="/" Appearance="Appearance.Hypertext" Class="brand-link">
+                        <span class="brand-mark">P</span>
+                        <span>
+                            <strong>Privestio</strong>
+                            <span class="brand-tagline">Personal finance with clear signal</span>
+                        </span>
+                    </FluentAnchor>
+                </div>
+
+                <div class="app-header__controls">
+                    <div class="status-cluster">
+                        <OnlineIndicator />
+                        <InstallPrompt />
+                    </div>
+
+                    <div class="theme-switcher" role="group" aria-label="Theme preference">
+                        <button type="button"
+                                class="theme-switcher__button @GetThemeButtonClass("system")"
+                                aria-pressed="@IsThemePreferenceSelected("system")"
+                                @onclick='() => SetThemePreferenceAsync("system")'>
+                            Auto
+                        </button>
+                        <button type="button"
+                                class="theme-switcher__button @GetThemeButtonClass("light")"
+                                aria-pressed="@IsThemePreferenceSelected("light")"
+                                @onclick='() => SetThemePreferenceAsync("light")'>
+                            Light
+                        </button>
+                        <button type="button"
+                                class="theme-switcher__button @GetThemeButtonClass("dark")"
+                                aria-pressed="@IsThemePreferenceSelected("dark")"
+                                @onclick='() => SetThemePreferenceAsync("dark")'>
+                            Dark
+                        </button>
+                    </div>
+
+                    @if (AuthService.IsAuthenticated)
+                    {
+                        <button type="button" class="app-button app-button--secondary header-cta" @onclick="HandleLogoutAsync">
+                            Sign out
+                        </button>
+                    }
+                    else
+                    {
+                        <a href="/login" class="app-button app-button--primary header-cta">Sign in</a>
+                    }
+                </div>
             </div>
 
             <nav class="primary-nav" aria-label="Primary navigation">
@@ -31,21 +74,6 @@
                     <FluentAnchor Href="/rules" Class="nav-pill">Rules</FluentAnchor>
                 }
             </nav>
-
-            <div class="header-actions">
-                <OnlineIndicator />
-                <InstallPrompt />
-                @if (AuthService.IsAuthenticated)
-                {
-                    <FluentButton Appearance="Appearance.Outline" OnClick="HandleLogoutAsync">
-                        Sign out
-                    </FluentButton>
-                }
-                else
-                {
-                    <FluentAnchor Href="/login" Class="nav-pill nav-pill--accent">Sign in</FluentAnchor>
-                }
-            </div>
         </div>
     </header>
 
@@ -75,9 +103,40 @@
 </div>
 
 @code {
+    private ThemeState _themeState = ThemeState.Default;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ThemeService.InitializeAsync();
+        _themeState = ThemeService.State;
+        ThemeService.ThemeChanged += HandleThemeChanged;
+    }
+
     private async Task HandleLogoutAsync()
     {
         await AuthService.LogoutAsync();
         Navigation.NavigateTo("/login");
+    }
+
+    private async Task SetThemePreferenceAsync(string preference)
+    {
+        await ThemeService.SetPreferenceAsync(preference);
+    }
+
+    private void HandleThemeChanged(ThemeState themeState)
+    {
+        _themeState = themeState;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetThemeButtonClass(string preference) =>
+        IsThemePreferenceSelected(preference) ? "theme-switcher__button--active" : string.Empty;
+
+    private bool IsThemePreferenceSelected(string preference) =>
+        string.Equals(_themeState.Preference, preference, StringComparison.OrdinalIgnoreCase);
+
+    public void Dispose()
+    {
+        ThemeService.ThemeChanged -= HandleThemeChanged;
     }
 }

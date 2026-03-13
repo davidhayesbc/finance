@@ -8,10 +8,21 @@
 <section class="auth-shell">
     <div class="auth-shell__intro">
         <span class="eyebrow">Sign in</span>
-        <h1>Pick up where you left off.</h1>
+        <h1>Return to the full account workspace.</h1>
         <p>
-            Return to your accounts, imports, and categorization workflow with the same consistent view across devices.
+            Get back to balances, categorization, and account review in a cleaner workspace built for regular financial check-ins.
         </p>
+
+        <div class="auth-highlights">
+            <div class="auth-highlights__item">
+                <strong>Track the signal</strong>
+                <span>Review account changes, not just raw balances.</span>
+            </div>
+            <div class="auth-highlights__item">
+                <strong>Stay in flow</strong>
+                <span>Move from account drilldown to transaction entry without jumping views.</span>
+            </div>
+        </div>
     </div>
 
     <FluentCard Class="surface-card auth-card">
@@ -35,10 +46,9 @@
                                  TextFieldType="TextFieldType.Password" Required="true" id="password" />
                 <FluentValidationMessage For="@(() => _form.Password)" />
 
-                <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isLoading"
-                              Class="full-width-button">
-                    Sign In
-                </FluentButton>
+                <button type="submit" class="app-button app-button--primary full-width-button auth-submit" disabled="@_isLoading">
+                    @(_isLoading ? "Signing in..." : "Sign in")
+                </button>
             </FluentStack>
         </EditForm>
 

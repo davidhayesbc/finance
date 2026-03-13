@@ -45,6 +45,7 @@ public class GetTransactionsQueryHandler
             request.Cursor,
             dateFilter,
             request.CategoryId,
+            request.SearchTerm,
             cancellationToken
         );
 

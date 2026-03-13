@@ -34,6 +34,7 @@ builder.Services.AddScoped<IAmortizationService, AmortizationService>();
 builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();
 builder.Services.AddScoped<IIndexedDbService, IndexedDbService>();
 builder.Services.AddScoped<IConnectivityService, ConnectivityService>();
+builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddScoped<IConflictResolutionWebService, ConflictResolutionWebService>();
 

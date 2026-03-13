@@ -31,6 +31,7 @@ public class TransactionRepository : ITransactionRepository
         string? cursor,
         DateRange? dateFilter = null,
         Guid? categoryId = null,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -50,6 +51,17 @@ public class TransactionRepository : ITransactionRepository
         if (categoryId.HasValue)
         {
             query = query.Where(t => t.CategoryId == categoryId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearchTerm = searchTerm.Trim().ToLower();
+            query = query.Where(t =>
+                t.Description.ToLower().Contains(normalizedSearchTerm)
+                || (t.Notes != null && t.Notes.ToLower().Contains(normalizedSearchTerm))
+                || (t.Payee != null && t.Payee.DisplayName.ToLower().Contains(normalizedSearchTerm))
+                || (t.Category != null && t.Category.Name.ToLower().Contains(normalizedSearchTerm))
+            );
         }
 
         // Cursor-based pagination using cursor as "last seen id|date"
