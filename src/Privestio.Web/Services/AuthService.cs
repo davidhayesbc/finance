@@ -95,10 +95,7 @@ public class AuthService : IAuthService
         );
         if (!string.IsNullOrEmpty(token))
         {
-            _currentUser = new AuthResponse
-            {
-                AccessToken = token,
-            };
+            _currentUser = new AuthResponse { AccessToken = token };
             SetAuthorizationHeader(token);
         }
     }
