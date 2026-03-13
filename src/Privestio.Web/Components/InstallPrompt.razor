@@ -3,10 +3,10 @@
 <div class="install-prompt">
     @if (_showInstallButton)
     {
-        <FluentButton Appearance="Appearance.Outline"                      Size="ButtonSize.Small"                      OnClick="HandleInstallClickAsync"
-                      Title="Install Privestio as an app">
+        <button type="button" class="app-button app-button--secondary" @onclick="HandleInstallClickAsync"
+                title="Install Privestio as an app">
             Install App
-        </FluentButton>
+        </button>
     }
 </div>
 

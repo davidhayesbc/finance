@@ -10,7 +10,7 @@
     --surface-shadow: 0 28px 80px rgba(25, 41, 61, 0.12);
     --text-strong: #172233;
     --text-muted: #55657c;
-    --text-soft: #76859a;
+    --text-soft: #5f7087;
     --accent: #1f6feb;
     --accent-strong: #174ea6;
     --accent-soft: rgba(31, 111, 235, 0.12);
@@ -23,6 +23,7 @@
     --chip-bg: rgba(227, 236, 247, 0.9);
     --chip-active-bg: rgba(31, 111, 235, 0.14);
     --chip-active-border: rgba(31, 111, 235, 0.28);
+    --chip-active-text: #174ea6;
     --radius-xl: 28px;
     --radius-lg: 22px;
     --radius-md: 16px;
@@ -52,8 +53,9 @@
     --field-bg: rgba(13, 24, 38, 0.95);
     --field-border: rgba(135, 168, 216, 0.2);
     --chip-bg: rgba(18, 32, 49, 0.94);
-    --chip-active-bg: rgba(110, 168, 255, 0.18);
-    --chip-active-border: rgba(110, 168, 255, 0.34);
+    --chip-active-bg: #183a63;
+    --chip-active-border: #5f8fcf;
+    --chip-active-text: #e6f0ff;
 }
 
 html,
@@ -218,6 +220,21 @@ a {
     font-weight: 600;
 }
 
+fluent-anchor.nav-pill::part(control) {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+fluent-anchor.nav-pill:hover::part(control) {
+    background: color-mix(in srgb, var(--surface-raised) 75%, var(--accent-soft));
+    color: var(--text-strong);
+}
+
 .nav-pill:hover,
 .button-link:hover,
 .inline-link:hover {
@@ -231,6 +248,34 @@ a {
     color: #fff;
     border: 1px solid transparent;
     box-shadow: 0 14px 28px rgba(31, 111, 235, 0.22);
+}
+
+fluent-anchor.button-link--primary::part(control) {
+    min-height: 40px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 14px 28px rgba(31, 111, 235, 0.22);
+}
+
+fluent-anchor.button-link--secondary::part(control) {
+    min-height: 40px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-raised);
+    color: var(--accent-strong);
+    font-weight: 700;
+}
+
+fluent-anchor.brand-link::part(control) {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
 }
 
 .button-link--secondary,
@@ -708,7 +753,7 @@ a {
 .filter-chip--active {
     border-color: var(--chip-active-border);
     background: var(--chip-active-bg);
-    color: var(--accent-strong);
+    color: var(--chip-active-text);
 }
 
 .transaction-list {
@@ -958,4 +1003,16 @@ a {
 .install-prompt {
     display: inline-flex;
     align-items: center;
+}
+
+.install-prompt fluent-button::part(control) {
+    border-radius: 12px;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-raised);
+    color: var(--text-muted);
+}
+
+.install-prompt fluent-button:hover::part(control) {
+    color: var(--text-strong);
+    border-color: color-mix(in srgb, var(--surface-border) 65%, var(--accent));
 }

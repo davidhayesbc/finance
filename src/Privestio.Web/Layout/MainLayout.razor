@@ -27,19 +27,16 @@
                     </div>
 
                     <div class="theme-switcher" role="group" aria-label="Theme preference">
-                        <button type="button"          class="theme-switcher__button @GetThemeButtonClass("system")"
-                                aria-pressed="@IsThemePreferenceSelected("system")"
-                                @onclick='() => SetThemePreferenceAsync("system")'>
+                        <button type="button" class="theme-switcher__button @GetThemeButtonClass("system")"
+                                aria-pressed="@GetAriaPressed("system")"                   @onclick='() => SetThemePreferenceAsync("system")'>
                             Auto
                         </button>
-                        <button type="button"                            class="theme-switcher__button @GetThemeButtonClass("light")"
-                                aria-pressed="@IsThemePreferenceSelected("light")"
-                                @onclick='() => SetThemePreferenceAsync("light")'>
+                        <button type="button" class="theme-switcher__button @GetThemeButtonClass("light")"
+                                aria-pressed="@GetAriaPressed("light")"    @onclick='() => SetThemePreferenceAsync("light")'>
                             Light
                         </button>
-                        <button type="button"                        class="theme-switcher__button @GetThemeButtonClass("dark")"
-                                aria-pressed="@IsThemePreferenceSelected("dark")"
-                                @onclick='() => SetThemePreferenceAsync("dark")'>
+                        <button type="button" class="theme-switcher__button @GetThemeButtonClass("dark")"
+                                aria-pressed="@GetAriaPressed("dark")"          @onclick='() => SetThemePreferenceAsync("dark")'>
                             Dark
                         </button>
                     </div>
@@ -129,6 +126,11 @@
 
     private string GetThemeButtonClass(string preference) =>
         IsThemePreferenceSelected(preference) ? "theme-switcher__button--active" : string.Empty;
+
+    private string GetAriaPressed(string preference) =>
+        IsThemePreferenceSelected(preference)
+            ? "true"
+            : "false";
 
     private bool IsThemePreferenceSelected(string preference) =>
         string.Equals(_themeState.Preference, preference, StringComparison.OrdinalIgnoreCase);
