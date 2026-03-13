@@ -29,6 +29,7 @@ builder.Services.AddScoped<INotificationWebService, NotificationWebService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IForecastScenarioService, ForecastScenarioService>();
 builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
+builder.Services.AddScoped<IValuationService, ValuationService>();
 builder.Services.AddScoped<IContributionRoomService, ContributionRoomService>();
 builder.Services.AddScoped<IAmortizationService, AmortizationService>();
 builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();

@@ -232,4 +232,39 @@ public class TransactionRepository : ITransactionRepository
                 t => t.Type == TransactionType.Debit ? -t.Amount.Amount : t.Amount.Amount,
                 cancellationToken
             );
+
+    public async Task<decimal> GetSignedSumByAccountIdAsync(
+        Guid accountId,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Transactions.Where(t => t.AccountId == accountId)
+            .SumAsync(
+                t => t.Type == TransactionType.Debit ? -t.Amount.Amount : t.Amount.Amount,
+                cancellationToken
+            );
+
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetSignedSumsByAccountIdsAsync(
+        IEnumerable<Guid> accountIds,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var idList = accountIds.ToList();
+        if (idList.Count == 0)
+            return new Dictionary<Guid, decimal>();
+
+        var sums = await _context
+            .Transactions.Where(t => idList.Contains(t.AccountId))
+            .GroupBy(t => t.AccountId)
+            .Select(g => new
+            {
+                AccountId = g.Key,
+                SignedSum = g.Sum(t =>
+                    t.Type == TransactionType.Debit ? -t.Amount.Amount : t.Amount.Amount
+                ),
+            })
+            .ToDictionaryAsync(x => x.AccountId, x => x.SignedSum, cancellationToken);
+
+        return sums;
+    }
 }

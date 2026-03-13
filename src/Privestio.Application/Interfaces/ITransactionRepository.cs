@@ -69,4 +69,22 @@ public interface ITransactionRepository
         Guid upToId,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Returns the signed sum of all transactions for a single account.
+    /// Credits and Transfers contribute +amount; Debits contribute -amount.
+    /// </summary>
+    Task<decimal> GetSignedSumByAccountIdAsync(
+        Guid accountId,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Returns the signed sum of all transactions for each of the given accounts.
+    /// Missing keys indicate the account has no transactions (sum = 0).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, decimal>> GetSignedSumsByAccountIdsAsync(
+        IEnumerable<Guid> accountIds,
+        CancellationToken cancellationToken = default
+    );
 }

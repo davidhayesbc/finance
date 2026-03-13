@@ -8,7 +8,7 @@ namespace Privestio.Application.Mapping;
 /// </summary>
 public static class AccountMapper
 {
-    public static AccountResponse ToResponse(Account account) =>
+    public static AccountResponse ToResponse(Account account, decimal? computedBalance = null) =>
         new()
         {
             Id = account.Id,
@@ -18,7 +18,7 @@ public static class AccountMapper
             Currency = account.Currency,
             Institution = account.Institution,
             OpeningBalance = account.OpeningBalance.Amount,
-            CurrentBalance = account.CurrentBalance.Amount,
+            CurrentBalance = computedBalance ?? account.CurrentBalance.Amount,
             OpeningDate = account.OpeningDate,
             IsActive = account.IsActive,
             IsShared = account.IsShared,

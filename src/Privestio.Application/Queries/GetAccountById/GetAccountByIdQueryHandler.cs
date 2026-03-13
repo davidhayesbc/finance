@@ -2,6 +2,8 @@ using MediatR;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Mapping;
 using Privestio.Contracts.Responses;
+using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 
 namespace Privestio.Application.Queries.GetAccountById;
 
@@ -24,6 +26,25 @@ public class GetAccountByIdQueryHandler : IRequestHandler<GetAccountByIdQuery, A
         if (account is null || account.OwnerId != request.RequestingUserId)
             return null;
 
-        return AccountMapper.ToResponse(account);
+        var balance = await ComputeCurrentBalanceAsync(account, cancellationToken);
+        return AccountMapper.ToResponse(account, balance);
+    }
+
+    private async Task<decimal> ComputeCurrentBalanceAsync(
+        Account account,
+        CancellationToken cancellationToken
+    )
+    {
+        if (account.AccountType == AccountType.Property)
+        {
+            var latest = account.GetLatestValuation();
+            return latest?.EstimatedValue.Amount ?? account.OpeningBalance.Amount;
+        }
+
+        var signedSum = await _unitOfWork.Transactions.GetSignedSumByAccountIdAsync(
+            account.Id,
+            cancellationToken
+        );
+        return account.OpeningBalance.Amount + signedSum;
     }
 }

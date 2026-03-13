@@ -26,7 +26,8 @@ public class AccountRepository : IAccountRepository
         CancellationToken cancellationToken = default
     ) =>
         await _context
-            .Accounts.Where(a => a.OwnerId == ownerId)
+            .Accounts.Include(a => a.Valuations)
+            .Where(a => a.OwnerId == ownerId)
             .OrderBy(a => a.Name)
             .ToListAsync(cancellationToken);
 
