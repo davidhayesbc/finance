@@ -97,10 +97,7 @@ public class AuthService : IAuthService
         {
             if (IsTokenExpired(token))
             {
-                await _jsRuntime.InvokeVoidAsync(
-                    "localStorage.removeItem",
-                    "privestio_token"
-                );
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "privestio_token");
                 return;
             }
 
@@ -118,13 +115,8 @@ public class AuthService : IAuthService
                 return true;
 
             var payload = parts[1];
-            var padded = payload.PadRight(
-                payload.Length + (4 - payload.Length % 4) % 4,
-                '='
-            );
-            var jsonBytes = Convert.FromBase64String(
-                padded.Replace('-', '+').Replace('_', '/')
-            );
+            var padded = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            var jsonBytes = Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/'));
             var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
 
             using var doc = System.Text.Json.JsonDocument.Parse(json);

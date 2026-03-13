@@ -155,7 +155,7 @@ public class ImportTransactionsCommandHandler
             var transaction = new Transaction(
                 request.AccountId,
                 item.Row.Date,
-                new Money(item.Row.Amount),
+                new Money(Math.Abs(item.Row.Amount)),
                 item.Row.Description,
                 type
             )

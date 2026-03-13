@@ -211,6 +211,57 @@ public class ImportTransactionsCommandTests
     }
 
     [Fact]
+    public async Task Handle_DebitTransaction_StoresAmountAsPositiveAbsoluteValue()
+    {
+        // Importers return signed amounts (negative for debits); the Transaction.Amount must
+        // always be stored as a positive magnitude so that balance calculations don't
+        // double-negate the value.
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(DateTime.Parse("2025-01-15"), -42.99m, "GROCERY STORE"),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        await _handler.Handle(command, CancellationToken.None);
+
+        _transactionRepo.Verify(
+            r =>
+                r.AddRangeAsync(
+                    It.Is<IEnumerable<Transaction>>(txns =>
+                        txns.First().Amount.Amount == 42.99m
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_CreditTransaction_StoresAmountAsPositiveAbsoluteValue()
+    {
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(DateTime.Parse("2025-01-17"), 2500.00m, "PAYROLL"),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        await _handler.Handle(command, CancellationToken.None);
+
+        _transactionRepo.Verify(
+            r =>
+                r.AddRangeAsync(
+                    It.Is<IEnumerable<Transaction>>(txns =>
+                        txns.First().Amount.Amount == 2500.00m
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
     public async Task Handle_PositiveAmount_CreatesCreditTransaction()
     {
         var rows = new List<ImportedTransactionRow>
