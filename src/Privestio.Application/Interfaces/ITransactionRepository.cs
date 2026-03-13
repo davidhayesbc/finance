@@ -57,4 +57,16 @@ public interface ITransactionRepository
         DateTime endDate,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Returns the signed sum of all account transactions up to and including the
+    /// provided transaction position (date/id).
+    /// Credits and Transfers contribute +amount; Debits contribute -amount.
+    /// </summary>
+    Task<decimal> GetSignedSumUpToAsync(
+        Guid accountId,
+        DateTime upToDate,
+        Guid upToId,
+        CancellationToken cancellationToken = default
+    );
 }

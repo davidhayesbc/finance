@@ -418,7 +418,13 @@ FodyWeavers.xsd
 *.msp
 
 # Build artifacts (auto-added)
-src/**/bin/
-src/**/obj/
-tests/**/bin/
-tests/**/obj/
+**/[Bb]in/
+**/[Oo]bj/
+src/**/bin/*
+src/**/obj/*
+tests/**/bin/*
+tests/**/obj/*
+
+# Handles malformed Windows-style folder names accidentally created on Linux (e.g. bin\Debug)
+**/bin\\*/
+**/obj\\*/

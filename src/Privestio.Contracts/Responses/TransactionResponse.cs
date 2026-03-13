@@ -19,4 +19,9 @@ public record TransactionResponse
     public string? Notes { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+
+    /// <summary>
+    /// Running balance after this transaction, calculated from the account opening balance.
+    /// </summary>
+    public decimal RunningBalance { get; init; }
 }

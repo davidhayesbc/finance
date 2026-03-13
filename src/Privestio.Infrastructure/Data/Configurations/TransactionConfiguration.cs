@@ -55,6 +55,12 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .HasFilter("\"ImportFingerprint\" IS NOT NULL");
 
         builder.HasIndex(t => new { t.AccountId, t.Date });
+        builder.HasIndex(t => new
+        {
+            t.AccountId,
+            t.Date,
+            t.Id,
+        });
         builder.HasIndex(t => new { t.AccountId, t.IsDeleted });
         builder.HasIndex(t => t.CategoryId);
     }

@@ -845,71 +845,145 @@ fluent-anchor.brand-link::part(control) {
     color: var(--chip-active-text);
 }
 
-.transaction-list {
-    display: grid;
-    gap: 14px;
+/* ── Transaction table ─────────────────────────────────────────────── */
+
+.txn-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-.transaction-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 18px 20px;
-    border: 1px solid var(--surface-border);
-    border-radius: 18px;
+.txn-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    table-layout: fixed;
+}
+
+.txn-table thead th {
+    padding: 6px 10px;
+    border-bottom: 2px solid var(--surface-border);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.txn-table tbody tr.txn-row {
+    border-bottom: 1px solid var(--surface-border);
+    transition: background 0.12s;
+}
+
+.txn-table tbody tr.txn-row:hover {
     background: var(--surface-raised);
 }
 
-.transaction-row__main {
-    min-width: 0;
-    flex: 1;
+.txn-table td {
+    padding: 7px 10px;
+    vertical-align: middle;
 }
 
-.transaction-row__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
+/* Column widths */
+.txn-col--date {
+    width: 100px;
 }
 
-.transaction-row__header h3 {
-    margin: 0 0 4px;
-    font-size: 1.08rem;
+.txn-col--desc {
+    width: auto;
 }
 
-.transaction-row__header p {
-    margin: 0;
+.txn-col--cat {
+    width: 130px;
+}
+
+.txn-col--amount {
+    width: 110px;
+}
+
+.txn-col--balance {
+    width: 120px;
+}
+
+.txn-col--action {
+    width: 64px;
+}
+
+.txn-cell--date {
+    white-space: nowrap;
     color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
 }
 
-.transaction-row__meta {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 12px;
+.txn-cell--desc {
+    min-width: 0;
 }
 
-.transaction-meta-pill {
+.txn-desc-primary {
+    display: block;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.txn-desc-sub {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.txn-badge {
     display: inline-flex;
     align-items: center;
-    min-height: 30px;
-    padding: 0 10px;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: var(--chip-bg);
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.txn-badge--reconciled {
+    color: var(--success-soft);
+    background: color-mix(in srgb, var(--success-soft) 15%, transparent);
+}
+
+.txn-category {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
     border-radius: 999px;
     background: var(--chip-bg);
     color: var(--text-muted);
-    font-size: 0.82rem;
-    font-weight: 700;
-}
-
-.transaction-meta-pill--success {
-    color: var(--success-soft);
-}
-
-.transaction-amount {
+    font-size: 0.78rem;
+    font-weight: 600;
     white-space: nowrap;
-    font-size: 1.02rem;
-    font-weight: 800;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.txn-no-value {
+    color: var(--text-muted);
+    opacity: 0.45;
+}
+
+.txn-cell--right {
+    text-align: right;
+}
+
+.txn-cell--amount {
+    white-space: nowrap;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
 .transaction-amount--positive {
@@ -920,8 +994,22 @@ fluent-anchor.brand-link::part(control) {
     color: var(--danger-soft);
 }
 
-.transaction-row__action {
-    flex-shrink: 0;
+.txn-cell--balance {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+
+.txn-cell--action {
+    text-align: right;
+}
+
+/* xs button variant for table rows */
+.app-button--xs {
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    border-radius: 6px;
+    min-width: 0;
 }
 
 .empty-inline {
@@ -982,8 +1070,6 @@ fluent-anchor.brand-link::part(control) {
     .app-header__top,
     .app-header__controls,
     .section-heading-row,
-    .transaction-row,
-    .transaction-row__header,
     .pager-row {
         align-items: stretch;
         justify-content: flex-start;
@@ -1008,6 +1094,14 @@ fluent-anchor.brand-link::part(control) {
 
     .mapping-row {
         grid-template-columns: 1fr;
+    }
+
+    /* On small screens, hide the balance and category columns to keep the table usable */
+    .txn-col--cat,
+    .txn-cell--cat,
+    .txn-col--balance,
+    .txn-cell--balance {
+        display: none;
     }
 }
 

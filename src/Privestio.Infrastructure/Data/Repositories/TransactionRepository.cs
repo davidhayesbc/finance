@@ -1,6 +1,8 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 using Privestio.Domain.ValueObjects;
 
 namespace Privestio.Infrastructure.Data.Repositories;
@@ -64,13 +66,19 @@ public class TransactionRepository : ITransactionRepository
             );
         }
 
-        // Cursor-based pagination using cursor as "last seen id|date"
+        // Cursor-based pagination using cursor as "date|id" with optional trailing metadata.
         if (!string.IsNullOrEmpty(cursor))
         {
             var parts = cursor.Split('|');
             if (
-                parts.Length == 2
-                && DateTime.TryParse(parts[0], out var cursorDate)
+                parts.Length >= 2
+                && DateTime.TryParseExact(
+                    parts[0],
+                    "O",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind,
+                    out var cursorDate
+                )
                 && Guid.TryParse(parts[1], out var cursorId)
             )
             {
@@ -208,4 +216,20 @@ public class TransactionRepository : ITransactionRepository
             )
             .OrderByDescending(t => t.Date)
             .ToListAsync(cancellationToken);
+
+    public async Task<decimal> GetSignedSumUpToAsync(
+        Guid accountId,
+        DateTime upToDate,
+        Guid upToId,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Transactions.Where(t =>
+                t.AccountId == accountId
+                && (t.Date < upToDate || (t.Date == upToDate && t.Id.CompareTo(upToId) <= 0))
+            )
+            .SumAsync(
+                t => t.Type == TransactionType.Debit ? -t.Amount.Amount : t.Amount.Amount,
+                cancellationToken
+            );
 }

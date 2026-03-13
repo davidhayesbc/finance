@@ -82,8 +82,8 @@ else
                 <form class="transaction-filters" @onsubmit="HandleFilterSubmitAsync" @onsubmit:preventDefault="true">
                     <div class="transaction-filters__search">
                         <label class="filter-label" for="transaction-search">Search</label>
-                        <input id="transaction-search"                           class="filter-input"                           type="search"
-                               placeholder="Description, payee, category, or notes"                           @bind="_searchTerm"                           @bind:event="oninput" />
+                        <input id="transaction-search" class="filter-input" type="search"
+                               placeholder="Description, payee, category, or notes" @bind="_searchTerm" @bind:event="oninput" />
                     </div>
 
                     <div class="transaction-filters__dates">
@@ -136,61 +136,81 @@ else
                 }
                 else
                 {
-                    <div class="transaction-list" role="list" aria-label="Recent transactions list">
-                        @foreach (var transaction in _transactions)
-                        {
-                            <article class="transaction-row" role="listitem">
-                                <div class="transaction-row__main">
-                                    <div class="transaction-row__header">
-                                        <div>
-                                            <h3>@transaction.Description</h3>
-                                            <p>@GetTransactionSupportingText(transaction)</p>
-                                        </div>
-                                        <div class="transaction-amount @GetTransactionAmountClass(transaction)">
-                                            @FormatTransactionAmount(transaction)</div>
-                                        </div>
-
-                                        <div class="transaction-row__meta">
-                                            <span class="transaction-meta-pill">@transaction.Date.ToString("MMM d, yyyy")</span>
-                                            <span class="transaction-meta-pill">@transaction.TransactionType</span>
-                                            @if (!string.IsNullOrWhiteSpace(transaction.CategoryName))
+                    <div class="txn-table-wrapper" role="region" aria-label="Recent transactions">
+                        <table class="txn-table" aria-label="Recent transactions">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="txn-col--date">Date</th>
+                                    <th scope="col" class="txn-col--desc">Description</th>
+                                    <th scope="col" class="txn-col--cat">Category</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Amount</th>
+                                    <th scope="col" class="txn-col--balance txn-cell--right">Balance</th>
+                                    <th scope="col" class="txn-col--action"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var transaction in _transactions)
+                                {
+                                    <tr class="txn-row" @key="transaction.Id">
+                                        <td class="txn-cell--date">@transaction.Date.ToString("MMM d, yyyy")</td>
+                                        <td class="txn-cell--desc">
+                                            <span class="txn-desc-primary">@transaction.Description</span>
+                                            @if (!string.IsNullOrWhiteSpace(transaction.PayeeName))
                                             {
-                                                <span class="transaction-meta-pill">@transaction.CategoryName</span>
+                                                <span class="txn-desc-sub">@transaction.PayeeName</span>
                                             }
                                             @if (transaction.IsReconciled)
                                             {
-                                                <span class="transaction-meta-pill transaction-meta-pill--success">Reconciled</span>
+                                                <span class="txn-badge txn-badge--reconciled" title="Reconciled">R</span>
                                             }
                                             @if (transaction.IsSplit)
                                             {
-                                                <span class="transaction-meta-pill">Split</span>
+                                                <span class="txn-badge" title="Split transaction">S</span>
                                             }
-                                        </div>
-                                    </div>
-
-                                    <button type="button"                                    class="app-button app-button--secondary transaction-row__action"
-                                            @onclick='() => Navigation.NavigateTo($"/transactions/{transaction.Id}")'>
-                                        View
-                                    </button>
-                                </article>
-                            }
-                        </div>
-                    }
-
-                    <div class="pager-row">
-                        <button type="button" class="app-button app-button--secondary"
-                                disabled="@(!_hasPreviousPage || _isLoadingTransactions)" @onclick="LoadPreviousPageAsync">
-                            Previous
-                        </button>
-                        <span class="pager-status">Page @(_cursorHistory.Count + 1)</span>
-                        <button type="button" class="app-button app-button--secondary"
-                                disabled="@(!_hasNextPage || _isLoadingTransactions)" @onclick="LoadNextPageAsync">
-                            Next
-                        </button>
+                                        </td>
+                                        <td class="txn-cell--cat">
+                                            @if (!string.IsNullOrWhiteSpace(transaction.CategoryName))
+                                            {
+                                                <span class="txn-category">@transaction.CategoryName</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="txn-no-value">—</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--amount txn-cell--right @GetTransactionAmountClass(transaction)">
+                                            @FormatTransactionAmount(transaction)
+                                        </td>
+                                        <td class="txn-cell--balance txn-cell--right">
+                                            @transaction.RunningBalance.ToString("C") @transaction.Currency
+                                        </td>
+                                        <td class="txn-cell--action">
+                                            <button type="button"                                             class="app-button app-button--secondary app-button--xs"
+                                                    @onclick='() => Navigation.NavigateTo($"/transactions/{transaction.Id}")'>
+                                                View
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
-                </FluentCard>
-            </section>
-        }
+                }
+
+                <div class="pager-row">
+                    <button type="button" class="app-button app-button--secondary"
+                            disabled="@(!_hasPreviousPage || _isLoadingTransactions)" @onclick="LoadPreviousPageAsync">
+                        Previous
+                    </button>
+                    <span class="pager-status">Page @(_cursorHistory.Count + 1)</span>
+                    <button type="button" class="app-button app-button--secondary"
+                            disabled="@(!_hasNextPage || _isLoadingTransactions)" @onclick="LoadNextPageAsync">
+                        Next
+                    </button>
+                </div>
+            </FluentCard>
+        </section>
+    }
 
 @code {
     [Parameter] public Guid Id { get; set; }
@@ -390,19 +410,6 @@ else
             (null, not null) => $"Until {toDate.Value:MMM d}",
             _ => $"{fromDate.Value:MMM d} to {toDate.Value:MMM d}",
         };
-    }
-
-    private static string GetTransactionSupportingText(TransactionResponse transaction)
-    {
-        var parts = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(transaction.PayeeName))
-            parts.Add(transaction.PayeeName);
-
-        if (!string.IsNullOrWhiteSpace(transaction.Notes))
-            parts.Add(transaction.Notes);
-
-        return parts.Count == 0 ? "No additional notes" : string.Join(" • ", parts);
     }
 
     private static string FormatTransactionAmount(TransactionResponse transaction)
