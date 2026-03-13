@@ -95,8 +95,48 @@ public class AuthService : IAuthService
         );
         if (!string.IsNullOrEmpty(token))
         {
+            if (IsTokenExpired(token))
+            {
+                await _jsRuntime.InvokeVoidAsync(
+                    "localStorage.removeItem",
+                    "privestio_token"
+                );
+                return;
+            }
+
             _currentUser = new AuthResponse { AccessToken = token };
             SetAuthorizationHeader(token);
+        }
+    }
+
+    private static bool IsTokenExpired(string token)
+    {
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length != 3)
+                return true;
+
+            var payload = parts[1];
+            var padded = payload.PadRight(
+                payload.Length + (4 - payload.Length % 4) % 4,
+                '='
+            );
+            var jsonBytes = Convert.FromBase64String(
+                padded.Replace('-', '+').Replace('_', '/')
+            );
+            var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("exp", out var expElement))
+                return true;
+
+            var expiry = DateTimeOffset.FromUnixTimeSeconds(expElement.GetInt64());
+            return expiry <= DateTimeOffset.UtcNow;
+        }
+        catch
+        {
+            return true;
         }
     }
 
