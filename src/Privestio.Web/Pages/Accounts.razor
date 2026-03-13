@@ -5,7 +5,7 @@
 <PageTitle>Accounts — Privestio</PageTitle>
 
 <section class="page-shell">
-    <PageHeader Eyebrow="Accounts"     Title="Account workspace"
+    <PageHeader Eyebrow="Accounts" Title="Account workspace"
                 Description="Review balances, institutions, and account types in one consistently styled table.">
         <Actions>
             <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
@@ -42,7 +42,7 @@
                 <div>
                     <span class="summary-strip__label">Institutions</span>
                     <strong>@_accounts.Select(a => a.Institution).Where(i =>
-                                                                    !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
+                                                                                            !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
                     </div>
                 </div>
 
@@ -57,7 +57,7 @@
                         </FluentBadge>
                     </TemplateColumn>
                     <TemplateColumn Title="">
-                        <FluentButton Appearance="Appearance.Stealth"
+                        <FluentButton Appearance="Appearance.Outline" Class="account-view-button"
                                       @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))"
                                       aria-label="@($"View {context.Name}")">
                             View

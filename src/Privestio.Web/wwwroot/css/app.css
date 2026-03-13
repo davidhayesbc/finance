@@ -596,6 +596,11 @@ fluent-anchor.brand-link::part(control) {
     background: var(--surface-raised);
 }
 
+:root[data-theme="dark"] .summary-strip {
+    border: 1px solid rgba(135, 168, 216, 0.24);
+    background: rgba(17, 32, 50, 0.96);
+}
+
 .summary-strip--compact {
     margin-bottom: 0;
     min-width: min(100%, 280px);
@@ -614,8 +619,24 @@ fluent-anchor.brand-link::part(control) {
     letter-spacing: 0.1em;
 }
 
+:root[data-theme="dark"] .summary-strip__label {
+    color: #c7d8ef;
+}
+
 .balance-badge {
     font-weight: 700;
+}
+
+.balance-badge::part(control) {
+    border: 1px solid var(--surface-border);
+    background: color-mix(in srgb, var(--surface-raised) 85%, var(--accent-soft));
+    color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .balance-badge::part(control) {
+    border-color: rgba(135, 168, 216, 0.28);
+    background: rgba(26, 43, 66, 0.98);
+    color: #f2f7ff;
 }
 
 .auth-card,
@@ -670,8 +691,76 @@ fluent-anchor.brand-link::part(control) {
     overflow: hidden;
 }
 
+.data-grid--elevated {
+    border: 1px solid var(--surface-border);
+    background: var(--surface-raised);
+}
+
 .data-card ::deep table {
     background: var(--surface-raised);
+}
+
+.data-grid--elevated table,
+.data-grid--elevated th,
+.data-grid--elevated td {
+    color: var(--text-strong);
+}
+
+.data-grid--elevated th {
+    font-weight: 700;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.data-grid--elevated td {
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 82%, transparent);
+}
+
+:root[data-theme="dark"] .data-grid--elevated {
+    border-color: rgba(135, 168, 216, 0.24);
+    background: rgba(12, 24, 39, 0.98);
+}
+
+:root[data-theme="dark"] .data-grid--elevated th {
+    color: #edf4ff;
+    border-bottom-color: rgba(135, 168, 216, 0.3);
+    background: rgba(20, 37, 58, 0.98);
+}
+
+:root[data-theme="dark"] .data-grid--elevated td {
+    color: #dce9fb;
+    border-bottom-color: rgba(135, 168, 216, 0.22);
+}
+
+.data-grid--elevated fluent-button::part(control) {
+    color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .data-grid--elevated fluent-button::part(control) {
+    color: #f4f8ff;
+}
+
+.account-view-button::part(control) {
+    min-width: 72px;
+    border-color: color-mix(in srgb, var(--surface-border) 70%, var(--accent));
+    background: color-mix(in srgb, var(--surface-raised) 82%, #ffffff);
+    color: var(--text-strong);
+    font-weight: 700;
+}
+
+.account-view-button:hover::part(control) {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--surface-raised) 65%, var(--accent-soft));
+}
+
+:root[data-theme="dark"] .account-view-button::part(control) {
+    border-color: rgba(144, 182, 237, 0.62);
+    background: rgba(24, 42, 64, 0.98);
+    color: #f5f9ff;
+}
+
+:root[data-theme="dark"] .account-view-button:hover::part(control) {
+    border-color: #90b6ed;
+    background: rgba(33, 57, 86, 0.98);
 }
 
 .section-heading-row {
