@@ -35,7 +35,10 @@ public sealed class ThemeService : IThemeService, IAsyncDisposable
 
     public async Task SetPreferenceAsync(string preference)
     {
-        State = await _jsRuntime.InvokeAsync<ThemeState>("themeFunctions.setPreference", preference);
+        State = await _jsRuntime.InvokeAsync<ThemeState>(
+            "themeFunctions.setPreference",
+            preference
+        );
         ThemeChanged?.Invoke(State);
     }
 

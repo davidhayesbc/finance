@@ -29,7 +29,7 @@ else
             <FluentBreadcrumbItem>@_account.Name</FluentBreadcrumbItem>
         </FluentBreadcrumb>
 
-        <PageHeader Eyebrow="Account detail"              Title="@_account.Name"
+        <PageHeader Eyebrow="Account detail" Title="@_account.Name"
                     Description="Review account metadata, balance context, and continue into transaction capture from the same workspace."
                     Compact="true">
             <Actions>
@@ -64,131 +64,133 @@ else
             <div class="section-heading-row">
                 <div>
                     <h2 id="recent-transactions-title" class="section-heading">Recent transactions</h2>
-                    <p class="section-copy">Filter by time range, narrow with search, and page through account activity without leaving the drilldown.</p>
-                </div>
-                <div class="summary-strip summary-strip--compact">
-                    <div>
-                        <span class="summary-strip__label">Visible items</span>
-                        <strong>@_transactions.Count</strong>
+                    <p class="section-copy">Filter by time range, narrow with search, and page through account activity
+                        without leaving the drilldown.</p>
                     </div>
-                    <div>
-                        <span class="summary-strip__label">Range</span>
-                        <strong>@GetRangeSummary()</strong>
-                    </div>
-                </div>
-            </div>
-
-            <form class="transaction-filters" @onsubmit="HandleFilterSubmitAsync" @onsubmit:preventDefault="true">
-                <div class="transaction-filters__search">
-                    <label class="filter-label" for="transaction-search">Search</label>
-                    <input id="transaction-search"
-                           class="filter-input"
-                           type="search"
-                           placeholder="Description, payee, category, or notes"
-                           @bind="_searchTerm"
-                           @bind:event="oninput" />
-                </div>
-
-                <div class="transaction-filters__dates">
-                    <div>
-                        <label class="filter-label" for="from-date">From</label>
-                        <input id="from-date" class="filter-input" type="date" value="@_fromDateInput" @onchange="HandleFromDateChanged" />
-                    </div>
-                    <div>
-                        <label class="filter-label" for="to-date">To</label>
-                        <input id="to-date" class="filter-input" type="date" value="@_toDateInput" @onchange="HandleToDateChanged" />
+                    <div class="summary-strip summary-strip--compact">
+                        <div>
+                            <span class="summary-strip__label">Visible items</span>
+                            <strong>@_transactions.Count</strong>
+                        </div>
+                        <div>
+                            <span class="summary-strip__label">Range</span>
+                            <strong>@GetRangeSummary()</strong>
+                        </div>
                     </div>
                 </div>
 
-                <div class="transaction-filters__actions">
-                    <button type="submit" class="app-button app-button--primary">Apply</button>
-                    <button type="button" class="app-button app-button--secondary" @onclick="ResetFiltersAsync">Reset</button>
-                </div>
-            </form>
+                <form class="transaction-filters" @onsubmit="HandleFilterSubmitAsync" @onsubmit:preventDefault="true">
+                    <div class="transaction-filters__search">
+                        <label class="filter-label" for="transaction-search">Search</label>
+                        <input id="transaction-search"                           class="filter-input"                           type="search"
+                               placeholder="Description, payee, category, or notes"                           @bind="_searchTerm"                           @bind:event="oninput" />
+                    </div>
 
-            <div class="filter-chip-row" role="group" aria-label="Date range presets">
-                @foreach (var preset in _datePresets)
-                {
-                    <button type="button"
-                            class="filter-chip @(preset.Key == _selectedDatePreset ? "filter-chip--active" : string.Empty)"
-                            @onclick='() => ApplyDatePresetAsync(preset.Key)'>
-                        @preset.Label
-                    </button>
-                }
-            </div>
+                    <div class="transaction-filters__dates">
+                        <div>
+                            <label class="filter-label" for="from-date">From</label>
+                            <input id="from-date" class="filter-input" type="date" value="@_fromDateInput"
+                                   @onchange="HandleFromDateChanged" />
+                        </div>
+                        <div>
+                            <label class="filter-label" for="to-date">To</label>
+                            <input id="to-date" class="filter-input" type="date" value="@_toDateInput"
+                                   @onchange="HandleToDateChanged" />
+                        </div>
+                    </div>
 
-            @if (_isLoadingTransactions)
-            {
-                <div class="empty-state-shell">
-                    <FluentProgressRing aria-label="Loading transactions" />
-                </div>
-            }
-            else if (!string.IsNullOrWhiteSpace(_transactionErrorMessage))
-            {
-                <FluentMessageBar Intent="@MessageIntent.Warning">@_transactionErrorMessage</FluentMessageBar>
-            }
-            else if (_transactions.Count == 0)
-            {
-                <div class="empty-inline">
-                    <strong>No transactions match these filters.</strong>
-                    <span>Try a wider date range or clear the search term.</span>
-                </div>
-            }
-            else
-            {
-                <div class="transaction-list" role="list" aria-label="Recent transactions list">
-                    @foreach (var transaction in _transactions)
+                    <div class="transaction-filters__actions">
+                        <button type="submit" class="app-button app-button--primary">Apply</button>
+                        <button type="button" class="app-button app-button--secondary"
+                                @onclick="ResetFiltersAsync">Reset</button>
+                    </div>
+                </form>
+
+                <div class="filter-chip-row" role="group" aria-label="Date range presets">
+                    @foreach (var preset in _datePresets)
                     {
-                        <article class="transaction-row" role="listitem">
-                            <div class="transaction-row__main">
-                                <div class="transaction-row__header">
-                                    <div>
-                                        <h3>@transaction.Description</h3>
-                                        <p>@GetTransactionSupportingText(transaction)</p>
-                                    </div>
-                                    <div class="transaction-amount @GetTransactionAmountClass(transaction)">@FormatTransactionAmount(transaction)</div>
-                                </div>
-
-                                <div class="transaction-row__meta">
-                                    <span class="transaction-meta-pill">@transaction.Date.ToString("MMM d, yyyy")</span>
-                                    <span class="transaction-meta-pill">@transaction.TransactionType</span>
-                                    @if (!string.IsNullOrWhiteSpace(transaction.CategoryName))
-                                    {
-                                        <span class="transaction-meta-pill">@transaction.CategoryName</span>
-                                    }
-                                    @if (transaction.IsReconciled)
-                                    {
-                                        <span class="transaction-meta-pill transaction-meta-pill--success">Reconciled</span>
-                                    }
-                                    @if (transaction.IsSplit)
-                                    {
-                                        <span class="transaction-meta-pill">Split</span>
-                                    }
-                                </div>
-                            </div>
-
-                            <button type="button"
-                                    class="app-button app-button--secondary transaction-row__action"
-                                    @onclick='() => Navigation.NavigateTo($"/transactions/{transaction.Id}")'>
-                                View
-                            </button>
-                        </article>
+                        <button type="button"
+                                class="filter-chip @(preset.Key == _selectedDatePreset ? "filter-chip--active" : string.Empty)"
+                                @onclick='() => ApplyDatePresetAsync(preset.Key)'>
+                            @preset.Label
+                        </button>
                     }
                 </div>
-            }
 
-            <div class="pager-row">
-                <button type="button" class="app-button app-button--secondary" disabled="@(!_hasPreviousPage || _isLoadingTransactions)" @onclick="LoadPreviousPageAsync">
-                    Previous
-                </button>
-                <span class="pager-status">Page @(_cursorHistory.Count + 1)</span>
-                <button type="button" class="app-button app-button--secondary" disabled="@(!_hasNextPage || _isLoadingTransactions)" @onclick="LoadNextPageAsync">
-                    Next
-                </button>
-            </div>
-        </FluentCard>
-    </section>
-}
+                @if (_isLoadingTransactions)
+                {
+                    <div class="empty-state-shell">
+                        <FluentProgressRing aria-label="Loading transactions" />
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_transactionErrorMessage))
+                {
+                    <FluentMessageBar Intent="@MessageIntent.Warning">@_transactionErrorMessage</FluentMessageBar>
+                }
+                else if (_transactions.Count == 0)
+                {
+                    <div class="empty-inline">
+                        <strong>No transactions match these filters.</strong>
+                        <span>Try a wider date range or clear the search term.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="transaction-list" role="list" aria-label="Recent transactions list">
+                        @foreach (var transaction in _transactions)
+                        {
+                            <article class="transaction-row" role="listitem">
+                                <div class="transaction-row__main">
+                                    <div class="transaction-row__header">
+                                        <div>
+                                            <h3>@transaction.Description</h3>
+                                            <p>@GetTransactionSupportingText(transaction)</p>
+                                        </div>
+                                        <div class="transaction-amount @GetTransactionAmountClass(transaction)">
+                                            @FormatTransactionAmount(transaction)</div>
+                                        </div>
+
+                                        <div class="transaction-row__meta">
+                                            <span class="transaction-meta-pill">@transaction.Date.ToString("MMM d, yyyy")</span>
+                                            <span class="transaction-meta-pill">@transaction.TransactionType</span>
+                                            @if (!string.IsNullOrWhiteSpace(transaction.CategoryName))
+                                            {
+                                                <span class="transaction-meta-pill">@transaction.CategoryName</span>
+                                            }
+                                            @if (transaction.IsReconciled)
+                                            {
+                                                <span class="transaction-meta-pill transaction-meta-pill--success">Reconciled</span>
+                                            }
+                                            @if (transaction.IsSplit)
+                                            {
+                                                <span class="transaction-meta-pill">Split</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <button type="button"                                    class="app-button app-button--secondary transaction-row__action"
+                                            @onclick='() => Navigation.NavigateTo($"/transactions/{transaction.Id}")'>
+                                        View
+                                    </button>
+                                </article>
+                            }
+                        </div>
+                    }
+
+                    <div class="pager-row">
+                        <button type="button" class="app-button app-button--secondary"
+                                disabled="@(!_hasPreviousPage || _isLoadingTransactions)" @onclick="LoadPreviousPageAsync">
+                            Previous
+                        </button>
+                        <span class="pager-status">Page @(_cursorHistory.Count + 1)</span>
+                        <button type="button" class="app-button app-button--secondary"
+                                disabled="@(!_hasNextPage || _isLoadingTransactions)" @onclick="LoadNextPageAsync">
+                            Next
+                        </button>
+                    </div>
+                </FluentCard>
+            </section>
+        }
 
 @code {
     [Parameter] public Guid Id { get; set; }

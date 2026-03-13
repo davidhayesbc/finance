@@ -10,7 +10,8 @@
         <span class="eyebrow">Sign in</span>
         <h1>Return to the full account workspace.</h1>
         <p>
-            Get back to balances, categorization, and account review in a cleaner workspace built for regular financial check-ins.
+            Get back to balances, categorization, and account review in a cleaner workspace built for regular financial
+            check-ins.
         </p>
 
         <div class="auth-highlights">
@@ -46,7 +47,8 @@
                                  TextFieldType="TextFieldType.Password" Required="true" id="password" />
                 <FluentValidationMessage For="@(() => _form.Password)" />
 
-                <button type="submit" class="app-button app-button--primary full-width-button auth-submit" disabled="@_isLoading">
+                <button type="submit" class="app-button app-button--primary full-width-button auth-submit"
+                        disabled="@_isLoading">
                     @(_isLoading ? "Signing in..." : "Sign in")
                 </button>
             </FluentStack>

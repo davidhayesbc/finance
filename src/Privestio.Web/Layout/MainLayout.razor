@@ -27,20 +27,17 @@
                     </div>
 
                     <div class="theme-switcher" role="group" aria-label="Theme preference">
-                        <button type="button"
-                                class="theme-switcher__button @GetThemeButtonClass("system")"
+                        <button type="button"          class="theme-switcher__button @GetThemeButtonClass("system")"
                                 aria-pressed="@IsThemePreferenceSelected("system")"
                                 @onclick='() => SetThemePreferenceAsync("system")'>
                             Auto
                         </button>
-                        <button type="button"
-                                class="theme-switcher__button @GetThemeButtonClass("light")"
+                        <button type="button"                            class="theme-switcher__button @GetThemeButtonClass("light")"
                                 aria-pressed="@IsThemePreferenceSelected("light")"
                                 @onclick='() => SetThemePreferenceAsync("light")'>
                             Light
                         </button>
-                        <button type="button"
-                                class="theme-switcher__button @GetThemeButtonClass("dark")"
+                        <button type="button"                        class="theme-switcher__button @GetThemeButtonClass("dark")"
                                 aria-pressed="@IsThemePreferenceSelected("dark")"
                                 @onclick='() => SetThemePreferenceAsync("dark")'>
                             Dark
@@ -49,7 +46,8 @@
 
                     @if (AuthService.IsAuthenticated)
                     {
-                        <button type="button" class="app-button app-button--secondary header-cta" @onclick="HandleLogoutAsync">
+                        <button type="button" class="app-button app-button--secondary header-cta"
+                                @onclick="HandleLogoutAsync">
                             Sign out
                         </button>
                     }

@@ -53,14 +53,17 @@ public class GetTransactionsQueryTests
             .ReturnsAsync(account);
 
         _transactionRepositoryMock
-            .Setup(x => x.GetPagedAsync(
-                accountId,
-                15,
-                null,
-                It.IsAny<DateRange?>(),
-                null,
-                "coffee",
-                It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetPagedAsync(
+                    accountId,
+                    15,
+                    null,
+                    It.IsAny<DateRange?>(),
+                    null,
+                    "coffee",
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((new List<Transaction> { transaction }, "next-cursor"));
 
         var handler = new GetTransactionsQueryHandler(_unitOfWorkMock.Object);
@@ -116,14 +119,17 @@ public class GetTransactionsQueryTests
         result.Items.Should().BeEmpty();
         result.PageSize.Should().Be(20);
         _transactionRepositoryMock.Verify(
-            x => x.GetPagedAsync(
-                It.IsAny<Guid>(),
-                It.IsAny<int>(),
-                It.IsAny<string?>(),
-                It.IsAny<DateRange?>(),
-                It.IsAny<Guid?>(),
-                It.IsAny<string?>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
+            x =>
+                x.GetPagedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<int>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<DateRange?>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never
+        );
     }
 }
