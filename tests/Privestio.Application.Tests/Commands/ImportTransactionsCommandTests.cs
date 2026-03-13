@@ -228,9 +228,7 @@ public class ImportTransactionsCommandTests
         _transactionRepo.Verify(
             r =>
                 r.AddRangeAsync(
-                    It.Is<IEnumerable<Transaction>>(txns =>
-                        txns.First().Amount.Amount == 42.99m
-                    ),
+                    It.Is<IEnumerable<Transaction>>(txns => txns.First().Amount.Amount == 42.99m),
                     It.IsAny<CancellationToken>()
                 ),
             Times.Once
@@ -252,9 +250,7 @@ public class ImportTransactionsCommandTests
         _transactionRepo.Verify(
             r =>
                 r.AddRangeAsync(
-                    It.Is<IEnumerable<Transaction>>(txns =>
-                        txns.First().Amount.Amount == 2500.00m
-                    ),
+                    It.Is<IEnumerable<Transaction>>(txns => txns.First().Amount.Amount == 2500.00m),
                     It.IsAny<CancellationToken>()
                 ),
             Times.Once
