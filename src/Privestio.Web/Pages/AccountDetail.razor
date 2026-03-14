@@ -314,6 +314,7 @@ else
                     }
                 }
             </FluentCard>
+
         }
         else if (IsInvestmentAccount)
         {
@@ -605,6 +606,72 @@ else
                     </div>
                 }
             </FluentCard>
+
+            <FluentCard Class="surface-card transaction-panel" aria-labelledby="investment-transactions-title">
+                <div class="section-heading-row">
+                    <div>
+                        <h2 id="investment-transactions-title" class="section-heading">Recent investment activity</h2>
+                        <p class="section-copy">Imported trades and cash movements for this account (last 90 days).</p>
+                    </div>
+                </div>
+
+                @if (_isLoadingTransactions)
+                {
+                    <div class="empty-state-shell">
+                        <FluentProgressRing aria-label="Loading investment transactions" />
+                    </div>
+                }
+                else if (_transactions.Count == 0)
+                {
+                    <div class="empty-inline">
+                        <strong>No transactions found.</strong>
+                        <span>Import a brokerage file or add a manual transaction.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="txn-table-wrapper" role="region" aria-label="Recent investment transactions">
+                        <table class="txn-table" aria-label="Recent investment transactions">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="txn-col--date">Date</th>
+                                    <th scope="col" class="txn-col--desc">Description</th>
+                                    <th scope="col" class="txn-col--cat">Symbol</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var transaction in _transactions.Take(15))
+                                {
+                                    <tr class="txn-row" @key="transaction.Id">
+                                        <td class="txn-cell--date">@transaction.Date.ToString("MMM d, yyyy")</td>
+                                        <td class="txn-cell--desc">
+                                            <span class="txn-desc-primary">@transaction.Description</span>
+                                            @if (!string.IsNullOrWhiteSpace(transaction.ActivitySubType))
+                                            {
+                                                <span class="txn-desc-sub">@transaction.ActivitySubType</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--cat">
+                                            @if (!string.IsNullOrWhiteSpace(transaction.Symbol))
+                                            {
+                                                <span class="txn-category">@transaction.Symbol</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="txn-no-value">—</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--amount txn-cell--right @GetTransactionAmountClass(transaction)">
+                                            @FormatTransactionAmount(transaction)
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </FluentCard>
         }
         else
         {
@@ -836,7 +903,12 @@ else
             }
             else if (IsInvestmentAccount)
             {
-                await Task.WhenAll(LoadHoldingsAsync(), LoadPerformanceAsync());
+                SetDatePreset("90d");
+                await Task.WhenAll(
+                    LoadHoldingsAsync(),
+                    LoadPerformanceAsync(),
+                    LoadTransactionsAsync(resetPaging: true)
+                );
             }
             else
             {

@@ -62,8 +62,19 @@ public static class ImportEndpoints
             policy ?? ImportPolicy.SkipInvalid
         );
 
-        var result = await mediator.Send(command, cancellationToken);
-        return Results.Ok(result);
+        try
+        {
+            var result = await mediator.Send(command, cancellationToken);
+            return Results.Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Results.Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
+        }
     }
 
     private static async Task<IResult> RollbackImportAsync(

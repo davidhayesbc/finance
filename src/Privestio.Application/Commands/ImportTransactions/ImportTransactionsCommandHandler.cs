@@ -33,6 +33,14 @@ public class ImportTransactionsCommandHandler
         CancellationToken cancellationToken
     )
     {
+        var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
+        if (account is null)
+            throw new KeyNotFoundException("Account not found.");
+        if (account.OwnerId != request.UserId)
+            throw new UnauthorizedAccessException(
+                "Cannot import into an account owned by another user."
+            );
+
         var importer =
             _importers.FirstOrDefault(i => i.CanHandle(request.FileName))
             ?? throw new NotSupportedException(
@@ -141,6 +149,7 @@ public class ImportTransactionsCommandHandler
 
         // Build transactions, skipping duplicates
         var transactions = new List<Transaction>();
+        var importedRows = new List<ImportedTransactionRow>();
         var duplicateCount = 0;
 
         foreach (var item in rowsWithFingerprints)
@@ -152,29 +161,32 @@ public class ImportTransactionsCommandHandler
             }
 
             var type = item.Row.Amount >= 0 ? TransactionType.Credit : TransactionType.Debit;
+            var normalizedDescription =
+                Truncate(item.Row.Description, 500) ?? "Imported Transaction";
             var transaction = new Transaction(
                 request.AccountId,
                 item.Row.Date,
                 new Money(Math.Abs(item.Row.Amount)),
-                item.Row.Description,
+                normalizedDescription,
                 type
             )
             {
                 ImportFingerprint = item.Fingerprint,
                 ImportBatchId = batch.Id,
-                ExternalId = item.Row.ExternalId,
-                Notes = item.Row.Notes,
+                ExternalId = Truncate(item.Row.ExternalId, 200),
+                Notes = Truncate(item.Row.Notes, 2000),
                 SettlementDate = item.Row.SettlementDate,
-                ActivityType = item.Row.ActivityType,
-                ActivitySubType = item.Row.ActivitySubType,
-                Direction = item.Row.Direction,
-                Symbol = item.Row.Symbol,
-                SecurityName = item.Row.SecurityName,
-                Quantity = item.Row.Quantity,
-                UnitPrice = item.Row.UnitPrice,
+                ActivityType = Truncate(item.Row.ActivityType, 64),
+                ActivitySubType = Truncate(item.Row.ActivitySubType, 128),
+                Direction = Truncate(item.Row.Direction, 32),
+                Symbol = NormalizeSymbol(item.Row.Symbol, 32),
+                SecurityName = Truncate(item.Row.SecurityName, 256),
+                Quantity = NormalizeNullableDecimal(item.Row.Quantity),
+                UnitPrice = NormalizeNullableDecimal(item.Row.UnitPrice),
             };
 
             transactions.Add(transaction);
+            importedRows.Add(item.Row);
         }
 
         // PreviewOnly: return results without persisting
@@ -203,6 +215,17 @@ public class ImportTransactionsCommandHandler
         if (transactions.Count > 0)
         {
             await _unitOfWork.Transactions.AddRangeAsync(transactions, cancellationToken);
+
+            // Build/refresh holdings and lots for investment accounts from imported trade rows.
+            if (account.AccountType == AccountType.Investment)
+            {
+                await UpsertInvestmentPositionsFromImportAsync(
+                    request.AccountId,
+                    account.Currency,
+                    importedRows,
+                    cancellationToken
+                );
+            }
         }
 
         // Update batch metrics and store error details for diagnostics
@@ -243,5 +266,155 @@ public class ImportTransactionsCommandHandler
                 })
                 .ToList(),
         };
+    }
+
+    private async Task UpsertInvestmentPositionsFromImportAsync(
+        Guid accountId,
+        string accountCurrency,
+        IEnumerable<ImportedTransactionRow> rows,
+        CancellationToken cancellationToken
+    )
+    {
+        var holdings = await _unitOfWork.Holdings.GetByAccountIdAsync(accountId, cancellationToken);
+        var bySymbol = holdings.ToDictionary(h => h.Symbol, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in rows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Symbol) || row.Quantity is null || row.Quantity <= 0)
+                continue;
+
+            var symbol = NormalizeSymbol(row.Symbol, 20);
+            if (string.IsNullOrWhiteSpace(symbol))
+                continue;
+
+            var quantityMagnitude = Math.Abs(row.Quantity.Value);
+            var signedQuantityDelta = DetermineSignedQuantityDelta(row, quantityMagnitude);
+            if (signedQuantityDelta == 0)
+                continue;
+
+            var unitCost = row.UnitPrice ?? InferUnitPriceFromAmount(row, quantityMagnitude);
+            if (unitCost <= 0)
+                continue;
+
+            var currency = accountCurrency;
+
+            if (!bySymbol.TryGetValue(symbol, out var holding))
+            {
+                if (signedQuantityDelta <= 0)
+                    continue;
+
+                holding = new Holding(
+                    accountId,
+                    symbol,
+                    Truncate(
+                        string.IsNullOrWhiteSpace(row.SecurityName) ? symbol : row.SecurityName,
+                        200
+                    ) ?? symbol,
+                    signedQuantityDelta,
+                    new Money(unitCost, currency)
+                );
+                await _unitOfWork.Holdings.AddAsync(holding, cancellationToken);
+                bySymbol[symbol] = holding;
+            }
+            else
+            {
+                var previousQuantity = holding.Quantity;
+                var nextQuantity = Math.Max(0m, previousQuantity + signedQuantityDelta);
+
+                var nextAverageCost = holding.AverageCostPerUnit.Amount;
+                if (signedQuantityDelta > 0)
+                {
+                    var existingCostBasis = previousQuantity * holding.AverageCostPerUnit.Amount;
+                    var newCostBasis = signedQuantityDelta * unitCost;
+                    nextAverageCost =
+                        nextQuantity > 0
+                            ? (existingCostBasis + newCostBasis) / nextQuantity
+                            : holding.AverageCostPerUnit.Amount;
+                }
+
+                holding.Update(
+                    nextQuantity,
+                    new Money(Math.Round(nextAverageCost, 8, MidpointRounding.ToEven), currency),
+                    holding.Notes
+                );
+                await _unitOfWork.Holdings.UpdateAsync(holding, cancellationToken);
+            }
+
+            if (signedQuantityDelta > 0)
+            {
+                var lot = new Lot(
+                    holding.Id,
+                    row.SettlementDate ?? DateOnly.FromDateTime(row.Date),
+                    signedQuantityDelta,
+                    new Money(Math.Round(unitCost, 8, MidpointRounding.ToEven), currency),
+                    source: Truncate(
+                        string.IsNullOrWhiteSpace(row.ActivityType) ? "Import" : row.ActivityType,
+                        100
+                    ),
+                    notes: Truncate(row.Notes, 2000)
+                );
+                await _unitOfWork.Lots.AddAsync(lot, cancellationToken);
+            }
+        }
+    }
+
+    private static decimal DetermineSignedQuantityDelta(
+        ImportedTransactionRow row,
+        decimal quantityMagnitude
+    )
+    {
+        var direction = row.Direction?.Trim().ToLowerInvariant();
+        var activity = row.ActivityType?.Trim().ToLowerInvariant();
+        var subType = row.ActivitySubType?.Trim().ToLowerInvariant();
+
+        var isSell =
+            MatchesAny(direction, ["sell", "redeem", "withdraw", "out"])
+            || MatchesAny(activity, ["sell", "redeem", "withdraw"])
+            || MatchesAny(subType, ["sell", "redeem", "withdraw"]);
+
+        var isBuy =
+            MatchesAny(direction, ["buy", "deposit", "in", "long"])
+            || MatchesAny(activity, ["buy", "purchase", "contribution", "reinvest"])
+            || MatchesAny(subType, ["buy", "purchase", "contribution", "reinvest"]);
+
+        if (isSell)
+            return -quantityMagnitude;
+        if (isBuy)
+            return quantityMagnitude;
+
+        // Fallback heuristic: negative cash amount implies buy; positive implies sell.
+        if (row.Amount < 0)
+            return quantityMagnitude;
+        if (row.Amount > 0)
+            return -quantityMagnitude;
+
+        return 0m;
+    }
+
+    private static bool MatchesAny(string? value, IReadOnlyList<string> terms) =>
+        !string.IsNullOrWhiteSpace(value)
+        && terms.Any(term => value.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+    private static decimal InferUnitPriceFromAmount(ImportedTransactionRow row, decimal quantity) =>
+        quantity <= 0
+            ? 0m
+            : Math.Round(Math.Abs(row.Amount) / quantity, 8, MidpointRounding.ToEven);
+
+    private static decimal? NormalizeNullableDecimal(decimal? value) =>
+        value.HasValue ? Math.Round(value.Value, 8, MidpointRounding.ToEven) : null;
+
+    private static string? NormalizeSymbol(string? value, int maxLength)
+    {
+        var trimmed = Truncate(value?.Trim().ToUpperInvariant(), maxLength);
+        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    private static string? Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 }

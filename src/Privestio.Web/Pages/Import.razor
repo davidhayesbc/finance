@@ -11,7 +11,7 @@
         <FluentBreadcrumbItem>Import</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="Import"     Title="Import transactions"
+    <PageHeader Eyebrow="Import" Title="Import transactions"
                 Description="Move from file upload to mapping, preview, and commit in a workflow that keeps context visible at each step."
                 Compact="true">
         <Actions>
@@ -56,7 +56,7 @@
                 happen.</p>
 
                 <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                    <FluentSelect TOption="string"                 Label="Account"                         @bind-Value="_selectedAccountIdStr"           aria-required="true">
+                    <FluentSelect TOption="string" Label="Account" @bind-Value="_selectedAccountIdStr" aria-required="true">
                         <FluentOption TOption="string" Value="">Select an account...</FluentOption>
                         @foreach (var account in _accounts)
                         {
@@ -66,9 +66,9 @@
                         }
                     </FluentSelect>
 
-                    <FluentInputFile @ref="_fileInput"   Mode="InputFileMode.Stream"             Accept=".csv,.ofx,.qfx,.qif"
-                                     MaximumFileCount="1"                  MaximumFileSize="@(10 * 1024 * 1024)"                             Label="Select file to import"
-                                     OnFileUploaded="HandleFileSelectedAsync"            aria-label="Choose a file to import" />
+                    <FluentInputFile @ref="_fileInput" Mode="InputFileMode.Stream" Accept=".csv,.ofx,.qfx,.qif"
+                                     MaximumFileCount="1" MaximumFileSize="@(10 * 1024 * 1024)" Label="Select file to import"
+                                     OnFileUploaded="HandleFileSelectedAsync" aria-label="Choose a file to import" />
 
                     @if (_selectedFile is not null)
                     {
@@ -79,7 +79,7 @@
 
                     <div class="action-cluster">
                         <FluentButton Appearance="Appearance.Accent"
-                                      Disabled="@(_selectedAccountId is null || _selectedFile is null || _isLoading)"               Loading="_isLoading"
+                                      Disabled="@(_selectedAccountId is null || _selectedFile is null || _isLoading)" Loading="_isLoading"
                                       OnClick="PreviewFileAsync">
                             Preview Import
                         </FluentButton>
@@ -103,7 +103,7 @@
                         {
                             <div class="mapping-row">
                                 <FluentLabel Class="mapping-row__label">@column</FluentLabel>
-                                <FluentSelect TOption="string"       Value="@GetMappingValue(column)"
+                                <FluentSelect TOption="string" Value="@GetMappingValue(column)"
                                               ValueChanged="@(val => SetMappingValue(column, val))">
                                     <FluentOption TOption="string" Value="">Skip</FluentOption>
                                     <FluentOption TOption="string" Value="Date">Date</FluentOption>
@@ -113,6 +113,14 @@
                                     <FluentOption TOption="string" Value="Category">Category</FluentOption>
                                     <FluentOption TOption="string" Value="Notes">Notes</FluentOption>
                                     <FluentOption TOption="string" Value="ExternalId">External ID</FluentOption>
+                                    <FluentOption TOption="string" Value="SettlementDate">Settlement date</FluentOption>
+                                    <FluentOption TOption="string" Value="ActivityType">Activity type</FluentOption>
+                                    <FluentOption TOption="string" Value="ActivitySubType">Activity sub-type</FluentOption>
+                                    <FluentOption TOption="string" Value="Direction">Direction</FluentOption>
+                                    <FluentOption TOption="string" Value="Symbol">Symbol</FluentOption>
+                                    <FluentOption TOption="string" Value="SecurityName">Security name</FluentOption>
+                                    <FluentOption TOption="string" Value="Quantity">Quantity</FluentOption>
+                                    <FluentOption TOption="string" Value="UnitPrice">Unit price</FluentOption>
                                 </FluentSelect>
                             </div>
                         }
@@ -131,8 +139,8 @@
                     </div>
 
                     <div class="action-cluster">
-                        <FluentButton Appearance="Appearance.Accent"              Disabled="@(!HasRequiredMappings() || _isLoading)"
-                                      Loading="_isLoading"             OnClick="RunPreviewImportAsync">
+                        <FluentButton Appearance="Appearance.Accent" Disabled="@(!HasRequiredMappings() || _isLoading)"
+                                      Loading="_isLoading" OnClick="RunPreviewImportAsync">
                             Preview Results
                         </FluentButton>
                         <FluentButton Appearance="Appearance.Outline" OnClick="SaveMappingAsync">
@@ -232,7 +240,7 @@
                         <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
                             Import Another File
                         </FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth"                              OnClick="@(() => Navigation.NavigateTo("/import/history"))">
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => Navigation.NavigateTo("/import/history"))">
                             Import History
                         </FluentButton>
                     </div>
@@ -254,6 +262,7 @@
     private ImportResultResponse? _previewResult;
     private ImportResultResponse? _importResult;
     private Dictionary<string, string> _columnMappings = new();
+    private Guid? _activeMappingId;
     private List<SampleRow> _sampleRows = [];
     private string? _errorMessage;
     private string? _successMessage;
@@ -297,6 +306,7 @@
         _sampleRows = _filePreview.SampleRows
             .Select(r => new SampleRow { Values = r.ToList() })
             .ToList();
+        _activeMappingId = null;
 
         // Auto-detect common column names
         _columnMappings.Clear();
@@ -317,6 +327,22 @@
                 _columnMappings[col] = "Notes";
             else if (lower.Contains("ref") || lower.Contains("id") || lower.Contains("check"))
                 _columnMappings[col] = "ExternalId";
+            else if (lower.Contains("settlement"))
+                _columnMappings[col] = "SettlementDate";
+            else if (lower.Contains("activity") && lower.Contains("sub"))
+                _columnMappings[col] = "ActivitySubType";
+            else if (lower.Contains("activity"))
+                _columnMappings[col] = "ActivityType";
+            else if (lower.Contains("direction") || lower.Contains("side"))
+                _columnMappings[col] = "Direction";
+            else if (lower == "symbol" || lower.Contains("ticker"))
+                _columnMappings[col] = "Symbol";
+            else if (lower.Contains("security") || lower.Contains("name"))
+                _columnMappings[col] = "SecurityName";
+            else if (lower.Contains("quantity") || lower.Contains("shares") || lower == "qty")
+                _columnMappings[col] = "Quantity";
+            else if (lower.Contains("unit price") || lower.Contains("price") || lower.Contains("rate"))
+                _columnMappings[col] = "UnitPrice";
         }
 
         _step = ImportStep.ColumnMapping;
@@ -328,10 +354,35 @@
 
     private void SetMappingValue(string column, string? value)
     {
+        _activeMappingId = null;
         if (string.IsNullOrEmpty(value))
             _columnMappings.Remove(column);
         else
             _columnMappings[column] = value;
+    }
+
+    private async Task<Guid?> EnsureActiveMappingAsync()
+    {
+        if (_activeMappingId.HasValue)
+            return _activeMappingId;
+
+        if (_filePreview is null)
+            return null;
+
+        var request = new CreateImportMappingRequest
+        {
+            Name = $"Auto mapping {_selectedFileName} {DateTime.UtcNow:yyyyMMddHHmmss}",
+            FileFormat = _filePreview.FileFormat,
+            ColumnMappings = _columnMappings,
+            HasHeaderRow = true,
+        };
+
+        var result = await ImportService.CreateMappingAsync(request);
+        if (result is null)
+            return null;
+
+        _activeMappingId = result.Id;
+        return result.Id;
     }
 
     private bool HasRequiredMappings() =>
@@ -347,11 +398,20 @@
         _isLoading = true;
         _errorMessage = null;
 
+        var mappingId = await EnsureActiveMappingAsync();
+        if (!mappingId.HasValue)
+        {
+            _errorMessage = "Failed to persist column mapping for preview.";
+            _isLoading = false;
+            return;
+        }
+
         _selectedFile.Position = 0;
         _previewResult = await ImportService.ImportFileAsync(
             _selectedAccountId.Value,
             _selectedFile,
             _selectedFileName!,
+            mappingId: mappingId,
             policy: "PreviewOnly"
         );
 
@@ -374,11 +434,20 @@
         _isLoading = true;
         _errorMessage = null;
 
+        var mappingId = await EnsureActiveMappingAsync();
+        if (!mappingId.HasValue)
+        {
+            _errorMessage = "Failed to persist column mapping for import.";
+            _isLoading = false;
+            return;
+        }
+
         _selectedFile.Position = 0;
         _importResult = await ImportService.ImportFileAsync(
             _selectedAccountId.Value,
             _selectedFile,
-            _selectedFileName!
+            _selectedFileName!,
+            mappingId: mappingId
         );
 
         if (_importResult is null)
@@ -422,6 +491,7 @@
         _previewResult = null;
         _importResult = null;
         _columnMappings.Clear();
+        _activeMappingId = null;
         _sampleRows.Clear();
         _errorMessage = null;
         _successMessage = null;
