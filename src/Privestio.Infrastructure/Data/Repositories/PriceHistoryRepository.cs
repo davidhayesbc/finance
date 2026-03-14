@@ -83,4 +83,19 @@ public class PriceHistoryRepository : IPriceHistoryRepository
 
         return existing.Select(e => (e.Symbol, e.AsOfDate)).ToHashSet();
     }
+
+    public async Task<IReadOnlyDictionary<string, PriceHistory>> GetLatestBySymbolsAsync(
+        IEnumerable<string> symbols,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var normalized = symbols.Select(s => s.ToUpperInvariant().Trim()).Distinct().ToList();
+
+        var all = await _context
+            .PriceHistories.Where(p => normalized.Contains(p.Symbol))
+            .OrderByDescending(p => p.AsOfDate)
+            .ToListAsync(cancellationToken);
+
+        return all.GroupBy(p => p.Symbol).ToDictionary(g => g.Key, g => g.First());
+    }
 }

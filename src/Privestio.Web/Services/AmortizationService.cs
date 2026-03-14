@@ -21,7 +21,7 @@ public class AmortizationService : IAmortizationService
         try
         {
             return await _httpClient.GetFromJsonAsync<AmortizationScheduleResponse>(
-                $"/api/v1/amortization?accountId={accountId}"
+                $"/api/v1/amortization/{accountId}"
             );
         }
         catch
@@ -36,7 +36,10 @@ public class AmortizationService : IAmortizationService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/api/v1/amortization", request);
+            var response = await _httpClient.PostAsJsonAsync(
+                "/api/v1/amortization/generate",
+                request
+            );
             if (!response.IsSuccessStatusCode)
                 return null;
             return await response.Content.ReadFromJsonAsync<AmortizationScheduleResponse>();

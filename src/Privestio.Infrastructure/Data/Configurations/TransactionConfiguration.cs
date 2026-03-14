@@ -16,6 +16,20 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
 
         builder.Property(t => t.ExternalId).HasMaxLength(200);
 
+        builder.Property(t => t.ActivityType).HasMaxLength(64);
+
+        builder.Property(t => t.ActivitySubType).HasMaxLength(128);
+
+        builder.Property(t => t.Direction).HasMaxLength(32);
+
+        builder.Property(t => t.Symbol).HasMaxLength(32);
+
+        builder.Property(t => t.SecurityName).HasMaxLength(256);
+
+        builder.Property(t => t.Quantity).HasColumnType("numeric(18,8)");
+
+        builder.Property(t => t.UnitPrice).HasColumnType("numeric(18,8)");
+
         builder.Property(t => t.ImportFingerprint).HasMaxLength(512);
 
         builder.ComplexProperty(

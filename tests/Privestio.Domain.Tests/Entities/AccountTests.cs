@@ -18,7 +18,7 @@ public class AccountTests
             AccountSubType.Chequing,
             "CAD",
             opening,
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _ownerId,
             "RBC"
         );
@@ -43,7 +43,7 @@ public class AccountTests
                 AccountSubType.Chequing,
                 "CAD",
                 Money.Zero(),
-                DateTime.UtcNow,
+                DateOnly.FromDateTime(DateTime.UtcNow),
                 _ownerId
             );
 
@@ -59,7 +59,7 @@ public class AccountTests
             AccountSubType.Chequing,
             "cad",
             Money.Zero(),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _ownerId
         );
 
@@ -75,7 +75,7 @@ public class AccountTests
             AccountSubType.Chequing,
             "CAD",
             Money.Zero(),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _ownerId
         );
 
@@ -93,7 +93,7 @@ public class AccountTests
             AccountSubType.Chequing,
             "CAD",
             Money.Zero(),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _ownerId
         );
 
@@ -111,7 +111,7 @@ public class AccountTests
             AccountSubType.Chequing,
             "CAD",
             Money.Zero(),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _ownerId
         );
 
@@ -129,7 +129,7 @@ public class AccountTests
             AccountSubType.Chequing,
             "CAD",
             Money.Zero(),
-            DateTime.UtcNow,
+            DateOnly.FromDateTime(DateTime.UtcNow),
             _ownerId
         );
 

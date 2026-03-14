@@ -392,6 +392,51 @@ public class ImportTransactionsCommandTests
         result.DuplicateCount.Should().Be(2);
     }
 
+    [Fact]
+    public async Task Handle_ImportedInvestmentMetadata_PersistsTradeFields()
+    {
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(
+                DateTime.Parse("2025-02-03"),
+                -75.00m,
+                "Trade",
+                SettlementDate: new DateOnly(2025, 2, 3),
+                ActivityType: "Trade",
+                ActivitySubType: "BUY",
+                Direction: "LONG",
+                Symbol: "XEQT",
+                SecurityName: "iShares Core Equity ETF Portfolio",
+                Quantity: 2.1361m,
+                UnitPrice: 35.1098m
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        await _handler.Handle(command, CancellationToken.None);
+
+        _transactionRepo.Verify(
+            r =>
+                r.AddRangeAsync(
+                    It.Is<IEnumerable<Transaction>>(txns =>
+                        txns.Any(t =>
+                            t.SettlementDate == new DateOnly(2025, 2, 3)
+                            && t.ActivityType == "Trade"
+                            && t.ActivitySubType == "BUY"
+                            && t.Direction == "LONG"
+                            && t.Symbol == "XEQT"
+                            && t.SecurityName == "iShares Core Equity ETF Portfolio"
+                            && t.Quantity == 2.1361m
+                            && t.UnitPrice == 35.1098m
+                        )
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
     private ImportTransactionsCommand CreateCommand(string fileName) =>
         new(Stream.Null, fileName, _accountId, _userId);
 

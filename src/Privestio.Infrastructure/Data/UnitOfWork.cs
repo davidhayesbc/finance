@@ -34,6 +34,8 @@ public class UnitOfWork : IUnitOfWork
         IdempotencyRecords = new IdempotencyRecordRepository(context);
         Valuations = new ValuationRepository(context);
         PriceHistories = new PriceHistoryRepository(context);
+        Holdings = new HoldingRepository(context);
+        Lots = new LotRepository(context);
     }
 
     public IAccountRepository Accounts { get; }
@@ -60,6 +62,8 @@ public class UnitOfWork : IUnitOfWork
     public IIdempotencyRecordRepository IdempotencyRecords { get; }
     public IValuationRepository Valuations { get; }
     public IPriceHistoryRepository PriceHistories { get; }
+    public IHoldingRepository Holdings { get; }
+    public ILotRepository Lots { get; }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         await _context.SaveChangesAsync(cancellationToken);

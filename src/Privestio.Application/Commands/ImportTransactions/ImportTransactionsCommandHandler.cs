@@ -164,6 +164,14 @@ public class ImportTransactionsCommandHandler
                 ImportBatchId = batch.Id,
                 ExternalId = item.Row.ExternalId,
                 Notes = item.Row.Notes,
+                SettlementDate = item.Row.SettlementDate,
+                ActivityType = item.Row.ActivityType,
+                ActivitySubType = item.Row.ActivitySubType,
+                Direction = item.Row.Direction,
+                Symbol = item.Row.Symbol,
+                SecurityName = item.Row.SecurityName,
+                Quantity = item.Row.Quantity,
+                UnitPrice = item.Row.UnitPrice,
             };
 
             transactions.Add(transaction);

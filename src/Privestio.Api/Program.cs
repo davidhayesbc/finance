@@ -230,6 +230,9 @@ try
     app.MapSyncEndpoints();
     app.MapValuationEndpoints();
     app.MapPriceHistoryEndpoints();
+    app.MapHoldingEndpoints();
+    app.MapLotEndpoints();
+    app.MapPortfolioEndpoints();
 
     // Health check endpoints (Task 1.17)
     app.MapHealthChecks("/healthz");

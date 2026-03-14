@@ -12,7 +12,15 @@ public record ImportedTransactionRow(
     string? ExternalId = null,
     string? Payee = null,
     string? Category = null,
-    string? Notes = null
+    string? Notes = null,
+    DateOnly? SettlementDate = null,
+    string? ActivityType = null,
+    string? ActivitySubType = null,
+    string? Direction = null,
+    string? Symbol = null,
+    string? SecurityName = null,
+    decimal? Quantity = null,
+    decimal? UnitPrice = null
 );
 
 /// <summary>

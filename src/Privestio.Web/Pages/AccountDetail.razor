@@ -2,6 +2,10 @@
 @inject IAccountService AccountService
 @inject ITransactionService TransactionService
 @inject IValuationService ValuationService
+@inject IAmortizationService AmortizationService
+@inject IHoldingService HoldingService
+@inject ILotService LotService
+@inject IPortfolioService PortfolioService
 @inject NavigationManager Navigation
 
 <PageTitle>@(_account?.Name ?? "Account") — Privestio</PageTitle>
@@ -34,12 +38,17 @@ else
                     Description="Review account metadata, balance context, and continue into transaction capture from the same workspace."
                     Compact="true">
             <Actions>
-                @if (!IsPropertyAccount)
+                <FluentButton Appearance="Appearance.Accent"
+                              @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
+                              aria-label="Add a transaction to this account">
+                    Add Transaction
+                </FluentButton>
+                @if (IsPropertyAccount)
                 {
-                    <FluentButton Appearance="Appearance.Accent"
-                                  @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
-                                  aria-label="Add a transaction to this account">
-                        Add Transaction
+                    <FluentButton Appearance="Appearance.Outline"
+                                  @onclick="ToggleValuationForm"
+                                  aria-label="Record property valuation">
+                        Record Valuation
                     </FluentButton>
                 }
             </Actions>
@@ -79,6 +88,36 @@ else
                         </div>
                     </div>
                 </div>
+
+                @if (_showValuationForm)
+                {
+                    <FluentCard Class="surface-card" style="margin-bottom:1rem;">
+                        <div class="section-heading-row">
+                            <div>
+                                <h3 class="section-heading" style="margin-bottom:0.25rem;">Record valuation</h3>
+                                <p class="section-copy">Capture the current estimated property value without affecting expense cash-flow tracking.</p>
+                            </div>
+                        </div>
+
+                        <FluentStack Orientation="Orientation.Vertical" Width="100%" style="gap:0.75rem;">
+                            <FluentNumberField @bind-Value="_valuationAmount" Label="Estimated value" Step="0.01m" Required="true" />
+                            <FluentDatePicker @bind-Value="_valuationEffectiveDate" Label="Effective date" />
+                            <FluentTextField @bind-Value="_valuationSource" Label="Source" Placeholder="Appraisal, market estimate, assessment..." />
+                            <FluentTextArea @bind-Value="_valuationNotes" Label="Notes (optional)" Resize="TextAreaResize.Vertical" Rows="3" />
+                            <FluentStack Orientation="Orientation.Horizontal" style="gap:0.5rem;">
+                                <FluentButton Appearance="Appearance.Accent" OnClick="SaveValuationAsync" Loading="_isSavingValuation">
+                                    Save Valuation
+                                </FluentButton>
+                                <FluentButton Appearance="Appearance.Outline" OnClick="ToggleValuationForm">Cancel</FluentButton>
+                            </FluentStack>
+                        </FluentStack>
+                    </FluentCard>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_valuationSaveMessage))
+                {
+                    <FluentMessageBar Intent="@_valuationSaveIntent" style="margin-bottom:1rem;">@_valuationSaveMessage</FluentMessageBar>
+                }
 
                 @if (_isLoadingValuations)
                 {
@@ -135,6 +174,428 @@ else
                                             else
                                             {
                                                 <span class="txn-no-value">—</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </FluentCard>
+
+            <FluentCard Class="surface-card transaction-panel" aria-labelledby="property-expenses-title">
+                <div class="section-heading-row">
+                    <div>
+                        <h2 id="property-expenses-title" class="section-heading">Property expenses</h2>
+                        <p class="section-copy">Recent cash-flow expenses for this property account.</p>
+                    </div>
+                    <div class="summary-strip summary-strip--compact">
+                        <div>
+                            <span class="summary-strip__label">Last 90 days</span>
+                            <strong>@_propertyExpenseTotal90Days.ToString("C") @_account.Currency</strong>
+                        </div>
+                    </div>
+                </div>
+
+                @if (_isLoadingPropertyExpenses)
+                {
+                    <div class="empty-state-shell">
+                        <FluentProgressRing aria-label="Loading property expenses" />
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_propertyExpenseErrorMessage))
+                {
+                    <FluentMessageBar Intent="@MessageIntent.Warning">@_propertyExpenseErrorMessage</FluentMessageBar>
+                }
+                else if (_propertyExpenses.Count == 0)
+                {
+                    <div class="empty-inline">
+                        <strong>No recent expenses found.</strong>
+                        <span>Add transactions to track tax, insurance, maintenance, and other property costs.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="txn-table-wrapper" role="region" aria-label="Property expenses">
+                        <table class="txn-table" aria-label="Property expenses">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="txn-col--date">Date</th>
+                                    <th scope="col" class="txn-col--desc">Description</th>
+                                    <th scope="col" class="txn-col--cat">Category</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var expense in _propertyExpenses)
+                                {
+                                    <tr class="txn-row" @key="expense.Id">
+                                        <td class="txn-cell--date">@expense.Date.ToString("MMM d, yyyy")</td>
+                                        <td class="txn-cell--desc">@expense.Description</td>
+                                        <td class="txn-cell--cat">@(expense.CategoryName ?? "—")</td>
+                                        <td class="txn-cell--amount txn-cell--right transaction-amount--negative">
+                                            @Math.Abs(expense.Amount).ToString("C") @expense.Currency
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </FluentCard>
+
+            <FluentCard Class="surface-card transaction-panel" aria-labelledby="mortgage-amortization-title">
+                <div class="section-heading-row">
+                    <div>
+                        <h2 id="mortgage-amortization-title" class="section-heading">Mortgage amortization</h2>
+                        <p class="section-copy">Track principal and interest progress from linked mortgage or loan accounts.</p>
+                    </div>
+                    <FluentButton Appearance="Appearance.Outline" @onclick='() => Navigation.NavigateTo("/amortization")'>
+                        Open Full Schedule
+                    </FluentButton>
+                </div>
+
+                @if (_mortgageAccounts.Count == 0)
+                {
+                    <div class="empty-inline">
+                        <strong>No mortgage accounts found.</strong>
+                        <span>Create a loan/mortgage account to generate and track amortization.</span>
+                    </div>
+                }
+                else
+                {
+                    <FluentSelect TOption="string" @bind-Value="_selectedMortgageAccountId" Label="Mortgage account" Style="max-width:320px;margin-bottom:1rem;" @onchange="HandleMortgageAccountChanged">
+                        @foreach (var mortgage in _mortgageAccounts)
+                        {
+                            <FluentOption TOption="string" Value="@mortgage.Id.ToString()">@mortgage.Name</FluentOption>
+                        }
+                    </FluentSelect>
+
+                    @if (_isLoadingMortgageSchedule)
+                    {
+                        <div class="empty-state-shell">
+                            <FluentProgressRing aria-label="Loading mortgage amortization" />
+                        </div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_mortgageScheduleErrorMessage))
+                    {
+                        <FluentMessageBar Intent="@MessageIntent.Warning">@_mortgageScheduleErrorMessage</FluentMessageBar>
+                    }
+                    else if (_mortgageSchedule is null || _mortgageSchedule.Entries.Count == 0)
+                    {
+                        <div class="empty-inline">
+                            <strong>No amortization schedule generated.</strong>
+                            <span>Generate one from the Amortization Schedule page.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        var nextPayment = _mortgageSchedule.Entries.FirstOrDefault(e => e.PaymentDate >= DateOnly.FromDateTime(DateTime.UtcNow));
+                        var lastPayment = _mortgageSchedule.Entries.Last();
+                        <div class="detail-grid">
+                            <FluentCard Class="detail-card" aria-label="Total principal">
+                                <span class="detail-card__label">Total principal</span>
+                                <strong>@_mortgageSchedule.TotalPrincipal.ToString("C") @_mortgageSchedule.Currency</strong>
+                            </FluentCard>
+                            <FluentCard Class="detail-card" aria-label="Total interest">
+                                <span class="detail-card__label">Total interest</span>
+                                <strong>@_mortgageSchedule.TotalInterest.ToString("C") @_mortgageSchedule.Currency</strong>
+                            </FluentCard>
+                            <FluentCard Class="detail-card" aria-label="Remaining balance">
+                                <span class="detail-card__label">Remaining balance</span>
+                                <strong>@lastPayment.RemainingBalance.ToString("C") @_mortgageSchedule.Currency</strong>
+                            </FluentCard>
+                            <FluentCard Class="detail-card" aria-label="Next payment">
+                                <span class="detail-card__label">Next payment</span>
+                                <strong>@(nextPayment is null ? "Paid off" : nextPayment.PaymentDate.ToString("MMM d, yyyy"))</strong>
+                            </FluentCard>
+                        </div>
+                    }
+                }
+            </FluentCard>
+        }
+        else if (IsInvestmentAccount)
+        {
+            <FluentCard Class="surface-card transaction-panel" aria-labelledby="performance-title">
+                <div class="section-heading-row">
+                    <div>
+                        <h2 id="performance-title" class="section-heading">Portfolio performance</h2>
+                        <p class="section-copy">Market value, gain/loss, and money-weighted return based on recorded prices and lot cost basis.</p>
+                    </div>
+                </div>
+
+                @if (_isLoadingPerformance)
+                {
+                    <div class="empty-state-shell">
+                        <FluentProgressRing aria-label="Loading portfolio performance" />
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_performanceErrorMessage))
+                {
+                    <FluentMessageBar Intent="@MessageIntent.Warning">@_performanceErrorMessage</FluentMessageBar>
+                }
+                else if (_performance is null || _performance.Holdings.Count == 0)
+                {
+                    <div class="empty-inline">
+                        <strong>No performance data yet.</strong>
+                        <span>Add holdings and record price history to see portfolio metrics.</span>
+                    </div>
+                }
+                else
+                {
+                    var hasMarketValue = _performance.TotalMarketValue.HasValue;
+                    var anyStale = _performance.Holdings.Any(h => h.IsPriceStale);
+
+                    @if (anyStale)
+                    {
+                        <FluentMessageBar Intent="@MessageIntent.Warning" style="margin-bottom:1rem;">
+                            One or more holdings have price data older than 7 days. Update price history for accurate valuations.
+                        </FluentMessageBar>
+                    }
+
+                    <div class="detail-grid" style="margin-bottom:1.5rem;" role="region" aria-label="Portfolio summary">
+                        <FluentCard Class="detail-card" aria-label="Total book value">
+                            <span class="detail-card__label">Book value</span>
+                            <strong>@_performance.TotalBookValue.ToString("C") @_performance.Currency</strong>
+                        </FluentCard>
+                        <FluentCard Class="detail-card" aria-label="Total market value">
+                            <span class="detail-card__label">Market value</span>
+                            @if (hasMarketValue)
+                            {
+                                <strong>@_performance.TotalMarketValue!.Value.ToString("C") @_performance.Currency</strong>
+                            }
+                            else
+                            {
+                                <strong class="txn-no-value">Prices missing</strong>
+                            }
+                        </FluentCard>
+                        <FluentCard Class="detail-card" aria-label="Total gain or loss">
+                            <span class="detail-card__label">Gain / loss</span>
+                            @if (_performance.TotalGainLoss.HasValue)
+                            {
+                                var gainClass = _performance.TotalGainLoss.Value >= 0 ? "amount--positive" : "amount--negative";
+                                <strong class="@gainClass">
+                                    @_performance.TotalGainLoss.Value.ToString("C")
+                                    (@(_performance.TotalGainLossPercent?.ToString("F2") ?? "—")%)
+                                </strong>
+                            }
+                            else
+                            {
+                                <strong class="txn-no-value">—</strong>
+                            }
+                        </FluentCard>
+                        <FluentCard Class="detail-card" aria-label="Money-weighted return">
+                            <span class="detail-card__label">MWR (annualised)</span>
+                            @if (_performance.PortfolioMoneyWeightedReturn.HasValue)
+                            {
+                                var mwrClass = _performance.PortfolioMoneyWeightedReturn.Value >= 0 ? "amount--positive" : "amount--negative";
+                                <strong class="@mwrClass">@_performance.PortfolioMoneyWeightedReturn.Value.ToString("F2")%</strong>
+                            }
+                            else
+                            {
+                                <strong class="txn-no-value">—</strong>
+                            }
+                        </FluentCard>
+                    </div>
+
+                    <div class="txn-table-wrapper" role="region" aria-label="Holdings performance">
+                        <table class="txn-table" aria-label="Holdings performance">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="txn-col--desc">Security</th>
+                                    <th scope="col" class="txn-col--cat">Symbol</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Current price</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Market value</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Book value</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Gain / loss</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">MWR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var hp in _performance.Holdings)
+                                {
+                                    var gainClass = hp.GainLoss.HasValue && hp.GainLoss.Value >= 0 ? "amount--positive" : "amount--negative";
+                                    <tr class="txn-row" @key="hp.HoldingId">
+                                        <td class="txn-cell--desc">
+                                            <span class="txn-desc-primary">@hp.SecurityName</span>
+                                        </td>
+                                        <td class="txn-cell--cat">
+                                            <span class="txn-category">@hp.Symbol</span>
+                                            @if (hp.IsPriceStale)
+                                            {
+                                                <span title="Price data is stale" aria-label="Stale price" style="color:var(--warning);font-size:.75em;margin-left:.25rem;">⚠</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--amount txn-cell--right">@hp.Quantity.ToString("N4")</td>
+                                        <td class="txn-cell--amount txn-cell--right">
+                                            @if (hp.CurrentPrice.HasValue)
+                                            {
+                                                @($"{hp.CurrentPrice.Value.ToString("C")} {hp.Currency}")
+                                                @if (hp.PriceAsOfDate.HasValue)
+                                                {
+                                                    <span class="txn-desc-sub">@hp.PriceAsOfDate.Value.ToString("MMM d")</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="txn-no-value">—</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--amount txn-cell--right">
+                                            @if (hp.MarketValue.HasValue)
+                                            {
+                                                @($"{hp.MarketValue.Value.ToString("C")} {hp.Currency}")
+                                            }
+                                            else
+                                            {
+                                                <span class="txn-no-value">—</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--amount txn-cell--right">@hp.BookValue.ToString("C") @hp.Currency</td>
+                                        <td class="txn-cell--amount txn-cell--right">
+                                            @if (hp.GainLoss.HasValue)
+                                            {
+                                                <span class="@gainClass">
+                                                    @hp.GainLoss.Value.ToString("C")
+                                                    @if (hp.GainLossPercent.HasValue)
+                                                    {
+                                                        <span>(@hp.GainLossPercent.Value.ToString("F2")%)</span>
+                                                    }
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="txn-no-value">—</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--amount txn-cell--right">
+                                            @if (hp.MoneyWeightedReturn.HasValue)
+                                            {
+                                                var mwrCls = hp.MoneyWeightedReturn.Value >= 0 ? "amount--positive" : "amount--negative";
+                                                <span class="@mwrCls">@hp.MoneyWeightedReturn.Value.ToString("F2")%</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="txn-no-value">—</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div style="margin-top:.5rem;text-align:right;">
+                    <small class="txn-no-value">Calculated @(_performance?.CalculatedAt.ToString("MMM d, yyyy HH:mm") ?? "—") UTC</small>
+                </div>
+            </FluentCard>
+
+            <FluentCard Class="surface-card transaction-panel" aria-labelledby="holdings-title">
+                <div class="section-heading-row">
+                    <div>
+                        <h2 id="holdings-title" class="section-heading">Holdings and lot details</h2>
+                        <p class="section-copy">Current positions with lot-level cost basis records for this investment account.</p>
+                    </div>
+                    <div class="summary-strip summary-strip--compact">
+                        <div>
+                            <span class="summary-strip__label">Positions</span>
+                            <strong>@_holdings.Count</strong>
+                        </div>
+                    </div>
+                </div>
+
+                @if (_isLoadingHoldings)
+                {
+                    <div class="empty-state-shell">
+                        <FluentProgressRing aria-label="Loading holdings" />
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_holdingErrorMessage))
+                {
+                    <FluentMessageBar Intent="@MessageIntent.Warning">@_holdingErrorMessage</FluentMessageBar>
+                }
+                else if (_holdings.Count == 0)
+                {
+                    <div class="empty-inline">
+                        <strong>No holdings found.</strong>
+                        <span>Imported investment trades will appear here as holdings and lots.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="txn-table-wrapper" role="region" aria-label="Holdings">
+                        <table class="txn-table" aria-label="Holdings">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="txn-col--desc">Security</th>
+                                    <th scope="col" class="txn-col--cat">Symbol</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
+                                    <th scope="col" class="txn-col--amount txn-cell--right">Avg cost</th>
+                                    <th scope="col" class="txn-col--cat">Lots</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var holding in _holdings)
+                                {
+                                    var lots = _lotsByHoldingId.GetValueOrDefault(holding.Id) ?? [];
+                                    <tr class="txn-row" @key="holding.Id">
+                                        <td class="txn-cell--desc">
+                                            <span class="txn-desc-primary">@holding.SecurityName</span>
+                                            @if (!string.IsNullOrWhiteSpace(holding.Notes))
+                                            {
+                                                <span class="txn-desc-sub">@holding.Notes</span>
+                                            }
+                                        </td>
+                                        <td class="txn-cell--cat"><span class="txn-category">@holding.Symbol</span></td>
+                                        <td class="txn-cell--amount txn-cell--right">@holding.Quantity</td>
+                                        <td class="txn-cell--amount txn-cell--right">
+                                            @holding.AverageCostPerUnit.ToString("C") @holding.Currency
+                                        </td>
+                                        <td class="txn-cell--cat">@lots.Count</td>
+                                    </tr>
+                                    <tr @key="@($"{holding.Id}-lots")">
+                                        <td colspan="5" class="txn-cell--desc" style="padding-top:0.25rem;padding-bottom:1rem;">
+                                            @if (lots.Count == 0)
+                                            {
+                                                <span class="txn-no-value">No lots recorded for this holding.</span>
+                                            }
+                                            else
+                                            {
+                                                <div class="txn-table-wrapper" role="region" aria-label="Lots for @holding.Symbol">
+                                                    <table class="txn-table" aria-label="Lots for @holding.Symbol">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col" class="txn-col--date">Acquired</th>
+                                                                <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
+                                                                <th scope="col" class="txn-col--amount txn-cell--right">Unit cost</th>
+                                                                <th scope="col" class="txn-col--cat">Source</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var lot in lots)
+                                                            {
+                                                                <tr class="txn-row" @key="lot.Id">
+                                                                    <td class="txn-cell--date">@lot.AcquiredDate.ToString("MMM d, yyyy")</td>
+                                                                    <td class="txn-cell--amount txn-cell--right">@lot.Quantity</td>
+                                                                    <td class="txn-cell--amount txn-cell--right">@lot.UnitCost.ToString("C") @lot.Currency</td>
+                                                                    <td class="txn-cell--cat">
+                                                                        @if (!string.IsNullOrWhiteSpace(lot.Source))
+                                                                        {
+                                                                            <span class="txn-category">@lot.Source</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="txn-no-value">—</span>
+                                                                        }
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             }
                                         </td>
                                     </tr>
@@ -306,6 +767,13 @@ else
     private AccountResponse? _account;
     private readonly List<TransactionResponse> _transactions = new();
     private readonly List<ValuationResponse> _valuations = new();
+    private readonly List<TransactionResponse> _propertyExpenses = new();
+    private readonly List<AccountResponse> _mortgageAccounts = new();
+    private readonly List<HoldingResponse> _holdings = new();
+    private readonly Dictionary<Guid, IReadOnlyList<LotResponse>> _lotsByHoldingId = [];
+    private PortfolioPerformanceResponse? _performance;
+    private bool _isLoadingPerformance = true;
+    private string? _performanceErrorMessage;
     private readonly List<string?> _cursorHistory = [];
     private readonly IReadOnlyList<DatePreset> _datePresets =
     [
@@ -319,20 +787,40 @@ else
     private bool _isLoading = true;
     private bool _isLoadingTransactions = true;
     private bool _isLoadingValuations = true;
+    private bool _isLoadingPropertyExpenses = true;
+    private bool _isLoadingMortgageSchedule = true;
+    private bool _isLoadingHoldings = true;
+    private bool _showValuationForm;
+    private bool _isSavingValuation;
     private bool _hasNextPage;
     private bool _hasPreviousPage;
     private string? _nextCursor;
     private string? _currentCursor;
     private string? _transactionErrorMessage;
     private string? _valuationErrorMessage;
+    private string? _propertyExpenseErrorMessage;
+    private string? _mortgageScheduleErrorMessage;
+    private string? _valuationSaveMessage;
+    private string? _holdingErrorMessage;
     private string _searchTerm = string.Empty;
     private string _appliedSearchTerm = string.Empty;
     private string _selectedDatePreset = "90d";
     private string _fromDateInput = string.Empty;
     private string _toDateInput = string.Empty;
+    private decimal _propertyExpenseTotal90Days;
+    private AmortizationScheduleResponse? _mortgageSchedule;
+    private string _selectedMortgageAccountId = string.Empty;
+    private decimal _valuationAmount;
+    private DateTime? _valuationEffectiveDate = DateTime.Today;
+    private string _valuationSource = "Manual";
+    private string _valuationNotes = string.Empty;
+    private MessageIntent _valuationSaveIntent = MessageIntent.Success;
 
     private bool IsPropertyAccount =>
         _account?.AccountType.Equals("Property", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsInvestmentAccount =>
+        _account?.AccountType.Equals("Investment", StringComparison.OrdinalIgnoreCase) == true;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -344,7 +832,11 @@ else
         {
             if (IsPropertyAccount)
             {
-                await LoadValuationsAsync();
+                await Task.WhenAll(LoadValuationsAsync(), LoadPropertyExpensesAsync(), LoadMortgageTrackingAsync());
+            }
+            else if (IsInvestmentAccount)
+            {
+                await Task.WhenAll(LoadHoldingsAsync(), LoadPerformanceAsync());
             }
             else
             {
@@ -478,6 +970,230 @@ else
         finally
         {
             _isLoadingValuations = false;
+        }
+    }
+
+    private async Task LoadPropertyExpensesAsync()
+    {
+        _isLoadingPropertyExpenses = true;
+        _propertyExpenseErrorMessage = null;
+
+        try
+        {
+            var toDate = DateTime.UtcNow;
+            var fromDate = toDate.AddDays(-90);
+
+            var result = await TransactionService.GetTransactionsAsync(
+                Id,
+                pageSize: 100,
+                fromDate: fromDate,
+                toDate: toDate
+            );
+
+            _propertyExpenses.Clear();
+            _propertyExpenses.AddRange(
+                result.Items
+                    .Where(t =>
+                        t.TransactionType.Equals("Debit", StringComparison.OrdinalIgnoreCase)
+                        || t.Amount < 0
+                    )
+                    .OrderByDescending(t => t.Date)
+            );
+
+            _propertyExpenseTotal90Days = _propertyExpenses.Sum(t => Math.Abs(t.Amount));
+        }
+        catch
+        {
+            _propertyExpenses.Clear();
+            _propertyExpenseTotal90Days = 0m;
+            _propertyExpenseErrorMessage = "Property expenses could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoadingPropertyExpenses = false;
+        }
+    }
+
+    private async Task LoadMortgageTrackingAsync()
+    {
+        _isLoadingMortgageSchedule = true;
+        _mortgageScheduleErrorMessage = null;
+
+        try
+        {
+            var accounts = await AccountService.GetAccountsAsync();
+            _mortgageAccounts.Clear();
+            _mortgageAccounts.AddRange(
+                accounts.Where(a =>
+                        a.AccountSubType.Equals("Mortgage", StringComparison.OrdinalIgnoreCase)
+                        || a.AccountType.Equals("Loan", StringComparison.OrdinalIgnoreCase)
+                    )
+                    .OrderBy(a => a.Name)
+            );
+
+            if (_mortgageAccounts.Count == 0)
+            {
+                _mortgageSchedule = null;
+                _selectedMortgageAccountId = string.Empty;
+                return;
+            }
+
+            if (
+                string.IsNullOrWhiteSpace(_selectedMortgageAccountId)
+                || !_mortgageAccounts.Any(a => a.Id.ToString() == _selectedMortgageAccountId)
+            )
+            {
+                _selectedMortgageAccountId = _mortgageAccounts[0].Id.ToString();
+            }
+
+            await LoadMortgageScheduleAsync();
+        }
+        catch
+        {
+            _mortgageSchedule = null;
+            _mortgageScheduleErrorMessage =
+                "Mortgage amortization could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoadingMortgageSchedule = false;
+        }
+    }
+
+    private async Task HandleMortgageAccountChanged(ChangeEventArgs _)
+    {
+        await LoadMortgageScheduleAsync();
+    }
+
+    private async Task LoadMortgageScheduleAsync()
+    {
+        if (!Guid.TryParse(_selectedMortgageAccountId, out var mortgageAccountId))
+        {
+            _mortgageSchedule = null;
+            return;
+        }
+
+        _isLoadingMortgageSchedule = true;
+        _mortgageScheduleErrorMessage = null;
+
+        try
+        {
+            _mortgageSchedule = await AmortizationService.GetScheduleAsync(mortgageAccountId);
+        }
+        catch
+        {
+            _mortgageSchedule = null;
+            _mortgageScheduleErrorMessage = "Unable to load mortgage schedule.";
+        }
+        finally
+        {
+            _isLoadingMortgageSchedule = false;
+        }
+    }
+
+    private void ToggleValuationForm()
+    {
+        _showValuationForm = !_showValuationForm;
+        _valuationSaveMessage = null;
+
+        if (_showValuationForm)
+        {
+            _valuationAmount = _account?.CurrentBalance ?? 0m;
+            _valuationEffectiveDate = DateTime.Today;
+            _valuationSource = "Manual";
+            _valuationNotes = string.Empty;
+        }
+    }
+
+    private async Task SaveValuationAsync()
+    {
+        if (_valuationAmount <= 0 || string.IsNullOrWhiteSpace(_valuationSource))
+        {
+            _valuationSaveIntent = MessageIntent.Warning;
+            _valuationSaveMessage = "Enter a valid amount and source.";
+            return;
+        }
+
+        _isSavingValuation = true;
+        try
+        {
+            var request = new CreateValuationRequest
+            {
+                Amount = _valuationAmount,
+                Currency = _account?.Currency ?? "CAD",
+                EffectiveDate = DateOnly.FromDateTime(_valuationEffectiveDate ?? DateTime.Today),
+                Source = _valuationSource.Trim(),
+                Notes = string.IsNullOrWhiteSpace(_valuationNotes) ? null : _valuationNotes.Trim(),
+            };
+
+            var created = await ValuationService.CreateValuationAsync(Id, request);
+            if (created is null)
+            {
+                _valuationSaveIntent = MessageIntent.Error;
+                _valuationSaveMessage = "Failed to save valuation.";
+                return;
+            }
+
+            _valuationSaveIntent = MessageIntent.Success;
+            _valuationSaveMessage = "Valuation saved.";
+            _showValuationForm = false;
+            await LoadValuationsAsync();
+        }
+        finally
+        {
+            _isSavingValuation = false;
+        }
+    }
+
+    private async Task LoadPerformanceAsync()
+    {
+        _isLoadingPerformance = true;
+        _performanceErrorMessage = null;
+
+        try
+        {
+            _performance = await PortfolioService.GetPerformanceAsync(Id);
+            if (_performance is null)
+                _performanceErrorMessage = "Portfolio performance could not be loaded right now.";
+        }
+        catch
+        {
+            _performance = null;
+            _performanceErrorMessage = "Portfolio performance could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoadingPerformance = false;
+        }
+    }
+
+    private async Task LoadHoldingsAsync()
+    {
+        _isLoadingHoldings = true;
+        _holdingErrorMessage = null;
+
+        try
+        {
+            var holdings = await HoldingService.GetHoldingsAsync(Id);
+            _holdings.Clear();
+            _holdings.AddRange(holdings.OrderBy(h => h.Symbol, StringComparer.OrdinalIgnoreCase));
+
+            _lotsByHoldingId.Clear();
+            foreach (var holding in _holdings)
+            {
+                var lots = await LotService.GetLotsAsync(holding.Id);
+                _lotsByHoldingId[holding.Id] = lots;
+            }
+        }
+        catch
+        {
+            _holdings.Clear();
+            _lotsByHoldingId.Clear();
+            _holdingErrorMessage = "Holdings could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoadingHoldings = false;
         }
     }
 

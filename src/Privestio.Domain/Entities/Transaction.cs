@@ -51,6 +51,14 @@ public class Transaction : BaseEntity
     public string? Notes { get; set; }
     public string? ExternalId { get; set; }
     public string? ImportFingerprint { get; set; }
+    public DateOnly? SettlementDate { get; set; }
+    public string? ActivityType { get; set; }
+    public string? ActivitySubType { get; set; }
+    public string? Direction { get; set; }
+    public string? Symbol { get; set; }
+    public string? SecurityName { get; set; }
+    public decimal? Quantity { get; set; }
+    public decimal? UnitPrice { get; set; }
 
     public Guid? ImportBatchId { get; set; }
     public ImportBatch? ImportBatch { get; set; }

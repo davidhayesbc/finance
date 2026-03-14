@@ -28,4 +28,13 @@ public interface IPriceHistoryRepository
         IEnumerable<(string Symbol, DateOnly AsOfDate)> keys,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Returns the most recent <see cref="PriceHistory"/> entry per symbol for the given set of
+    /// symbols. Symbols with no recorded price are omitted from the result.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, PriceHistory>> GetLatestBySymbolsAsync(
+        IEnumerable<string> symbols,
+        CancellationToken cancellationToken = default
+    );
 }

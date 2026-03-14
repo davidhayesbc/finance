@@ -17,6 +17,14 @@ public record TransactionResponse
     public bool IsSplit { get; init; }
     public IReadOnlyList<TransactionSplitResponse> Splits { get; init; } = [];
     public string? Notes { get; init; }
+    public DateOnly? SettlementDate { get; init; }
+    public string? ActivityType { get; init; }
+    public string? ActivitySubType { get; init; }
+    public string? Direction { get; init; }
+    public string? Symbol { get; init; }
+    public string? SecurityName { get; init; }
+    public decimal? Quantity { get; init; }
+    public decimal? UnitPrice { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 

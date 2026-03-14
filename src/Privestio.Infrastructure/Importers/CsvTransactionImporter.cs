@@ -91,6 +91,17 @@ public class CsvTransactionImporter : ITransactionImporter
         var payee = GetMappedField(csv, columnMap, "Payee");
         var category = GetMappedField(csv, columnMap, "Category");
         var notes = GetMappedField(csv, columnMap, "Notes");
+        var settlementDate = ParseOptionalDate(
+            GetMappedField(csv, columnMap, "SettlementDate"),
+            dateFormat
+        );
+        var activityType = GetMappedField(csv, columnMap, "ActivityType") ?? description;
+        var activitySubType = GetMappedField(csv, columnMap, "ActivitySubType");
+        var direction = GetMappedField(csv, columnMap, "Direction");
+        var symbol = GetMappedField(csv, columnMap, "Symbol");
+        var securityName = GetMappedField(csv, columnMap, "SecurityName");
+        var quantity = ParseOptionalDecimal(GetMappedField(csv, columnMap, "Quantity"));
+        var unitPrice = ParseOptionalDecimal(GetMappedField(csv, columnMap, "UnitPrice"));
 
         return new ImportedTransactionRow(
             Date: date,
@@ -99,7 +110,15 @@ public class CsvTransactionImporter : ITransactionImporter
             ExternalId: externalId,
             Payee: payee,
             Category: category,
-            Notes: notes
+            Notes: notes,
+            SettlementDate: settlementDate,
+            ActivityType: activityType,
+            ActivitySubType: activitySubType,
+            Direction: direction,
+            Symbol: symbol,
+            SecurityName: securityName,
+            Quantity: quantity,
+            UnitPrice: unitPrice
         );
     }
 
@@ -127,6 +146,15 @@ public class CsvTransactionImporter : ITransactionImporter
         return DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
     }
 
+    private static DateOnly? ParseOptionalDate(string? value, string? dateFormat)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var parsedDate = ParseDate(value, dateFormat);
+        return DateOnly.FromDateTime(parsedDate);
+    }
+
     private static decimal ParseAmount(
         CsvReader csv,
         Dictionary<string, string> columnMap,
@@ -144,6 +172,14 @@ public class CsvTransactionImporter : ITransactionImporter
             ?? throw new FormatException("Amount field is missing");
 
         return decimal.Parse(amountStr.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture);
+    }
+
+    private static decimal? ParseOptionalDecimal(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        return decimal.Parse(value.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture);
     }
 
     private static decimal ParseDebitCreditAmount(

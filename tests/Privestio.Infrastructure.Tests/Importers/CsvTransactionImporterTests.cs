@@ -216,6 +216,47 @@ public class CsvTransactionImporterTests
         result.Rows[0].ExternalId.Should().Be("TXN-001");
     }
 
+    [Fact]
+    public async Task ParseAsync_WealthsimpleTradeColumns_ParsesInvestmentMetadata()
+    {
+        var csv = """
+            transaction_date,settlement_date,activity_type,activity_sub_type,direction,symbol,name,quantity,unit_price,net_cash_amount
+            2025-02-03,2025-02-03,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,2.1361,35.1098,-75
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "transaction_date", "Date" },
+                { "net_cash_amount", "Amount" },
+                { "activity_type", "Description" },
+                { "settlement_date", "SettlementDate" },
+                { "activity_sub_type", "ActivitySubType" },
+                { "direction", "Direction" },
+                { "symbol", "Symbol" },
+                { "name", "SecurityName" },
+                { "quantity", "Quantity" },
+                { "unit_price", "UnitPrice" },
+            }
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        result.Errors.Should().BeEmpty();
+        result.Rows.Should().HaveCount(1);
+
+        var row = result.Rows[0];
+        row.Description.Should().Be("Trade");
+        row.SettlementDate.Should().Be(new DateOnly(2025, 2, 3));
+        row.ActivityType.Should().Be("Trade");
+        row.ActivitySubType.Should().Be("BUY");
+        row.Direction.Should().Be("LONG");
+        row.Symbol.Should().Be("XEQT");
+        row.SecurityName.Should().Be("iShares Core Equity ETF Portfolio");
+        row.Quantity.Should().Be(2.1361m);
+        row.UnitPrice.Should().Be(35.1098m);
+    }
+
     private static ImportMapping CreateMapping(
         Dictionary<string, string> columnMappings,
         string? dateFormat = null,

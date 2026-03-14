@@ -26,5 +26,7 @@ public interface IUnitOfWork
     IIdempotencyRecordRepository IdempotencyRecords { get; }
     IValuationRepository Valuations { get; }
     IPriceHistoryRepository PriceHistories { get; }
+    IHoldingRepository Holdings { get; }
+    ILotRepository Lots { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -35,6 +35,8 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<SinkingFund> SinkingFunds => Set<SinkingFund>();
     public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
+    public DbSet<Holding> Holdings => Set<Holding>();
+    public DbSet<Lot> Lots => Set<Lot>();
 
     // Phase 4 entities
     public DbSet<ForecastScenario> ForecastScenarios => Set<ForecastScenario>();
@@ -77,6 +79,8 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Budget>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<SinkingFund>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<RecurringTransaction>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Holding>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Lot>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ForecastScenario>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ReconciliationPeriod>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ContributionRoom>().HasQueryFilter(e => !e.IsDeleted);

@@ -7,8 +7,10 @@ using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Domain.Interfaces;
 using Privestio.Infrastructure.Data;
+using Privestio.Infrastructure.ExchangeRates;
 using Privestio.Infrastructure.Identity;
 using Privestio.Infrastructure.Importers;
+using Privestio.Infrastructure.PriceFeeds;
 using Privestio.Infrastructure.Rules;
 
 namespace Privestio.Infrastructure;
@@ -65,6 +67,24 @@ public static class DependencyInjection
         services.AddSingleton<TransactionFingerprintService>();
         services.AddScoped<IRuleEvaluator, CategorizationRuleEvaluator>();
         services.AddScoped<IFilePreviewService, CsvFilePreviewService>();
+
+        // Price feed provider (Phase 5.4)
+        services.AddHttpClient<IPriceFeedProvider, YahooFinancePriceFeedProvider>(client =>
+        {
+            client.BaseAddress = new Uri("https://query1.finance.yahoo.com/");
+            client.DefaultRequestHeaders.Add(
+                "User-Agent",
+                "Privestio/1.0 (self-hosted personal finance tracker)"
+            );
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
+        // Exchange rate ingestion provider (Phase 5.5a)
+        services.AddHttpClient<IExchangeRateProvider, FrankfurterExchangeRateProvider>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.frankfurter.app/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         return services;
     }

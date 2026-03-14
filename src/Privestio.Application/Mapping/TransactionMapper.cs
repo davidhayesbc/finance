@@ -35,6 +35,14 @@ public static class TransactionMapper
                 })
                 .ToList(),
             Notes = transaction.Notes,
+            SettlementDate = transaction.SettlementDate,
+            ActivityType = transaction.ActivityType,
+            ActivitySubType = transaction.ActivitySubType,
+            Direction = transaction.Direction,
+            Symbol = transaction.Symbol,
+            SecurityName = transaction.SecurityName,
+            Quantity = transaction.Quantity,
+            UnitPrice = transaction.UnitPrice,
             CreatedAt = transaction.CreatedAt,
             UpdatedAt = transaction.UpdatedAt,
         };

@@ -888,14 +888,14 @@ public record AccountType(string Code, string DisplayName, string Category);
 
 | Task | Description | Estimate | Done |
 |------|-------------|----------|:----:|
-| 5.1 | Holding and Lot entities, CRUD endpoints | 4h | [ ] |
-| 5.2 | Investment account UI: holdings list, lot details | 4h | [ ] |
-| 5.3 | Portfolio performance calculations (TWR, MWR) | 6h | [ ] |
-| 5.4 | Price feed plugin interface and Yahoo Finance implementation | 4h | [ ] |
-| 5.5 | PriceHistory entity (`Symbol`, `Price`, `AsOfDate`, `RecordedAt`, `Source`) for point-in-time security prices; stale-price detection via AsOfDate vs RecordedAt gap | 4h | [ ] |
-| 5.5a | Exchange rate ingestion providers and historical FX backfill into `ExchangeRate(AsOfDate, RecordedAt)` with `FxConversion` linkage validation | 4h | [ ] |
-| 5.5b | Valuation entity (`Account`, `EstimatedValue`, `EffectiveDate`, `RecordedAt`, `Source`, `Notes`) for manual property/asset valuations with effective-date vs entry-date separation | 3h | [ ] |
-| 5.6 | Investment dashboard: portfolio value, gain/loss, allocation | 6h | [ ] |
+| 5.1 | Holding and Lot entities, CRUD endpoints | 4h | [x] |
+| 5.2 | Investment account UI: holdings list, lot details | 4h | [x] |
+| 5.3 | Portfolio performance calculations (TWR, MWR) | 6h | [x] |
+| 5.4 | Price feed plugin interface and Yahoo Finance implementation | 4h | [x] |
+| 5.5 | PriceHistory entity (`Symbol`, `Price`, `AsOfDate`, `RecordedAt`, `Source`) for point-in-time security prices; stale-price detection via AsOfDate vs RecordedAt gap | 4h | [x] |
+| 5.5a | Exchange rate ingestion providers and historical FX backfill into `ExchangeRate(AsOfDate, RecordedAt)` with `FxConversion` linkage validation | 4h | [x] |
+| 5.5b | Valuation entity (`Account`, `EstimatedValue`, `EffectiveDate`, `RecordedAt`, `Source`, `Notes`) for manual property/asset valuations with effective-date vs entry-date separation | 3h | [x] |
+| 5.6 | Investment dashboard: portfolio value, gain/loss, allocation | 6h | [x] |
 | 5.7 | Plugin loader: assembly scanning, registration, configuration | 6h | [ ] |
 | 5.7a | Trusted plugin runtime guardrails: contract validation, startup integrity checks, explicit capability interfaces, and operation logging | 3h | [ ] |
 | 5.8 | Ollama integration: transaction categorization service | 6h | [ ] |
@@ -904,7 +904,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 5.11 | Shared vs private account visibility | 3h | [ ] |
 | 5.12 | Extend permissions matrix for household sharing roles and admin delegation paths | 4h | [ ] |
 | 5.13 | Role-based access control (Admin/Member) | 3h | [ ] |
-| 5.14 | Property tracking: value, expenses, mortgage amortization | 4h | [ ] |
+| 5.14 | Property tracking: value, expenses, mortgage amortization | 4h | [x] |
 | 5.15 | Extended data portability formats (including OFX) and recovery UX hardening | 4h | [ ] |
 | 5.16 | Automated PostgreSQL backups in Docker Compose | 3h | [ ] |
 | 5.17 | Tests for investments, permissions, plugins, and AI integration | 7h | [ ] |

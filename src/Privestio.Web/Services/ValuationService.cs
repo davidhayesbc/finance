@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Privestio.Contracts.Requests;
 using Privestio.Contracts.Responses;
 
 namespace Privestio.Web.Services;
@@ -6,6 +7,7 @@ namespace Privestio.Web.Services;
 public interface IValuationService
 {
     Task<IReadOnlyList<ValuationResponse>> GetValuationsAsync(Guid accountId);
+    Task<ValuationResponse?> CreateValuationAsync(Guid accountId, CreateValuationRequest request);
 }
 
 public class ValuationService : IValuationService
@@ -26,6 +28,29 @@ public class ValuationService : IValuationService
         catch
         {
             return [];
+        }
+    }
+
+    public async Task<ValuationResponse?> CreateValuationAsync(
+        Guid accountId,
+        CreateValuationRequest request
+    )
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"/api/v1/accounts/{accountId}/valuations",
+                request
+            );
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<ValuationResponse>();
+        }
+        catch
+        {
+            return null;
         }
     }
 }
