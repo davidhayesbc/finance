@@ -247,7 +247,15 @@ public class ImportTransactionsCommandHandler
                 })
             );
         }
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex.GetType().Name == "DbUpdateException")
+        {
+            var innerMessage = ex.InnerException?.Message ?? "No inner exception details.";
+            throw new InvalidOperationException($"Import persistence failed: {innerMessage}", ex);
+        }
 
         return new ImportResultResponse
         {
@@ -277,6 +285,8 @@ public class ImportTransactionsCommandHandler
     {
         var holdings = await _unitOfWork.Holdings.GetByAccountIdAsync(accountId, cancellationToken);
         var bySymbol = holdings.ToDictionary(h => h.Symbol, StringComparer.OrdinalIgnoreCase);
+        var newHoldingIds = new HashSet<Guid>();
+        var pendingLots = new List<Lot>();
 
         foreach (var row in rows)
         {
@@ -315,6 +325,7 @@ public class ImportTransactionsCommandHandler
                 );
                 await _unitOfWork.Holdings.AddAsync(holding, cancellationToken);
                 bySymbol[symbol] = holding;
+                newHoldingIds.Add(holding.Id);
             }
             else
             {
@@ -337,7 +348,13 @@ public class ImportTransactionsCommandHandler
                     new Money(Math.Round(nextAverageCost, 8, MidpointRounding.ToEven), currency),
                     holding.Notes
                 );
-                await _unitOfWork.Holdings.UpdateAsync(holding, cancellationToken);
+
+                // If this holding was created earlier in this same import pass,
+                // keep it in Added state so EF inserts it once with final values.
+                if (!newHoldingIds.Contains(holding.Id))
+                {
+                    await _unitOfWork.Holdings.UpdateAsync(holding, cancellationToken);
+                }
             }
 
             if (signedQuantityDelta > 0)
@@ -353,8 +370,20 @@ public class ImportTransactionsCommandHandler
                     ),
                     notes: Truncate(row.Notes, 2000)
                 );
-                await _unitOfWork.Lots.AddAsync(lot, cancellationToken);
+
+                pendingLots.Add(lot);
             }
+        }
+
+        if (pendingLots.Count == 0)
+            return;
+
+        // Flush transactions/holdings first so Lots always reference persisted Holding rows.
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        foreach (var lot in pendingLots)
+        {
+            await _unitOfWork.Lots.AddAsync(lot, cancellationToken);
         }
     }
 

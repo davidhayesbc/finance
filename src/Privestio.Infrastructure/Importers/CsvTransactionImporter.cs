@@ -53,6 +53,11 @@ public class CsvTransactionImporter : ITransactionImporter
             cancellationToken.ThrowIfCancellationRequested();
             rowNumber++;
 
+            if (IsIgnorableMetadataRow(csv, columnMap))
+            {
+                continue;
+            }
+
             try
             {
                 var row = ParseRow(csv, columnMap, dateFormat, debitColumn, creditColumn);
@@ -66,6 +71,17 @@ public class CsvTransactionImporter : ITransactionImporter
         }
 
         return new ImportParseResult(rows, errors);
+    }
+
+    private static bool IsIgnorableMetadataRow(CsvReader csv, Dictionary<string, string> columnMap)
+    {
+        var dateValue = GetMappedField(csv, columnMap, "Date");
+        if (string.IsNullOrWhiteSpace(dateValue))
+            return false;
+
+        // Wealthsimple exports append a footer line such as:
+        // "As of 2026-03-13 16:02 GMT-07:00"
+        return dateValue.StartsWith("As of ", StringComparison.OrdinalIgnoreCase);
     }
 
     private static ImportedTransactionRow ParseRow(

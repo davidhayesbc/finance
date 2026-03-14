@@ -10,6 +10,7 @@ public class LoaderOrchestrator
     private readonly DataLoaderConfig _config;
     private readonly string _dataDir;
     private readonly bool _dryRun;
+    private readonly bool _verboseImportErrors;
     private readonly ILogger<LoaderOrchestrator> _logger;
 
     private readonly Dictionary<string, Guid> _accountNameToId = new(
@@ -31,6 +32,7 @@ public class LoaderOrchestrator
         DataLoaderConfig config,
         string dataDir,
         bool dryRun,
+        bool verboseImportErrors,
         ILogger<LoaderOrchestrator> logger
     )
     {
@@ -38,6 +40,7 @@ public class LoaderOrchestrator
         _config = config;
         _dataDir = dataDir;
         _dryRun = dryRun;
+        _verboseImportErrors = verboseImportErrors;
         _logger = logger;
     }
 
@@ -423,7 +426,38 @@ public class LoaderOrchestrator
                     _created += result.ImportedCount;
                     _skipped += result.DuplicateCount;
                     if (result.ErrorCount > 0)
+                    {
+                        if (_verboseImportErrors)
+                        {
+                            foreach (var err in result.Errors)
+                            {
+                                _logger.LogWarning(
+                                    "    Import row error in {File} row {Row}: {Message}. Raw: {RawData}",
+                                    import.File,
+                                    err.RowNumber,
+                                    err.Message,
+                                    string.IsNullOrWhiteSpace(err.RawData) ? "<none>" : err.RawData
+                                );
+                            }
+
+                            if (result.Errors.Count == 0)
+                            {
+                                _logger.LogWarning(
+                                    "    Import reported {ErrorCount} errors but did not include row details.",
+                                    result.ErrorCount
+                                );
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "    Import had {ErrorCount} row error(s). Re-run with --verbose-import-errors to print row details.",
+                                result.ErrorCount
+                            );
+                        }
+
                         _failed += result.ErrorCount;
+                    }
                 }
                 else
                 {

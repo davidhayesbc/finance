@@ -257,6 +257,37 @@ public class CsvTransactionImporterTests
         row.UnitPrice.Should().Be(35.1098m);
     }
 
+    [Fact]
+    public async Task ParseAsync_WealthsimpleFooterRow_IgnoredWithoutError()
+    {
+        var csv = """
+            transaction_date,settlement_date,activity_type,activity_sub_type,direction,symbol,name,quantity,unit_price,net_cash_amount
+            2025-02-03,2025-02-03,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,2.1361,35.1098,-75
+            As of 2026-03-13 16:02 GMT-07:00,,,,,,,,,
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "transaction_date", "Date" },
+                { "net_cash_amount", "Amount" },
+                { "activity_type", "Description" },
+                { "settlement_date", "SettlementDate" },
+                { "activity_sub_type", "ActivitySubType" },
+                { "direction", "Direction" },
+                { "symbol", "Symbol" },
+                { "name", "SecurityName" },
+                { "quantity", "Quantity" },
+                { "unit_price", "UnitPrice" },
+            }
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        result.Errors.Should().BeEmpty();
+        result.Rows.Should().HaveCount(1);
+    }
+
     private static ImportMapping CreateMapping(
         Dictionary<string, string> columnMappings,
         string? dateFormat = null,
