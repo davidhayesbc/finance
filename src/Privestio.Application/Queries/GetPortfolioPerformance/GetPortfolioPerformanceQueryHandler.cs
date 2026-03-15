@@ -2,6 +2,8 @@ using MediatR;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
+using Privestio.Domain.Entities;
+using Privestio.Domain.Services;
 
 namespace Privestio.Application.Queries.GetPortfolioPerformance;
 
@@ -54,7 +56,7 @@ public class GetPortfolioPerformanceQueryHandler
 
         var holdingInputs = holdings.Select(h =>
         {
-            latestPrices.TryGetValue(h.Symbol, out var price);
+            var price = ResolvePrice(latestPrices, h.Symbol);
             return new PortfolioPerformanceCalculator.HoldingInput(
                 h.Id,
                 h.Symbol,
@@ -107,5 +109,19 @@ public class GetPortfolioPerformanceQueryHandler
                 .ToList()
                 .AsReadOnly(),
         };
+    }
+
+    private static PriceHistory? ResolvePrice(
+        IReadOnlyDictionary<string, PriceHistory> latestPrices,
+        string holdingSymbol
+    )
+    {
+        foreach (var candidate in SecuritySymbolMatcher.GetLookupCandidates(holdingSymbol))
+        {
+            if (latestPrices.TryGetValue(candidate, out var price))
+                return price;
+        }
+
+        return null;
     }
 }

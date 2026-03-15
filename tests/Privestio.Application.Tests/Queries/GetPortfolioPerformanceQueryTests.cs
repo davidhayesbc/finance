@@ -180,4 +180,53 @@ public class GetPortfolioPerformanceQueryTests
         result.Holdings[0].CurrentPrice.Should().BeNull();
         result.Holdings[0].MarketValue.Should().BeNull();
     }
+
+    [Fact]
+    public async Task Handle_HoldingSymbolWithoutExchangeSuffix_UsesAliasedPriceSymbol()
+    {
+        var userId = Guid.NewGuid();
+        var account = MakeAccount(userId);
+        var holding = new Holding(
+            account.Id,
+            "XEQT",
+            "iShares Core Equity ETF Portfolio",
+            10m,
+            new Money(38m, "CAD"),
+            null
+        );
+        var aliasedPrice = new PriceHistory(
+            "XEQT.TO",
+            new Money(40m, "CAD"),
+            DateOnly.FromDateTime(DateTime.UtcNow),
+            "Yahoo"
+        );
+
+        _accounts
+            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(account);
+        _holdings
+            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([holding]);
+        _prices
+            .Setup(x =>
+                x.GetLatestBySymbolsAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<string, PriceHistory>)
+                    new Dictionary<string, PriceHistory> { ["XEQT.TO"] = aliasedPrice }
+            );
+
+        var result = await CreateHandler()
+            .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.TotalMarketValue.Should().Be(400m);
+        result.Holdings.Should().HaveCount(1);
+        result.Holdings[0].Symbol.Should().Be("XEQT");
+        result.Holdings[0].CurrentPrice.Should().Be(40m);
+        result.Holdings[0].MarketValue.Should().Be(400m);
+    }
 }
