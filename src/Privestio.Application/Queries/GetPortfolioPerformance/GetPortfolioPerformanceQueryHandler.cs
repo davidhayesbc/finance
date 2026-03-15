@@ -3,7 +3,9 @@ using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
+using Privestio.Domain.Interfaces;
 using Privestio.Domain.Services;
+using Privestio.Domain.ValueObjects;
 
 namespace Privestio.Application.Queries.GetPortfolioPerformance;
 
@@ -11,10 +13,15 @@ public class GetPortfolioPerformanceQueryHandler
     : IRequestHandler<GetPortfolioPerformanceQuery, PortfolioPerformanceResponse?>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPriceFeedProvider _priceFeedProvider;
 
-    public GetPortfolioPerformanceQueryHandler(IUnitOfWork unitOfWork)
+    public GetPortfolioPerformanceQueryHandler(
+        IUnitOfWork unitOfWork,
+        IPriceFeedProvider priceFeedProvider
+    )
     {
         _unitOfWork = unitOfWork;
+        _priceFeedProvider = priceFeedProvider;
     }
 
     public async Task<PortfolioPerformanceResponse?> Handle(
@@ -53,6 +60,25 @@ public class GetPortfolioPerformanceQueryHandler
             symbols,
             cancellationToken
         );
+
+        var missingSymbols = holdings
+            .Where(h => ResolvePrice(latestPrices, h.Symbol) is null)
+            .Select(h => h.Symbol)
+            .Where(s => !string.Equals(s, "CASH", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (missingSymbols.Count > 0)
+        {
+            var fetchedAny = await FetchAndPersistMissingPricesAsync(missingSymbols, cancellationToken);
+            if (fetchedAny)
+            {
+                latestPrices = await _unitOfWork.PriceHistories.GetLatestBySymbolsAsync(
+                    symbols,
+                    cancellationToken
+                );
+            }
+        }
 
         var holdingInputs = holdings.Select(h =>
         {
@@ -123,5 +149,47 @@ public class GetPortfolioPerformanceQueryHandler
         }
 
         return null;
+    }
+
+    private async Task<bool> FetchAndPersistMissingPricesAsync(
+        IReadOnlyList<string> missingSymbols,
+        CancellationToken cancellationToken
+    )
+    {
+        var quotes = await _priceFeedProvider.GetLatestPricesAsync(missingSymbols, cancellationToken);
+        if (quotes.Count == 0)
+            return false;
+
+        var keys = quotes
+            .Select(q => (SecuritySymbolMatcher.Normalize(q.Symbol), q.AsOfDate))
+            .Distinct()
+            .ToList();
+
+        var existingKeys = await _unitOfWork.PriceHistories.GetExistingKeysAsync(
+            keys,
+            cancellationToken
+        );
+
+        var newEntries = quotes
+            .Where(q => q.Price > 0)
+            .Where(q =>
+                !existingKeys.Contains((SecuritySymbolMatcher.Normalize(q.Symbol), q.AsOfDate))
+            )
+            .Select(q =>
+                new PriceHistory(
+                    q.Symbol,
+                    new Money(q.Price, q.Currency),
+                    q.AsOfDate,
+                    _priceFeedProvider.ProviderName
+                )
+            )
+            .ToList();
+
+        if (newEntries.Count == 0)
+            return false;
+
+        await _unitOfWork.PriceHistories.AddRangeAsync(newEntries, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }
