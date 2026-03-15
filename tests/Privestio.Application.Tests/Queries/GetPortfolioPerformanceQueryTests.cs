@@ -25,7 +25,12 @@ public class GetPortfolioPerformanceQueryTests
 
         _priceFeed.SetupGet(x => x.ProviderName).Returns("YahooFinance");
         _priceFeed
-            .Setup(x => x.GetLatestPricesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetLatestPricesAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync([]);
 
         _prices
@@ -157,6 +162,7 @@ public class GetPortfolioPerformanceQueryTests
         result.Holdings[0].BookValue.Should().Be(380m);
         result.Holdings[0].MarketValue.Should().Be(400m);
         result.Holdings[0].GainLoss.Should().Be(20m);
+        result.Holdings[0].PriceSource.Should().Be("Yahoo");
     }
 
     [Fact]
@@ -278,14 +284,21 @@ public class GetPortfolioPerformanceQueryTests
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync((IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>())
+            .ReturnsAsync(
+                (IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>()
+            )
             .ReturnsAsync(
                 (IReadOnlyDictionary<string, PriceHistory>)
                     new Dictionary<string, PriceHistory> { ["XEQT"] = persistedPrice }
             );
 
         _priceFeed
-            .Setup(x => x.GetLatestPricesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetLatestPricesAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync([new PriceQuote("XEQT", 40m, "CAD", today)]);
 
         var result = await CreateHandler()
@@ -298,11 +311,70 @@ public class GetPortfolioPerformanceQueryTests
         result.Holdings[0].CurrentPrice.Should().Be(40m);
         result.Holdings[0].MarketValue.Should().Be(400m);
         result.Holdings[0].GainLoss.Should().Be(20m);
+        result.Holdings[0].PriceSource.Should().Be("YahooFinance");
 
         _prices.Verify(
-            x => x.AddRangeAsync(It.IsAny<IEnumerable<PriceHistory>>(), It.IsAny<CancellationToken>()),
+            x =>
+                x.AddRangeAsync(
+                    It.IsAny<IEnumerable<PriceHistory>>(),
+                    It.IsAny<CancellationToken>()
+                ),
             Times.Once
         );
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_CashEquivalentWithoutQuote_UsesAverageCostForMarketValueAndPnL()
+    {
+        var userId = Guid.NewGuid();
+        var account = MakeAccount(userId);
+        var holding = new Holding(
+            account.Id,
+            "CASH.TO",
+            "Global X High Interest Savings ETF",
+            35.0955m,
+            new Money(50m, "CAD"),
+            null
+        );
+
+        _accounts
+            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(account);
+        _holdings
+            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([holding]);
+
+        _prices
+            .Setup(x =>
+                x.GetLatestBySymbolsAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>()
+            );
+
+        _priceFeed
+            .Setup(x =>
+                x.GetLatestPricesAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
+
+        var result = await CreateHandler()
+            .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.TotalMarketValue.Should().Be(result.TotalBookValue);
+        result.TotalGainLoss.Should().Be(0m);
+        result.Holdings.Should().HaveCount(1);
+        result.Holdings[0].CurrentPrice.Should().Be(50m);
+        result.Holdings[0].MarketValue.Should().Be(result.Holdings[0].BookValue);
+        result.Holdings[0].GainLoss.Should().Be(0m);
+        result.Holdings[0].PriceSource.Should().Be("Fallback");
     }
 }

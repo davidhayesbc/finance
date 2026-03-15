@@ -15,4 +15,5 @@ public record HoldingPerformanceResponse
     public decimal? MoneyWeightedReturn { get; init; }
     public DateOnly? PriceAsOfDate { get; init; }
     public bool IsPriceStale { get; init; }
+    public string PriceSource { get; init; } = string.Empty;
 }

@@ -65,7 +65,7 @@ else
             </FluentCard>
             <FluentCard Class="detail-card" aria-label="Current balance">
                 <span class="detail-card__label">Current balance</span>
-                <strong>@_account.CurrentBalance.ToString("C") @_account.Currency</strong>
+                <strong>@GetDisplayedCurrentBalance().ToString("C") @_account.Currency</strong>
             </FluentCard>
             <FluentCard Class="detail-card" aria-label="Opening date">
                 <span class="detail-card__label">Opened</span>
@@ -424,6 +424,7 @@ else
                                         </td>
                                         <td class="txn-cell--cat">
                                             <span class="txn-category">@hp.Symbol</span>
+                                            <span class="txn-category" style="margin-left:.35rem;opacity:.85;">@hp.PriceSource</span>
                                             @if (hp.IsPriceStale)
                                             {
                                                 <span title="Price data is stale" aria-label="Stale price" style="color:var(--warning);font-size:.75em;margin-left:.25rem;">⚠</span>
@@ -1237,6 +1238,14 @@ else
         {
             _isLoadingPerformance = false;
         }
+    }
+
+    private decimal GetDisplayedCurrentBalance()
+    {
+        if (IsInvestmentAccount && _performance?.TotalMarketValue is { } marketValue)
+            return marketValue;
+
+        return _account?.CurrentBalance ?? 0m;
     }
 
     private async Task LoadHoldingsAsync()

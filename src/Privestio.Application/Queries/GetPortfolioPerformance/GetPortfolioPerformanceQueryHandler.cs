@@ -64,13 +64,15 @@ public class GetPortfolioPerformanceQueryHandler
         var missingSymbols = holdings
             .Where(h => ResolvePrice(latestPrices, h.Symbol) is null)
             .Select(h => h.Symbol)
-            .Where(s => !string.Equals(s, "CASH", StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         if (missingSymbols.Count > 0)
         {
-            var fetchedAny = await FetchAndPersistMissingPricesAsync(missingSymbols, cancellationToken);
+            var fetchedAny = await FetchAndPersistMissingPricesAsync(
+                missingSymbols,
+                cancellationToken
+            );
             if (fetchedAny)
             {
                 latestPrices = await _unitOfWork.PriceHistories.GetLatestBySymbolsAsync(
@@ -80,30 +82,45 @@ public class GetPortfolioPerformanceQueryHandler
             }
         }
 
-        var holdingInputs = holdings.Select(h =>
-        {
-            var price = ResolvePrice(latestPrices, h.Symbol);
-            return new PortfolioPerformanceCalculator.HoldingInput(
-                h.Id,
-                h.Symbol,
-                h.SecurityName,
-                h.Quantity,
-                h.AverageCostPerUnit.Amount,
-                h.AverageCostPerUnit.CurrencyCode,
-                price?.Price.Amount,
-                price?.AsOfDate,
-                price?.RecordedAt,
-                h.Lots.Select(l => new PortfolioPerformanceCalculator.LotInput(
-                        l.AcquiredDate,
-                        l.Quantity,
-                        l.UnitCost.Amount
-                    ))
-                    .ToList()
-                    .AsReadOnly()
-            );
-        });
+        var holdingContexts = holdings
+            .Select(h =>
+            {
+                var price = ResolvePrice(latestPrices, h.Symbol);
+                var resolvedCurrentPrice =
+                    price?.Price.Amount
+                    ?? (
+                        IsCashEquivalentSymbol(h.Symbol)
+                            ? h.AverageCostPerUnit.Amount
+                            : (decimal?)null
+                    );
 
-        var result = PortfolioPerformanceCalculator.Calculate(holdingInputs);
+                var source = ResolvePriceSource(price, h.Symbol);
+
+                var input = new PortfolioPerformanceCalculator.HoldingInput(
+                    h.Id,
+                    h.Symbol,
+                    h.SecurityName,
+                    h.Quantity,
+                    h.AverageCostPerUnit.Amount,
+                    h.AverageCostPerUnit.CurrencyCode,
+                    resolvedCurrentPrice,
+                    price?.AsOfDate,
+                    price?.RecordedAt,
+                    h.Lots.Select(l => new PortfolioPerformanceCalculator.LotInput(
+                            l.AcquiredDate,
+                            l.Quantity,
+                            l.UnitCost.Amount
+                        ))
+                        .ToList()
+                        .AsReadOnly()
+                );
+
+                return new HoldingContext(input, source);
+            })
+            .ToList();
+
+        var result = PortfolioPerformanceCalculator.Calculate(holdingContexts.Select(c => c.Input));
+        var sourceByHoldingId = holdingContexts.ToDictionary(c => c.Input.HoldingId, c => c.Source);
 
         return new PortfolioPerformanceResponse
         {
@@ -131,6 +148,7 @@ public class GetPortfolioPerformanceQueryHandler
                     MoneyWeightedReturn = h.MoneyWeightedReturn,
                     PriceAsOfDate = h.PriceAsOfDate,
                     IsPriceStale = h.IsPriceStale,
+                    PriceSource = sourceByHoldingId.GetValueOrDefault(h.HoldingId, "Missing"),
                 })
                 .ToList()
                 .AsReadOnly(),
@@ -151,12 +169,37 @@ public class GetPortfolioPerformanceQueryHandler
         return null;
     }
 
+    private static bool IsCashEquivalentSymbol(string symbol)
+    {
+        var normalized = SecuritySymbolMatcher.Normalize(symbol);
+        return normalized.StartsWith("CASH", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolvePriceSource(PriceHistory? price, string symbol)
+    {
+        if (price is not null)
+            return string.IsNullOrWhiteSpace(price.Source) ? "PriceHistory" : price.Source;
+
+        if (IsCashEquivalentSymbol(symbol))
+            return "Fallback";
+
+        return "Missing";
+    }
+
+    private sealed record HoldingContext(
+        PortfolioPerformanceCalculator.HoldingInput Input,
+        string Source
+    );
+
     private async Task<bool> FetchAndPersistMissingPricesAsync(
         IReadOnlyList<string> missingSymbols,
         CancellationToken cancellationToken
     )
     {
-        var quotes = await _priceFeedProvider.GetLatestPricesAsync(missingSymbols, cancellationToken);
+        var quotes = await _priceFeedProvider.GetLatestPricesAsync(
+            missingSymbols,
+            cancellationToken
+        );
         if (quotes.Count == 0)
             return false;
 
@@ -175,14 +218,12 @@ public class GetPortfolioPerformanceQueryHandler
             .Where(q =>
                 !existingKeys.Contains((SecuritySymbolMatcher.Normalize(q.Symbol), q.AsOfDate))
             )
-            .Select(q =>
-                new PriceHistory(
-                    q.Symbol,
-                    new Money(q.Price, q.Currency),
-                    q.AsOfDate,
-                    _priceFeedProvider.ProviderName
-                )
-            )
+            .Select(q => new PriceHistory(
+                q.Symbol,
+                new Money(q.Price, q.Currency),
+                q.AsOfDate,
+                _priceFeedProvider.ProviderName
+            ))
             .ToList();
 
         if (newEntries.Count == 0)
