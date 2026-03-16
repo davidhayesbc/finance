@@ -9,7 +9,12 @@ public static class PortfolioPerformanceCalculator
     /// <summary>Number of days since AsOfDate before a price is considered stale.</summary>
     public const int PriceStaleThresholdDays = 7;
 
-    public record LotInput(DateOnly AcquiredDate, decimal Quantity, decimal UnitCost);
+    public record LotInput(
+        DateOnly AcquiredDate,
+        decimal Quantity,
+        decimal UnitCost,
+        string? Source = null
+    );
 
     public record HoldingInput(
         Guid HoldingId,
@@ -73,7 +78,9 @@ public static class PortfolioPerformanceCalculator
         if (totalMarket.HasValue)
         {
             var allCashFlows = holdingList
-                .SelectMany(h => h.Lots.Select(l => (-l.Quantity * l.UnitCost, l.AcquiredDate)))
+                .SelectMany(h =>
+                    GetEffectiveCostLots(h).Select(l => (-l.Quantity * l.UnitCost, l.AcquiredDate))
+                )
                 .ToList();
 
             if (allCashFlows.Count > 0)
@@ -93,11 +100,8 @@ public static class PortfolioPerformanceCalculator
 
     private static HoldingResult CalculateHolding(HoldingInput holding)
     {
-        var bookValue = Math.Round(
-            holding.Quantity * holding.AverageCostPerUnit,
-            2,
-            MidpointRounding.ToEven
-        );
+        var effectiveCostLots = GetEffectiveCostLots(holding);
+        var bookValue = CalculateBookValue(holding, effectiveCostLots);
 
         decimal? marketValue = null;
         decimal? gainLoss = null;
@@ -119,10 +123,12 @@ public static class PortfolioPerformanceCalculator
 
             if (holding.Lots.Count > 0)
             {
-                var cashFlows = holding
-                    .Lots.Select(l => (-l.Quantity * l.UnitCost, l.AcquiredDate))
+                var cashFlows = effectiveCostLots
+                    .Select(l => (-l.Quantity * l.UnitCost, l.AcquiredDate))
                     .ToList();
-                mwr = CalculateXirr(cashFlows, marketValue.Value);
+
+                if (cashFlows.Count > 0)
+                    mwr = CalculateXirr(cashFlows, marketValue.Value);
             }
         }
 
@@ -148,6 +154,51 @@ public static class PortfolioPerformanceCalculator
             holding.PriceAsOfDate,
             isPriceStale
         );
+    }
+
+    private static decimal CalculateBookValue(HoldingInput holding, IReadOnlyList<LotInput> lots)
+    {
+        if (lots.Count > 0)
+        {
+            return Math.Round(lots.Sum(l => l.Quantity * l.UnitCost), 2, MidpointRounding.ToEven);
+        }
+
+        return Math.Round(
+            holding.Quantity * holding.AverageCostPerUnit,
+            2,
+            MidpointRounding.ToEven
+        );
+    }
+
+    private static IReadOnlyList<LotInput> GetEffectiveCostLots(HoldingInput holding)
+    {
+        if (holding.Lots.Count == 0)
+            return holding.Lots;
+
+        if (!IsCashEquivalentSymbol(holding.Symbol))
+            return holding.Lots;
+
+        var principalLots = holding.Lots.Where(l => !IsIncomeReinvestmentLot(l.Source)).ToList();
+        return principalLots.Count > 0 ? principalLots : holding.Lots;
+    }
+
+    private static bool IsCashEquivalentSymbol(string symbol)
+    {
+        var normalized = symbol.Trim().ToUpperInvariant();
+        return normalized.StartsWith("CASH", StringComparison.Ordinal);
+    }
+
+    private static bool IsIncomeReinvestmentLot(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+            return false;
+
+        var normalized = source.Trim();
+        return normalized.Contains("interest", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("dividend", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("distribution", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("reinvest", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("drip", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

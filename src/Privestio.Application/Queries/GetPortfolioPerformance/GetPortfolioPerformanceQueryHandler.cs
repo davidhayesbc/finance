@@ -109,7 +109,8 @@ public class GetPortfolioPerformanceQueryHandler
                     h.Lots.Select(l => new PortfolioPerformanceCalculator.LotInput(
                             l.AcquiredDate,
                             l.Quantity,
-                            l.UnitCost.Amount
+                            l.UnitCost.Amount,
+                            l.Source
                         ))
                         .ToList()
                         .AsReadOnly()

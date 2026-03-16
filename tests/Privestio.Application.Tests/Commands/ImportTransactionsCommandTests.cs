@@ -525,6 +525,55 @@ public class ImportTransactionsCommandTests
         );
     }
 
+    [Fact]
+    public async Task Handle_CashDividendFollowedByCashBuy_TagsLotAsReinvestedIncome()
+    {
+        var investmentAccount = new Account(
+            "TFSA",
+            AccountType.Investment,
+            AccountSubType.TFSA,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId
+        );
+
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(investmentAccount);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(DateTime.Parse("2025-10-07"), 0.4m, "Dividend", ActivityType: "Dividend"),
+            new(
+                DateTime.Parse("2025-10-08"),
+                -0.4m,
+                "Trade",
+                SettlementDate: new DateOnly(2025, 10, 8),
+                ActivityType: "Trade",
+                ActivitySubType: "BUY",
+                Direction: "LONG",
+                Symbol: "CASH",
+                SecurityName: "Global X High Interest Savings ETF",
+                Quantity: 0.0079m,
+                UnitPrice: 50.02m
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        await _handler.Handle(command, CancellationToken.None);
+
+        _lotRepo.Verify(
+            l =>
+                l.AddAsync(
+                    It.Is<Lot>(x => x.Quantity == 0.0079m && x.Source == "ReinvestedIncome"),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
     private ImportTransactionsCommand CreateCommand(string fileName) =>
         new(Stream.Null, fileName, _accountId, _userId);
 

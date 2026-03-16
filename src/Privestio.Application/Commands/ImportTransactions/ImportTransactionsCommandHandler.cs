@@ -287,9 +287,15 @@ public class ImportTransactionsCommandHandler
         var bySymbol = holdings.ToDictionary(h => h.Symbol, StringComparer.OrdinalIgnoreCase);
         var newHoldingIds = new HashSet<Guid>();
         var pendingLots = new List<Lot>();
+        var pendingIncomeCredits = new List<(DateOnly Date, decimal Amount)>();
 
         foreach (var row in rows)
         {
+            if (IsIncomeCashCredit(row))
+            {
+                pendingIncomeCredits.Add((DateOnly.FromDateTime(row.Date), row.Amount));
+            }
+
             if (string.IsNullOrWhiteSpace(row.Symbol) || row.Quantity is null || row.Quantity <= 0)
                 continue;
 
@@ -359,15 +365,13 @@ public class ImportTransactionsCommandHandler
 
             if (signedQuantityDelta > 0)
             {
+                var lotSource = ResolveLotSource(row, symbol, pendingIncomeCredits);
                 var lot = new Lot(
                     holding.Id,
                     row.SettlementDate ?? DateOnly.FromDateTime(row.Date),
                     signedQuantityDelta,
                     new Money(Math.Round(unitCost, 8, MidpointRounding.ToEven), currency),
-                    source: Truncate(
-                        string.IsNullOrWhiteSpace(row.ActivityType) ? "Import" : row.ActivityType,
-                        100
-                    ),
+                    source: lotSource,
                     notes: Truncate(row.Notes, 2000)
                 );
 
@@ -385,6 +389,74 @@ public class ImportTransactionsCommandHandler
         {
             await _unitOfWork.Lots.AddAsync(lot, cancellationToken);
         }
+    }
+
+    private static string? ResolveLotSource(
+        ImportedTransactionRow row,
+        string symbol,
+        List<(DateOnly Date, decimal Amount)> pendingIncomeCredits
+    )
+    {
+        if (IsCashEquivalentSymbol(symbol) && TryMatchIncomeReinvestment(row, pendingIncomeCredits))
+            return "ReinvestedIncome";
+
+        return Truncate(
+            string.IsNullOrWhiteSpace(row.ActivityType) ? "Import" : row.ActivityType,
+            100
+        );
+    }
+
+    private static bool TryMatchIncomeReinvestment(
+        ImportedTransactionRow row,
+        List<(DateOnly Date, decimal Amount)> pendingIncomeCredits
+    )
+    {
+        if (row.Amount >= 0)
+            return false;
+
+        var activityType = row.ActivityType?.Trim();
+        var activitySubType = row.ActivitySubType?.Trim();
+        var direction = row.Direction?.Trim();
+
+        var isTradeBuy =
+            MatchesAny(activityType, ["trade"]) && MatchesAny(activitySubType, ["buy"])
+            || MatchesAny(direction, ["buy", "long"]);
+
+        if (!isTradeBuy)
+            return false;
+
+        var tradeDate = row.SettlementDate ?? DateOnly.FromDateTime(row.Date);
+        var tradeAmount = Math.Abs(row.Amount);
+        const decimal amountTolerance = 0.02m;
+        const int maxDayGap = 3;
+
+        for (var i = 0; i < pendingIncomeCredits.Count; i++)
+        {
+            var candidate = pendingIncomeCredits[i];
+            var dayDiff = Math.Abs(tradeDate.DayNumber - candidate.Date.DayNumber);
+            var amountDiff = Math.Abs(candidate.Amount - tradeAmount);
+
+            if (dayDiff <= maxDayGap && amountDiff <= amountTolerance)
+            {
+                pendingIncomeCredits.RemoveAt(i);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsIncomeCashCredit(ImportedTransactionRow row) =>
+        row.Amount > 0
+        && (
+            MatchesAny(row.ActivityType, ["interest", "dividend", "distribution"])
+            || MatchesAny(row.ActivitySubType, ["interest", "dividend", "distribution"])
+        );
+
+    private static bool IsCashEquivalentSymbol(string symbol)
+    {
+        var normalized = symbol.Trim().ToUpperInvariant();
+        return normalized.StartsWith("CASH", StringComparison.Ordinal);
     }
 
     private static decimal DetermineSignedQuantityDelta(

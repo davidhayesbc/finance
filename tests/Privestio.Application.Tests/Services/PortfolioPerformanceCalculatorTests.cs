@@ -7,8 +7,9 @@ public class PortfolioPerformanceCalculatorTests
     private static PortfolioPerformanceCalculator.LotInput Lot(
         int daysAgo,
         decimal qty,
-        decimal cost
-    ) => new(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-daysAgo)), qty, cost);
+        decimal cost,
+        string? source = null
+    ) => new(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-daysAgo)), qty, cost, source);
 
     private static PortfolioPerformanceCalculator.HoldingInput Holding(
         string symbol,
@@ -57,6 +58,28 @@ public class PortfolioPerformanceCalculatorTests
         result.TotalMarketValue.Should().Be(600m);
         result.TotalGainLoss.Should().Be(100m);
         result.TotalGainLossPercent.Should().Be(20m);
+    }
+
+    [Fact]
+    public void Calculate_CashEquivalent_ReinvestedInterestIsExcludedFromBookValue()
+    {
+        var result = PortfolioPerformanceCalculator.Calculate([
+            Holding(
+                "CASH.TO",
+                10.1m,
+                50m,
+                50m,
+                lots: [Lot(120, 10m, 50m, "Trade"), Lot(30, 0.1m, 50m, "Interest Reinvest")]
+            ),
+        ]);
+
+        result.TotalBookValue.Should().Be(500m);
+        result.TotalMarketValue.Should().Be(505m);
+        result.TotalGainLoss.Should().Be(5m);
+        result.Holdings.Should().HaveCount(1);
+        result.Holdings[0].BookValue.Should().Be(500m);
+        result.Holdings[0].MarketValue.Should().Be(505m);
+        result.Holdings[0].GainLoss.Should().Be(5m);
     }
 
     [Fact]
