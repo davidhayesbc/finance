@@ -27,4 +27,20 @@ public class SecuritySymbolMatcherTests
 
         candidates.Should().ContainInOrder("XEQT.TO", "XEQT");
     }
+
+    [Fact]
+    public void GetLookupCandidates_CashWithExchangeSuffix_DoesNotFallbackToBaseCash()
+    {
+        var candidates = SecuritySymbolMatcher.GetLookupCandidates("CASH.TO");
+
+        candidates.Should().ContainSingle().Which.Should().Be("CASH.TO");
+    }
+
+    [Fact]
+    public void GetLookupCandidates_CashWithoutExchangeSuffix_IncludesCanadianSuffix()
+    {
+        var candidates = SecuritySymbolMatcher.GetLookupCandidates("CASH");
+
+        candidates.Should().ContainInOrder("CASH.TO", "CASH");
+    }
 }

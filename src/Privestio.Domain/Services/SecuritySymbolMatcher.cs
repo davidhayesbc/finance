@@ -17,6 +17,14 @@ public static class SecuritySymbolMatcher
     public static IReadOnlyList<string> GetLookupCandidates(string symbol)
     {
         var normalized = Normalize(symbol);
+
+        if (IsCashEquivalent(normalized))
+        {
+            return normalized.Contains('.', StringComparison.Ordinal)
+                ? [normalized]
+                : [$"{normalized}{PrimaryCanadianExchangeSuffix}", normalized];
+        }
+
         var candidates = new List<string> { normalized };
 
         if (TryGetBaseSymbol(normalized, out var baseSymbol))
@@ -41,4 +49,7 @@ public static class SecuritySymbolMatcher
         baseSymbol = normalizedSymbol[..dotIndex];
         return !string.IsNullOrWhiteSpace(baseSymbol);
     }
+
+    private static bool IsCashEquivalent(string normalizedSymbol) =>
+        normalizedSymbol.StartsWith("CASH", StringComparison.OrdinalIgnoreCase);
 }
