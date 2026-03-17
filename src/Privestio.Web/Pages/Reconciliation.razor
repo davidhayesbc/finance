@@ -52,10 +52,7 @@
                                        Required="true" />
                     <FluentValidationMessage For="@(() => _form.StatementBalanceAmount)" />
 
-                    <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency">
-                        <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
-                        <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
-                    </FluentSelect>
+                    <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
 
                     <FluentTextArea @bind-Value="_form.Notes" Label="Notes" Rows="2" />
 
@@ -72,7 +69,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading reconciliation" />
     }
     else if (string.IsNullOrEmpty(_selectedAccountIdStr))
     {

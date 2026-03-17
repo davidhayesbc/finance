@@ -15,20 +15,11 @@
                 Description="Review reusable file mappings and remove obsolete templates before the next import run."
                 Compact="true" />
 
-    @if (!string.IsNullOrEmpty(_errorMessage))
-    {
-        <div class="message-stack">
-            <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-                @_errorMessage
-            </FluentMessageBar>
-        </div>
-    }
+    <MessageStack ErrorMessage="@_errorMessage" />
 
     @if (_isLoading)
     {
-        <div class="empty-state-shell">
-            <FluentProgressRing aria-label="Loading mappings" />
-        </div>
+        <LoadingSpinner AriaLabel="Loading mappings" />
     }
     else if (_mappings.Count == 0)
     {

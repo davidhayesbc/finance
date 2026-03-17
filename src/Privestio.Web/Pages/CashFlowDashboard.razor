@@ -20,7 +20,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading cash flow" />
     }
     else if (_cashFlow is null)
     {
@@ -53,13 +53,13 @@
             <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0 0 1rem 0;">Income vs Expenses</h3>
 
-                <ApexChart TItem="MonthlyBreakdownItem"      Title=""       Height="350">
-                    <ApexPointSeries TItem="MonthlyBreakdownItem"                          Items="_cashFlow.MonthlyBreakdown.ToList()"
-                                     SeriesType="SeriesType.Bar"                               Name="Income"
+                <ApexChart TItem="MonthlyBreakdownItem" Title="" Height="350">
+                    <ApexPointSeries TItem="MonthlyBreakdownItem" Items="_cashFlow.MonthlyBreakdown.ToList()"
+                                     SeriesType="SeriesType.Bar" Name="Income"
                                      XValue="@(item => new DateTime(item.Year, item.Month, 1).ToString("MMM yyyy"))"
                                      YAggregate="@(items => items.Sum(i => i.Income))" />
-                    <ApexPointSeries TItem="MonthlyBreakdownItem"             Items="_cashFlow.MonthlyBreakdown.ToList()"
-                                     SeriesType="SeriesType.Bar"                   Name="Expenses"
+                    <ApexPointSeries TItem="MonthlyBreakdownItem" Items="_cashFlow.MonthlyBreakdown.ToList()"
+                                     SeriesType="SeriesType.Bar" Name="Expenses"
                                      XValue="@(item => new DateTime(item.Year, item.Month, 1).ToString("MMM yyyy"))"
                                      YAggregate="@(items => items.Sum(i => i.Expenses))" />
                 </ApexChart>
@@ -83,7 +83,7 @@
                     </TemplateColumn>
                     <TemplateColumn Title="Net">
                         <FluentBadge Appearance="@(context.Net >= 0 ? Appearance.Accent : Appearance.Neutral)"
-                                     BackgroundColor="@(context.Net < 0 ? "#c50f1f" : null)"                        Color="@(context.Net < 0 ? "white" : null)">
+                                     BackgroundColor="@(context.Net < 0 ? "#c50f1f" : null)" Color="@(context.Net < 0 ? "white" : null)">
                             @context.Net.ToString("C")
                         </FluentBadge>
                     </TemplateColumn>

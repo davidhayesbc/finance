@@ -4,10 +4,12 @@
 <PageTitle>Cash Flow Forecast — Privestio</PageTitle>
 
 <section class="page-shell">
-    <PageHeader Eyebrow="Forecasting" Title="Cash flow forecast" Description="Project future income, expenses, and balances based on recurring transactions and budgets." />
+    <PageHeader Eyebrow="Forecasting" Title="Cash flow forecast"
+                Description="Project future income, expenses, and balances based on recurring transactions and budgets." />
 
     <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                     Style="gap: 1rem;">
             <FluentSelect TOption="string" @bind-Value="_monthsStr" Label="Forecast period" Style="min-width: 150px;">
                 <FluentOption TOption="string" Value="3">3 months</FluentOption>
                 <FluentOption TOption="string" Value="6">6 months</FluentOption>
@@ -22,11 +24,12 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading forecast" />
     }
     else if (_forecast is null || _forecast.Periods.Count == 0)
     {
-        <EmptyStateCard Message="No forecast data available. Add recurring transactions and budgets to generate a forecast." />
+        <EmptyStateCard
+        Message="No forecast data available. Add recurring transactions and budgets to generate a forecast." />
     }
     else
     {
@@ -88,7 +91,9 @@
         <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
             <h3 style="margin: 0 0 1rem 0;">Balance Trend</h3>
             <div style="display: flex; align-items: flex-end; gap: 2px; height: 200px; padding: 0.5rem;">
-                @{ var maxBalance = _forecast.Periods.Max(p => Math.Abs(p.ProjectedBalance)); }
+                @{
+                    var maxBalance = _forecast.Periods.Max(p => Math.Abs(p.ProjectedBalance));
+                }
                 @foreach (var period in _forecast.Periods)
                 {
                     var heightPercent = maxBalance > 0 ? Math.Abs(period.ProjectedBalance) / maxBalance * 100 : 0;

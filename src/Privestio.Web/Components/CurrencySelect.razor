@@ -1,0 +1,10 @@
+<FluentSelect TOption="string" Value="@Value" ValueChanged="ValueChanged" Label="@Label">
+    <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
+    <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
+</FluentSelect>
+
+@code {
+    [Parameter] public string Value { get; set; } = "CAD";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Currency";
+}

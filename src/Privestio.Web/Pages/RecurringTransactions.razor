@@ -7,10 +7,12 @@
 <PageTitle>Recurring Transactions — Privestio</PageTitle>
 
 <section class="page-shell">
-    <PageHeader Eyebrow="Recurring" Title="Recurring transactions" Description="Define repeating income and expenses for forecasting and auto-generation.">
+    <PageHeader Eyebrow="Recurring" Title="Recurring transactions"
+                Description="Define repeating income and expenses for forecasting and auto-generation.">
         <Actions>
             <FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem;">
-                <FluentButton Appearance="Appearance.Outline" OnClick="GenerateTransactionsAsync" Loading="_isGenerating">
+                <FluentButton Appearance="Appearance.Outline" OnClick="GenerateTransactionsAsync"
+                              Loading="_isGenerating">
                     Generate Due Transactions
                 </FluentButton>
                 <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">
@@ -42,16 +44,12 @@
                 <FluentValidationSummary />
 
                 <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                    <FluentSelect TOption="string" @bind-Value="_form.AccountId" Label="Account" Required="true">
-                        <FluentOption TOption="string" Value="">Select account...</FluentOption>
-                        @foreach (var acct in _accounts)
-                        {
-                            <FluentOption TOption="string" Value="@acct.Id.ToString()">@acct.Name</FluentOption>
-                        }
-                    </FluentSelect>
+                    <AccountSelect Accounts="_accounts" @bind-Value="_form.AccountId" Placeholder="Select account..."
+                                   Required="true" />
                     <FluentValidationMessage For="@(() => _form.AccountId)" />
 
-                    <FluentTextField @bind-Value="_form.Description" Label="Description" Placeholder="e.g., Monthly rent" Required="true" maxlength="500" />
+                    <FluentTextField @bind-Value="_form.Description" Label="Description" Placeholder="e.g., Monthly rent"
+                                     Required="true" maxlength="500" />
                     <FluentValidationMessage For="@(() => _form.Description)" />
 
                     <FluentNumberField @bind-Value="_form.Amount" Label="Amount" Step="0.01m" Required="true" />
@@ -75,18 +73,9 @@
                     <FluentDatePicker @bind-Value="_formStartDate" Label="Start date" Required="true" />
                     <FluentDatePicker @bind-Value="_formEndDate" Label="End date (optional)" />
 
-                    <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency">
-                        <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
-                        <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
-                    </FluentSelect>
+                    <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
 
-                    <FluentSelect TOption="string" @bind-Value="_form.CategoryId" Label="Category (optional)">
-                        <FluentOption TOption="string" Value="">None</FluentOption>
-                        @foreach (var cat in _categories)
-                        {
-                            <FluentOption TOption="string" Value="@cat.Id.ToString()">@cat.Name</FluentOption>
-                        }
-                    </FluentSelect>
+                    <CategorySelect Categories="_categories" @bind-Value="_form.CategoryId" Label="Category (optional)" />
 
                     <FluentTextArea @bind-Value="_form.Notes" Label="Notes" Rows="2" />
 
@@ -103,7 +92,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading recurring transactions" />
     }
     else if (_items.Count == 0)
     {
@@ -123,44 +112,50 @@
                 </div>
                 <div>
                     <span class="summary-strip__label">Monthly income</span>
-                    <strong>@_items.Where(i => i.IsActive && i.TransactionType == "Income" && i.Frequency == "Monthly").Sum(i => i.Amount).ToString("C")</strong>
-                </div>
-                <div>
-                    <span class="summary-strip__label">Monthly expenses</span>
-                    <strong>@_items.Where(i => i.IsActive && i.TransactionType == "Expense" && i.Frequency == "Monthly").Sum(i => i.Amount).ToString("C")</strong>
-                </div>
-            </div>
+                    <strong>@_items.Where(i => i.IsActive && i.TransactionType == "Income" && i.Frequency ==
+                                            "Monthly").Sum(i => i.Amount).ToString("C")</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Monthly expenses</span>
+                        <strong>@_items.Where(i => i.IsActive && i.TransactionType == "Expense" && i.Frequency ==
+                                                "Monthly").Sum(i => i.Amount).ToString("C")</strong>
+                        </div>
+                    </div>
 
-            <FluentDataGrid Items="_items.AsQueryable()" TGridItem="RecurringTransactionResponse" Class="data-grid--elevated">
-                <PropertyColumn Property="@(r => r.Description)" Title="Description" Sortable="true" />
-                <TemplateColumn Title="Amount">
-                    <FluentBadge Appearance="@(context.TransactionType == "Income" ? Appearance.Accent : Appearance.Neutral)">
-                        @context.Amount.ToString("C") @context.Currency
-                    </FluentBadge>
-                </TemplateColumn>
-                <PropertyColumn Property="@(r => r.TransactionType)" Title="Type" />
-                <PropertyColumn Property="@(r => r.Frequency)" Title="Frequency" />
-                <TemplateColumn Title="Next Due">
-                    @context.NextOccurrence.ToString("MMM d, yyyy")
-                </TemplateColumn>
-                <TemplateColumn Title="Category">
-                    @(context.CategoryName ?? "—")
-                </TemplateColumn>
-                <TemplateColumn Title="Status">
-                    <FluentBadge Appearance="@(context.IsActive ? Appearance.Accent : Appearance.Neutral)">
-                        @(context.IsActive ? "Active" : "Inactive")
-                    </FluentBadge>
-                </TemplateColumn>
-                <TemplateColumn Title="">
-                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditItem(context))">Edit</FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteItemAsync(context.Id))">Delete</FluentButton>
-                    </FluentStack>
-                </TemplateColumn>
-            </FluentDataGrid>
-        </FluentCard>
-    }
-</section>
+                    <FluentDataGrid Items="_items.AsQueryable()" TGridItem="RecurringTransactionResponse"
+                                    Class="data-grid--elevated">
+                        <PropertyColumn Property="@(r => r.Description)" Title="Description" Sortable="true" />
+                        <TemplateColumn Title="Amount">
+                            <FluentBadge
+                                Appearance="@(context.TransactionType == "Income" ? Appearance.Accent : Appearance.Neutral)">
+                                @context.Amount.ToString("C") @context.Currency
+                            </FluentBadge>
+                        </TemplateColumn>
+                        <PropertyColumn Property="@(r => r.TransactionType)" Title="Type" />
+                        <PropertyColumn Property="@(r => r.Frequency)" Title="Frequency" />
+                        <TemplateColumn Title="Next Due">
+                            @context.NextOccurrence.ToString("MMM d, yyyy")
+                        </TemplateColumn>
+                        <TemplateColumn Title="Category">
+                            @(context.CategoryName ?? "—")
+                        </TemplateColumn>
+                        <TemplateColumn Title="Status">
+                            <FluentBadge Appearance="@(context.IsActive? Appearance.Accent: Appearance.Neutral)">
+                                @(context.IsActive ? "Active" : "Inactive")
+                            </FluentBadge>
+                        </TemplateColumn>
+                        <TemplateColumn Title="">
+                            <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                                <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditItem(context))">Edit
+                                </FluentButton>
+                                <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteItemAsync(context.Id))">Delete
+                                </FluentButton>
+                            </FluentStack>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+                </FluentCard>
+            }
+        </section>
 
 @code {
     private List<RecurringTransactionResponse> _items = [];

@@ -15,7 +15,8 @@
     </PageHeader>
 
     <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                     Style="gap: 1rem;">
             <FluentSelect TOption="string" @bind-Value="_selectedYearStr" Label="Year" Style="min-width: 120px;">
                 @for (var y = DateTime.Today.Year + 1; y >= DateTime.Today.Year - 2; y--)
                 {
@@ -25,7 +26,8 @@
             <FluentSelect TOption="string" @bind-Value="_selectedMonthStr" Label="Month" Style="min-width: 150px;">
                 @for (var m = 1; m <= 12; m++)
                 {
-                    <FluentOption TOption="string" Value="@m.ToString()">@(new DateTime(2000, m, 1).ToString("MMMM"))</FluentOption>
+                    <FluentOption TOption="string" Value="@m.ToString()">@(new DateTime(2000, m, 1).ToString("MMMM"))
+                    </FluentOption>
                 }
             </FluentSelect>
             <FluentButton Appearance="Appearance.Outline" OnClick="LoadDataAsync" Style="align-self: flex-end;">
@@ -51,24 +53,17 @@
                 <FluentValidationSummary />
 
                 <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                    <FluentSelect TOption="string" @bind-Value="_form.CategoryId" Label="Category" Required="true">
-                        <FluentOption TOption="string" Value="">Select category...</FluentOption>
-                        @foreach (var cat in _categories)
-                        {
-                            <FluentOption TOption="string" Value="@cat.Id.ToString()">@cat.Name</FluentOption>
-                        }
-                    </FluentSelect>
+                    <CategorySelect Categories="_categories" @bind-Value="_form.CategoryId" NoneLabel="Select category..."
+                                    Required="true" />
                     <FluentValidationMessage For="@(() => _form.CategoryId)" />
 
                     <FluentNumberField @bind-Value="_form.Amount" Label="Budget amount" Step="0.01m" Required="true" />
                     <FluentValidationMessage For="@(() => _form.Amount)" />
 
-                    <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency">
-                        <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
-                        <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
-                    </FluentSelect>
+                    <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
 
-                    <FluentCheckbox @bind-Value="_form.RolloverEnabled" Label="Enable rollover (carry unused budget to next month)" />
+                    <FluentCheckbox @bind-Value="_form.RolloverEnabled"
+                                    Label="Enable rollover (carry unused budget to next month)" />
 
                     <FluentTextArea @bind-Value="_form.Notes" Label="Notes" Rows="2" />
 
@@ -85,7 +80,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading budgets" />
     }
     else if (_summaries.Count == 0 && _budgets.Count == 0)
     {
@@ -100,76 +95,81 @@
         @if (_summaries.Count > 0)
         {
             <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
-                <h3 style="margin: 0 0 1rem 0;">Budget vs Actual — @(new DateTime(_selectedYear, _selectedMonth, 1).ToString("MMMM yyyy"))</h3>
+                <h3 style="margin: 0 0 1rem 0;">Budget vs Actual — @(new DateTime(_selectedYear, _selectedMonth,
+                                1).ToString("MMMM yyyy"))</h3>
 
-                <div class="summary-strip">
-                    <div>
-                        <span class="summary-strip__label">Total budgeted</span>
-                        <strong>@_summaries.Sum(s => s.BudgetedAmount).ToString("C")</strong>
+                    <div class="summary-strip">
+                        <div>
+                            <span class="summary-strip__label">Total budgeted</span>
+                            <strong>@_summaries.Sum(s => s.BudgetedAmount).ToString("C")</strong>
+                        </div>
+                        <div>
+                            <span class="summary-strip__label">Total spent</span>
+                            <strong>@_summaries.Sum(s => s.ActualAmount).ToString("C")</strong>
+                        </div>
+                        <div>
+                            <span class="summary-strip__label">Remaining</span>
+                            <strong>@_summaries.Sum(s => s.RemainingAmount).ToString("C")</strong>
+                        </div>
+                        <div>
+                            <span class="summary-strip__label">Over budget</span>
+                            <strong>@_summaries.Count(s => s.IsOverBudget)</strong>
+                        </div>
                     </div>
-                    <div>
-                        <span class="summary-strip__label">Total spent</span>
-                        <strong>@_summaries.Sum(s => s.ActualAmount).ToString("C")</strong>
-                    </div>
-                    <div>
-                        <span class="summary-strip__label">Remaining</span>
-                        <strong>@_summaries.Sum(s => s.RemainingAmount).ToString("C")</strong>
-                    </div>
-                    <div>
-                        <span class="summary-strip__label">Over budget</span>
-                        <strong>@_summaries.Count(s => s.IsOverBudget)</strong>
-                    </div>
-                </div>
 
-                <FluentDataGrid Items="_summaries.AsQueryable()" TGridItem="BudgetSummaryResponse" Class="data-grid--elevated">
-                    <PropertyColumn Property="@(s => s.CategoryName)" Title="Category" Sortable="true" />
-                    <TemplateColumn Title="Budgeted" Sortable="true" SortBy="@(GridSort<BudgetSummaryResponse>.ByAscending(s => s.BudgetedAmount))">
-                        @context.BudgetedAmount.ToString("C") @context.Currency
+                    <FluentDataGrid Items="_summaries.AsQueryable()" TGridItem="BudgetSummaryResponse" Class="data-grid--elevated">
+                        <PropertyColumn Property="@(s => s.CategoryName)" Title="Category" Sortable="true" />
+                        <TemplateColumn Title="Budgeted" Sortable="true"
+                                        SortBy="@(GridSort<BudgetSummaryResponse>.ByAscending(s => s.BudgetedAmount))">
+                            @context.BudgetedAmount.ToString("C") @context.Currency
+                        </TemplateColumn>
+                        <TemplateColumn Title="Actual" Sortable="true"
+                                        SortBy="@(GridSort<BudgetSummaryResponse>.ByAscending(s => s.ActualAmount))">
+                            @context.ActualAmount.ToString("C") @context.Currency
+                        </TemplateColumn>
+                        <TemplateColumn Title="Remaining">
+                            <FluentBadge Appearance="@(context.IsOverBudget? Appearance.Accent: Appearance.Neutral)"
+                                         BackgroundColor="@(context.IsOverBudget ? "#c50f1f" : null)"
+                                         Color="@(context.IsOverBudget ? "white" : null)">
+                                @context.RemainingAmount.ToString("C")
+                            </FluentBadge>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Used">
+                            <FluentProgress Value="@((int)Math.Min(context.PercentageUsed, 100))" Min="0" Max="100" />
+                            <span style="font-size: 0.85rem; margin-left: 0.5rem;">@context.PercentageUsed.ToString("F0")%</span>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+                </FluentCard>
+            }
+
+            <FluentCard Class="surface-card data-card">
+                <h3 style="margin: 0 0 1rem 0;">Budget Definitions</h3>
+
+                <FluentDataGrid Items="_budgets.AsQueryable()" TGridItem="BudgetResponse" Class="data-grid--elevated">
+                    <PropertyColumn Property="@(b => b.CategoryName)" Title="Category" Sortable="true" />
+                    <TemplateColumn Title="Amount">
+                        @context.Amount.ToString("C") @context.Currency
                     </TemplateColumn>
-                    <TemplateColumn Title="Actual" Sortable="true" SortBy="@(GridSort<BudgetSummaryResponse>.ByAscending(s => s.ActualAmount))">
-                        @context.ActualAmount.ToString("C") @context.Currency
+                    <TemplateColumn Title="Period">
+                        @(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))
                     </TemplateColumn>
-                    <TemplateColumn Title="Remaining">
-                        <FluentBadge Appearance="@(context.IsOverBudget ? Appearance.Accent : Appearance.Neutral)"
-                                     BackgroundColor="@(context.IsOverBudget ? "#c50f1f" : null)"
-                                     Color="@(context.IsOverBudget ? "white" : null)">
-                            @context.RemainingAmount.ToString("C")
+                    <TemplateColumn Title="Rollover">
+                        <FluentBadge Appearance="@(context.RolloverEnabled? Appearance.Accent: Appearance.Neutral)">
+                            @(context.RolloverEnabled ? "Yes" : "No")
                         </FluentBadge>
                     </TemplateColumn>
-                    <TemplateColumn Title="Used">
-                        <FluentProgress Value="@((int)Math.Min(context.PercentageUsed, 100))" Min="0" Max="100" />
-                        <span style="font-size: 0.85rem; margin-left: 0.5rem;">@context.PercentageUsed.ToString("F0")%</span>
-                    </TemplateColumn>
-                </FluentDataGrid>
-            </FluentCard>
-        }
-
-        <FluentCard Class="surface-card data-card">
-            <h3 style="margin: 0 0 1rem 0;">Budget Definitions</h3>
-
-            <FluentDataGrid Items="_budgets.AsQueryable()" TGridItem="BudgetResponse" Class="data-grid--elevated">
-                <PropertyColumn Property="@(b => b.CategoryName)" Title="Category" Sortable="true" />
-                <TemplateColumn Title="Amount">
-                    @context.Amount.ToString("C") @context.Currency
-                </TemplateColumn>
-                <TemplateColumn Title="Period">
-                    @(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))
-                </TemplateColumn>
-                <TemplateColumn Title="Rollover">
-                    <FluentBadge Appearance="@(context.RolloverEnabled ? Appearance.Accent : Appearance.Neutral)">
-                        @(context.RolloverEnabled ? "Yes" : "No")
-                    </FluentBadge>
-                </TemplateColumn>
-                <TemplateColumn Title="">
-                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditBudget(context))">Edit</FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteBudgetAsync(context.Id))">Delete</FluentButton>
-                    </FluentStack>
-                </TemplateColumn>
-            </FluentDataGrid>
-        </FluentCard>
-    }
-</section>
+                    <TemplateColumn Title="">
+                        <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditBudget(context))">Edit
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteBudgetAsync(context.Id))">
+                                Delete</FluentButton>
+                            </FluentStack>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+                </FluentCard>
+            }
+        </section>
 
 @code {
     private List<BudgetResponse> _budgets = [];

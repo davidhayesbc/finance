@@ -20,7 +20,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading spending analysis" />
     }
     else if (_analysis is null)
     {
@@ -50,9 +50,9 @@
             <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0 0 1rem 0;">Category Breakdown</h3>
 
-                <ApexChart TItem="CategoryBreakdownItem"                       Title=""                         Height="350">
-                    <ApexPointSeries TItem="CategoryBreakdownItem"                   Items="_analysis.CategoryBreakdown.ToList()"
-                                     SeriesType="SeriesType.Pie"                         Name="Spending"           XValue="@(item => item.CategoryName)"
+                <ApexChart TItem="CategoryBreakdownItem" Title="" Height="350">
+                    <ApexPointSeries TItem="CategoryBreakdownItem" Items="_analysis.CategoryBreakdown.ToList()"
+                                     SeriesType="SeriesType.Pie" Name="Spending" XValue="@(item => item.CategoryName)"
                                      YAggregate="@(items => items.Sum(i => i.Amount))" />
                 </ApexChart>
             </FluentCard>
@@ -80,9 +80,9 @@
             <FluentCard Class="surface-card data-card">
                 <h3 style="margin: 0 0 1rem 0;">Monthly Trends</h3>
 
-                <ApexChart TItem="MonthlyTrendItem"                          Title=""  Height="350">
-                    <ApexPointSeries TItem="MonthlyTrendItem"                     Items="_analysis.MonthlyTrends.ToList()"
-                                     SeriesType="SeriesType.Bar"   Name="Spending"
+                <ApexChart TItem="MonthlyTrendItem" Title="" Height="350">
+                    <ApexPointSeries TItem="MonthlyTrendItem" Items="_analysis.MonthlyTrends.ToList()"
+                                     SeriesType="SeriesType.Bar" Name="Spending"
                                      XValue="@(item => new DateTime(item.Year, item.Month, 1).ToString("MMM yyyy"))"
                                      YAggregate="@(items => items.Sum(i => i.Amount))" />
                 </ApexChart>

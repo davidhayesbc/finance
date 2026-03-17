@@ -28,24 +28,7 @@
         </Actions>
     </PageHeader>
 
-    @if (!string.IsNullOrEmpty(_errorMessage) || !string.IsNullOrEmpty(_successMessage))
-    {
-        <div class="message-stack">
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-                    @_errorMessage
-                </FluentMessageBar>
-            }
-
-            @if (!string.IsNullOrEmpty(_successMessage))
-            {
-                <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
-                    @_successMessage
-                </FluentMessageBar>
-            }
-        </div>
-    }
+    <MessageStack ErrorMessage="@_errorMessage" SuccessMessage="@_successMessage" />
 
     @if (_step == ImportStep.Upload)
     {
@@ -56,15 +39,7 @@
                 happen.</p>
 
                 <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                    <FluentSelect TOption="string" Label="Account" @bind-Value="_selectedAccountIdStr" aria-required="true">
-                        <FluentOption TOption="string" Value="">Select an account...</FluentOption>
-                        @foreach (var account in _accounts)
-                        {
-                            <FluentOption TOption="string" Value="@account.Id.ToString()">
-                                @account.Name (@account.AccountType)
-                            </FluentOption>
-                        }
-                    </FluentSelect>
+                    <AccountSelect Accounts="_accounts" @bind-Value="_selectedAccountIdStr" Required="true" />
 
                     <FluentInputFile @ref="_fileInput" Mode="InputFileMode.Stream" Accept=".csv,.ofx,.qfx,.qif"
                                      MaximumFileCount="1" MaximumFileSize="@(10 * 1024 * 1024)" Label="Select file to import"
@@ -186,22 +161,10 @@
                     </div>
 
                     <div class="detail-grid">
-                        <FluentCard Class="detail-card" aria-label="Total rows">
-                            <span class="detail-card__label">Total rows</span>
-                            <strong>@_previewResult.TotalRows</strong>
-                        </FluentCard>
-                        <FluentCard Class="detail-card" aria-label="Will import">
-                            <span class="detail-card__label">Will import</span>
-                            <strong>@_previewResult.ImportedCount</strong>
-                        </FluentCard>
-                        <FluentCard Class="detail-card" aria-label="Duplicates">
-                            <span class="detail-card__label">Duplicates</span>
-                            <strong>@_previewResult.DuplicateCount</strong>
-                        </FluentCard>
-                        <FluentCard Class="detail-card" aria-label="Errors">
-                            <span class="detail-card__label">Errors</span>
-                            <strong>@_previewResult.ErrorCount</strong>
-                        </FluentCard>
+                        <StatCard Label="Total rows">@_previewResult.TotalRows</StatCard>
+                        <StatCard Label="Will import">@_previewResult.ImportedCount</StatCard>
+                        <StatCard Label="Duplicates">@_previewResult.DuplicateCount</StatCard>
+                        <StatCard Label="Errors">@_previewResult.ErrorCount</StatCard>
                     </div>
 
                     @if (_previewResult.Errors.Count > 0)
@@ -238,22 +201,10 @@
                     </div>
 
                     <div class="detail-grid">
-                        <FluentCard Class="detail-card">
-                            <span class="detail-card__label">Imported</span>
-                            <strong>@_importResult.ImportedCount</strong>
-                        </FluentCard>
-                        <FluentCard Class="detail-card">
-                            <span class="detail-card__label">Duplicates skipped</span>
-                            <strong>@_importResult.DuplicateCount</strong>
-                        </FluentCard>
-                        <FluentCard Class="detail-card">
-                            <span class="detail-card__label">Errors</span>
-                            <strong>@_importResult.ErrorCount</strong>
-                        </FluentCard>
-                        <FluentCard Class="detail-card">
-                            <span class="detail-card__label">Status</span>
-                            <strong>@_importResult.Status</strong>
-                        </FluentCard>
+                        <StatCard Label="Imported">@_importResult.ImportedCount</StatCard>
+                        <StatCard Label="Duplicates skipped">@_importResult.DuplicateCount</StatCard>
+                        <StatCard Label="Errors">@_importResult.ErrorCount</StatCard>
+                        <StatCard Label="Status">@_importResult.Status</StatCard>
                     </div>
 
                     <div class="action-cluster">

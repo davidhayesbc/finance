@@ -1,0 +1,186 @@
+<FluentCard Class="surface-card transaction-panel" aria-labelledby="performance-title">
+    <div class="section-heading-row">
+        <div>
+            <h2 id="performance-title" class="section-heading">Portfolio performance</h2>
+            <p class="section-copy">Current holdings, valuations, and money-weighted returns for this account.</p>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <LoadingSpinner AriaLabel="Loading portfolio performance" />
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <FluentMessageBar Intent="@MessageIntent.Warning">@ErrorMessage</FluentMessageBar>
+    }
+    else if (Performance is null || Performance.Holdings.Count == 0)
+    {
+        <div class="empty-inline">
+            <strong>No performance data yet.</strong>
+            <span>Add holdings and record price history to see portfolio metrics.</span>
+        </div>
+    }
+    else
+    {
+        var hasMarketValue = Performance.TotalMarketValue.HasValue;
+        var anyStale = Performance.Holdings.Any(h => h.IsPriceStale);
+
+        @if (anyStale)
+        {
+            <FluentMessageBar Intent="@MessageIntent.Warning" style="margin-bottom:1rem;">
+                One or more holdings have price data older than 7 days. Update price history for accurate valuations.
+            </FluentMessageBar>
+        }
+
+        <div class="detail-grid" style="margin-bottom:1.5rem;" role="region" aria-label="Portfolio summary">
+            <StatCard Label="Book value" AriaLabel="Total book value">@Performance.TotalBookValue.ToString("C")
+                @Performance.Currency</StatCard>
+                <StatCard Label="Market value" AriaLabel="Total market value">
+                    @if (hasMarketValue)
+                    {
+                        <strong>@Performance.TotalMarketValue!.Value.ToString("C") @Performance.Currency</strong>
+                    }
+                    else
+                    {
+                        <strong class="txn-no-value">Prices missing</strong>
+                    }
+                </StatCard>
+                <StatCard Label="Gain / loss" AriaLabel="Total gain or loss">
+                    @if (Performance.TotalGainLoss.HasValue)
+                    {
+                        var gainClass = Performance.TotalGainLoss.Value >= 0 ? "amount--positive" : "amount--negative";
+                        <strong class="@gainClass">
+                            @Performance.TotalGainLoss.Value.ToString("C")
+                            (@(Performance.TotalGainLossPercent?.ToString("F2") ?? "---")%)
+                        </strong>
+                    }
+                    else
+                    {
+                        <strong class="txn-no-value">---</strong>
+                    }
+                </StatCard>
+                <StatCard Label="MWR (annualised)" AriaLabel="Money-weighted return">
+                    @if (Performance.PortfolioMoneyWeightedReturn.HasValue)
+                    {
+                        var mwrClass = Performance.PortfolioMoneyWeightedReturn.Value >= 0 ? "amount--positive" :
+                "amount--negative";
+                        <strong class="@mwrClass">@Performance.PortfolioMoneyWeightedReturn.Value.ToString("F2")%</strong>
+                    }
+                    else
+                    {
+                        <strong class="txn-no-value">---</strong>
+                    }
+                </StatCard>
+            </div>
+
+            <div class="txn-table-wrapper" role="region" aria-label="Holdings performance">
+                <table class="txn-table" aria-label="Holdings performance">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="txn-col--desc">Security</th>
+                            <th scope="col" class="txn-col--cat">Symbol</th>
+                            <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
+                            <th scope="col" class="txn-col--amount txn-cell--right">Current price</th>
+                            <th scope="col" class="txn-col--amount txn-cell--right">Market value</th>
+                            <th scope="col" class="txn-col--amount txn-cell--right">Book value</th>
+                            <th scope="col" class="txn-col--amount txn-cell--right">Gain / loss</th>
+                            <th scope="col" class="txn-col--amount txn-cell--right">MWR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var hp in Performance.Holdings)
+                        {
+                            var gainClass = hp.GainLoss.HasValue && hp.GainLoss.Value >= 0 ? "amount--positive" :
+                    "amount--negative";
+                            <tr class="txn-row" @key="hp.HoldingId">
+                                <td class="txn-cell--desc">
+                                    <span class="txn-desc-primary txn-desc-primary--full">@hp.SecurityName</span>
+                                </td>
+                                <td class="txn-cell--cat">
+                                    <span class="txn-category">@hp.Symbol</span>
+                                    <span class="txn-category" style="margin-left:.35rem;opacity:.85;">@hp.PriceSource</span>
+                                    @if (hp.IsPriceStale)
+                                    {
+                                        <span title="Price data is stale" aria-label="Stale price"
+                                              style="color:var(--warning);font-size:.75em;margin-left:.25rem;">&#x26A0;</span>
+                                    }
+                                </td>
+                                <td class="txn-cell--amount txn-cell--right">@hp.Quantity.ToString("N4")</td>
+                                <td class="txn-cell--amount txn-cell--right">
+                                    @if (hp.CurrentPrice.HasValue)
+                                    {
+                                        @($"{hp.CurrentPrice.Value.ToString("C")} {hp.Currency}")
+                                        @if (hp.IsFxConverted && hp.FxRateToAccountCurrency.HasValue)
+                                        {
+                                            <span class="txn-desc-sub">FX @hp.QuoteCurrency->@hp.Currency @@
+                                                @hp.FxRateToAccountCurrency.Value.ToString("F6")</span>
+                                            }
+                                            @if (hp.PriceAsOfDate.HasValue)
+                                            {
+                                                <span class="txn-desc-sub">@hp.PriceAsOfDate.Value.ToString("MMM d")</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="txn-no-value">---</span>
+                                        }
+                                    </td>
+                                    <td class="txn-cell--amount txn-cell--right">
+                                        @if (hp.MarketValue.HasValue)
+                                        {
+                                            @($"{hp.MarketValue.Value.ToString("C")} {hp.Currency}")
+                                        }
+                                        else
+                                        {
+                                            <span class="txn-no-value">---</span>
+                                        }
+                                    </td>
+                                    <td class="txn-cell--amount txn-cell--right">@hp.BookValue.ToString("C") @hp.Currency</td>
+                                    <td class="txn-cell--amount txn-cell--right">
+                                        @if (hp.GainLoss.HasValue)
+                                        {
+                                            <span class="@gainClass">
+                                                @hp.GainLoss.Value.ToString("C")
+                                                @if (hp.GainLossPercent.HasValue)
+                                                {
+                                                    <span>(@hp.GainLossPercent.Value.ToString("F2")%)</span>
+                                                }
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="txn-no-value">---</span>
+                                        }
+                                    </td>
+                                    <td class="txn-cell--amount txn-cell--right">
+                                        @if (hp.MoneyWeightedReturn.HasValue)
+                                        {
+                                            var mwrCls = hp.MoneyWeightedReturn.Value >= 0 ? "amount--positive" : "amount--negative";
+                                            <span class="@mwrCls">@hp.MoneyWeightedReturn.Value.ToString("F2")%</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="txn-no-value">---</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (Performance is not null)
+            {
+                <div style="margin-top:.5rem;text-align:right;">
+                    <small class="txn-no-value">Calculated @(Performance.CalculatedAt.ToString("MMM d, yyyy HH:mm")) UTC</small>
+                </div>
+            }
+        </FluentCard>
+
+@code {
+    [Parameter] public PortfolioPerformanceResponse? Performance { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+}

@@ -21,30 +21,11 @@
         </Actions>
     </PageHeader>
 
-    @if (!string.IsNullOrEmpty(_errorMessage) || !string.IsNullOrEmpty(_successMessage))
-    {
-        <div class="message-stack">
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-                    @_errorMessage
-                </FluentMessageBar>
-            }
-
-            @if (!string.IsNullOrEmpty(_successMessage))
-            {
-                <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
-                    @_successMessage
-                </FluentMessageBar>
-            }
-        </div>
-    }
+    <MessageStack ErrorMessage="@_errorMessage" SuccessMessage="@_successMessage" />
 
     @if (_isLoading)
     {
-        <div class="empty-state-shell">
-            <FluentProgressRing aria-label="Loading rules" />
-        </div>
+        <LoadingSpinner AriaLabel="Loading rules" />
     }
     else if (!_showForm && _rules.Count == 0)
     {

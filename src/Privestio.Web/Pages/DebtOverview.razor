@@ -9,7 +9,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading debt overview" />
     }
     else if (_overview is null || _overview.Debts.Count == 0)
     {

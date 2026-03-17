@@ -1,22 +1,15 @@
 @page "/accounts/{Id:guid}"
 @inject IAccountService AccountService
-@inject ITransactionService TransactionService
-@inject IValuationService ValuationService
-@inject IAmortizationService AmortizationService
 @inject IPriceHistoryService PriceHistoryService
-@inject IHoldingService HoldingService
-@inject ILotService LotService
 @inject IPortfolioService PortfolioService
+@inject ITransactionService TransactionService
 @inject NavigationManager Navigation
-@using Privestio.Contracts.Requests
 
 <PageTitle>@(_account?.Name ?? "Account") — Privestio</PageTitle>
 
 @if (_isLoading)
 {
-    <div class="empty-state-shell page-shell">
-        <FluentProgressRing aria-label="Loading account details" />
-    </div>
+    <LoadingSpinner AriaLabel="Loading account details" Class="page-shell" />
 }
 else if (_account is null)
 {
@@ -54,34 +47,14 @@ else
                         Sync Market History
                     </FluentButton>
                 }
-                @if (IsPropertyAccount)
-                {
-                    <FluentButton Appearance="Appearance.Outline"
-                                  @onclick="ToggleValuationForm"
-                                  aria-label="Record property valuation">
-                        Record Valuation
-                    </FluentButton>
-                }
             </Actions>
         </PageHeader>
 
         <div class="detail-grid">
-            <FluentCard Class="detail-card" aria-label="Account type">
-                <span class="detail-card__label">Type</span>
-                <strong>@_account.AccountType — @_account.AccountSubType</strong>
-            </FluentCard>
-            <FluentCard Class="detail-card" aria-label="Institution">
-                <span class="detail-card__label">Institution</span>
-                <strong>@(_account.Institution ?? "—")</strong>
-            </FluentCard>
-            <FluentCard Class="detail-card" aria-label="Current balance">
-                <span class="detail-card__label">Current balance</span>
-                <strong>@GetDisplayedCurrentBalance().ToString("C") @_account.Currency</strong>
-            </FluentCard>
-            <FluentCard Class="detail-card" aria-label="Opening date">
-                <span class="detail-card__label">Opened</span>
-                <strong>@_account.OpeningDate.ToString("MMMM d, yyyy")</strong>
-            </FluentCard>
+            <StatCard Label="Type" AriaLabel="Account type">@_account.AccountType — @_account.AccountSubType</StatCard>
+            <StatCard Label="Institution">@(_account.Institution ?? "—")</StatCard>
+            <StatCard Label="Current balance">@GetDisplayedCurrentBalance().ToString("C") @_account.Currency</StatCard>
+            <StatCard Label="Opened" AriaLabel="Opening date">@_account.OpeningDate.ToString("MMMM d, yyyy")</StatCard>
         </div>
 
         <FluentCard Class="surface-card transaction-panel" aria-labelledby="history-title">
@@ -104,9 +77,7 @@ else
 
             @if (_isLoadingValueHistory)
             {
-                <div class="empty-state-shell">
-                    <FluentProgressRing aria-label="Loading account value history" />
-                </div>
+                <LoadingSpinner AriaLabel="Loading account value history" />
             }
             else if (!string.IsNullOrWhiteSpace(_valueHistoryErrorMessage))
             {
@@ -123,894 +94,46 @@ else
 
         @if (IsPropertyAccount)
         {
-            <FluentCard Class="surface-card transaction-panel" aria-labelledby="valuations-title">
-                <div class="section-heading-row">
-                    <div>
-                        <h2 id="valuations-title" class="section-heading">Previous valuations</h2>
-                        <p class="section-copy">Historical valuations for this property, ordered by most recent first.</p>
-                    </div>
-                    <div class="summary-strip summary-strip--compact">
-                        <div>
-                            <span class="summary-strip__label">Total valuations</span>
-                            <strong>@_valuations.Count</strong>
-                        </div>
-                    </div>
-                </div>
-
-                @if (_showValuationForm)
-                {
-                    <FluentCard Class="surface-card" style="margin-bottom:1rem;">
-                        <div class="section-heading-row">
-                            <div>
-                                <h3 class="section-heading" style="margin-bottom:0.25rem;">Record valuation</h3>
-                                <p class="section-copy">Capture the current estimated property value without affecting expense cash-flow tracking.</p>
-                            </div>
-                        </div>
-
-                        <FluentStack Orientation="Orientation.Vertical" Width="100%" style="gap:0.75rem;">
-                            <FluentNumberField @bind-Value="_valuationAmount" Label="Estimated value" Step="0.01m" Required="true" />
-                            <FluentDatePicker @bind-Value="_valuationEffectiveDate" Label="Effective date" />
-                            <FluentTextField @bind-Value="_valuationSource" Label="Source" Placeholder="Appraisal, market estimate, assessment..." />
-                            <FluentTextArea @bind-Value="_valuationNotes" Label="Notes (optional)" Resize="TextAreaResize.Vertical" Rows="3" />
-                            <FluentStack Orientation="Orientation.Horizontal" style="gap:0.5rem;">
-                                <FluentButton Appearance="Appearance.Accent" OnClick="SaveValuationAsync" Loading="_isSavingValuation">
-                                    Save Valuation
-                                </FluentButton>
-                                <FluentButton Appearance="Appearance.Outline" OnClick="ToggleValuationForm">Cancel</FluentButton>
-                            </FluentStack>
-                        </FluentStack>
-                    </FluentCard>
-                }
-
-                @if (!string.IsNullOrWhiteSpace(_valuationSaveMessage))
-                {
-                    <FluentMessageBar Intent="@_valuationSaveIntent" style="margin-bottom:1rem;">@_valuationSaveMessage</FluentMessageBar>
-                }
-
-                @if (_isLoadingValuations)
-                {
-                    <div class="empty-state-shell">
-                        <FluentProgressRing aria-label="Loading valuations" />
-                    </div>
-                }
-                else if (!string.IsNullOrWhiteSpace(_valuationErrorMessage))
-                {
-                    <FluentMessageBar Intent="@MessageIntent.Warning">@_valuationErrorMessage</FluentMessageBar>
-                }
-                else if (_valuations.Count == 0)
-                {
-                    <div class="empty-inline">
-                        <strong>No valuations recorded yet.</strong>
-                        <span>Add a valuation to track this property's value over time.</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="txn-table-wrapper" role="region" aria-label="Previous valuations">
-                        <table class="txn-table" aria-label="Previous valuations">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="txn-col--date">Date</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Value</th>
-                                    <th scope="col" class="txn-col--cat">Source</th>
-                                    <th scope="col" class="txn-col--desc">Notes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var valuation in _valuations)
-                                {
-                                    <tr class="txn-row" @key="valuation.Id">
-                                        <td class="txn-cell--date">@valuation.EffectiveDate.ToString("MMM d, yyyy")</td>
-                                        <td class="txn-cell--amount txn-cell--right">
-                                            @valuation.Amount.ToString("C") @valuation.Currency
-                                        </td>
-                                        <td class="txn-cell--cat">
-                                            @if (!string.IsNullOrWhiteSpace(valuation.Source))
-                                            {
-                                                <span class="txn-category">@valuation.Source</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="txn-no-value">—</span>
-                                            }
-                                        </td>
-                                        <td class="txn-cell--desc">
-                                            @if (!string.IsNullOrWhiteSpace(valuation.Notes))
-                                            {
-                                                <span>@valuation.Notes</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="txn-no-value">—</span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </FluentCard>
-
-            <FluentCard Class="surface-card transaction-panel" aria-labelledby="property-expenses-title">
-                <div class="section-heading-row">
-                    <div>
-                        <h2 id="property-expenses-title" class="section-heading">Property expenses</h2>
-                        <p class="section-copy">Recent cash-flow expenses for this property account.</p>
-                    </div>
-                    <div class="summary-strip summary-strip--compact">
-                        <div>
-                            <span class="summary-strip__label">Last 90 days</span>
-                            <strong>@_propertyExpenseTotal90Days.ToString("C") @_account.Currency</strong>
-                        </div>
-                    </div>
-                </div>
-
-                @if (_isLoadingPropertyExpenses)
-                {
-                    <div class="empty-state-shell">
-                        <FluentProgressRing aria-label="Loading property expenses" />
-                    </div>
-                }
-                else if (!string.IsNullOrWhiteSpace(_propertyExpenseErrorMessage))
-                {
-                    <FluentMessageBar Intent="@MessageIntent.Warning">@_propertyExpenseErrorMessage</FluentMessageBar>
-                }
-                else if (_propertyExpenses.Count == 0)
-                {
-                    <div class="empty-inline">
-                        <strong>No recent expenses found.</strong>
-                        <span>Add transactions to track tax, insurance, maintenance, and other property costs.</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="txn-table-wrapper" role="region" aria-label="Property expenses">
-                        <table class="txn-table" aria-label="Property expenses">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="txn-col--date">Date</th>
-                                    <th scope="col" class="txn-col--desc">Description</th>
-                                    <th scope="col" class="txn-col--cat">Category</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var expense in _propertyExpenses)
-                                {
-                                    <tr class="txn-row" @key="expense.Id">
-                                        <td class="txn-cell--date">@expense.Date.ToString("MMM d, yyyy")</td>
-                                        <td class="txn-cell--desc">@expense.Description</td>
-                                        <td class="txn-cell--cat">@(expense.CategoryName ?? "—")</td>
-                                        <td class="txn-cell--amount txn-cell--right transaction-amount--negative">
-                                            @Math.Abs(expense.Amount).ToString("C") @expense.Currency
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </FluentCard>
-
-            <FluentCard Class="surface-card transaction-panel" aria-labelledby="mortgage-amortization-title">
-                <div class="section-heading-row">
-                    <div>
-                        <h2 id="mortgage-amortization-title" class="section-heading">Mortgage amortization</h2>
-                        <p class="section-copy">Track principal and interest progress from linked mortgage or loan accounts.</p>
-                    </div>
-                    <FluentButton Appearance="Appearance.Outline" @onclick='() => Navigation.NavigateTo("/amortization")'>
-                        Open Full Schedule
-                    </FluentButton>
-                </div>
-
-                @if (_mortgageAccounts.Count == 0)
-                {
-                    <div class="empty-inline">
-                        <strong>No mortgage accounts found.</strong>
-                        <span>Create a loan/mortgage account to generate and track amortization.</span>
-                    </div>
-                }
-                else
-                {
-                    <FluentSelect TOption="string" @bind-Value="_selectedMortgageAccountId" Label="Mortgage account" Style="max-width:320px;margin-bottom:1rem;" @onchange="HandleMortgageAccountChanged">
-                        @foreach (var mortgage in _mortgageAccounts)
-                        {
-                            <FluentOption TOption="string" Value="@mortgage.Id.ToString()">@mortgage.Name</FluentOption>
-                        }
-                    </FluentSelect>
-
-                    @if (_isLoadingMortgageSchedule)
-                    {
-                        <div class="empty-state-shell">
-                            <FluentProgressRing aria-label="Loading mortgage amortization" />
-                        </div>
-                    }
-                    else if (!string.IsNullOrWhiteSpace(_mortgageScheduleErrorMessage))
-                    {
-                        <FluentMessageBar Intent="@MessageIntent.Warning">@_mortgageScheduleErrorMessage</FluentMessageBar>
-                    }
-                    else if (_mortgageSchedule is null || _mortgageSchedule.Entries.Count == 0)
-                    {
-                        <div class="empty-inline">
-                            <strong>No amortization schedule generated.</strong>
-                            <span>Generate one from the Amortization Schedule page.</span>
-                        </div>
-                    }
-                    else
-                    {
-                        var nextPayment = _mortgageSchedule.Entries.FirstOrDefault(e => e.PaymentDate >= DateOnly.FromDateTime(DateTime.UtcNow));
-                        var lastPayment = _mortgageSchedule.Entries.Last();
-                        <div class="detail-grid">
-                            <FluentCard Class="detail-card" aria-label="Total principal">
-                                <span class="detail-card__label">Total principal</span>
-                                <strong>@_mortgageSchedule.TotalPrincipal.ToString("C") @_mortgageSchedule.Currency</strong>
-                            </FluentCard>
-                            <FluentCard Class="detail-card" aria-label="Total interest">
-                                <span class="detail-card__label">Total interest</span>
-                                <strong>@_mortgageSchedule.TotalInterest.ToString("C") @_mortgageSchedule.Currency</strong>
-                            </FluentCard>
-                            <FluentCard Class="detail-card" aria-label="Remaining balance">
-                                <span class="detail-card__label">Remaining balance</span>
-                                <strong>@lastPayment.RemainingBalance.ToString("C") @_mortgageSchedule.Currency</strong>
-                            </FluentCard>
-                            <FluentCard Class="detail-card" aria-label="Next payment">
-                                <span class="detail-card__label">Next payment</span>
-                                <strong>@(nextPayment is null ? "Paid off" : nextPayment.PaymentDate.ToString("MMM d, yyyy"))</strong>
-                            </FluentCard>
-                        </div>
-                    }
-                }
-            </FluentCard>
-
+            <PropertyValuationsSection AccountId="Id" Currency="@_account.Currency"
+                                       DefaultAmount="@(_account.CurrentBalance)"
+                                       OnValuationSaved="HandleValuationSaved" />
+            <PropertyExpensesSection AccountId="Id" Currency="@_account.Currency" />
+            <MortgageAmortizationSection />
         }
         else if (IsInvestmentAccount)
         {
-            <FluentCard Class="surface-card transaction-panel" aria-labelledby="performance-title">
-                <div class="section-heading-row">
-                    <div>
-                        <h2 id="performance-title" class="section-heading">Portfolio performance</h2>
-                        <p class="section-copy">Market value, gain/loss, and money-weighted return based on recorded prices and lot cost basis.</p>
-                    </div>
-                </div>
-
-                @if (_isLoadingPerformance)
-                {
-                    <div class="empty-state-shell">
-                        <FluentProgressRing aria-label="Loading portfolio performance" />
-                    </div>
-                }
-                else if (!string.IsNullOrWhiteSpace(_performanceErrorMessage))
-                {
-                    <FluentMessageBar Intent="@MessageIntent.Warning">@_performanceErrorMessage</FluentMessageBar>
-                }
-                else if (_performance is null || _performance.Holdings.Count == 0)
-                {
-                    <div class="empty-inline">
-                        <strong>No performance data yet.</strong>
-                        <span>Add holdings and record price history to see portfolio metrics.</span>
-                    </div>
-                }
-                else
-                {
-                    var hasMarketValue = _performance.TotalMarketValue.HasValue;
-                    var anyStale = _performance.Holdings.Any(h => h.IsPriceStale);
-
-                    @if (anyStale)
-                    {
-                        <FluentMessageBar Intent="@MessageIntent.Warning" style="margin-bottom:1rem;">
-                            One or more holdings have price data older than 7 days. Update price history for accurate valuations.
-                        </FluentMessageBar>
-                    }
-
-                    <div class="detail-grid" style="margin-bottom:1.5rem;" role="region" aria-label="Portfolio summary">
-                        <FluentCard Class="detail-card" aria-label="Total book value">
-                            <span class="detail-card__label">Book value</span>
-                            <strong>@_performance.TotalBookValue.ToString("C") @_performance.Currency</strong>
-                        </FluentCard>
-                        <FluentCard Class="detail-card" aria-label="Total market value">
-                            <span class="detail-card__label">Market value</span>
-                            @if (hasMarketValue)
-                            {
-                                <strong>@_performance.TotalMarketValue!.Value.ToString("C") @_performance.Currency</strong>
-                            }
-                            else
-                            {
-                                <strong class="txn-no-value">Prices missing</strong>
-                            }
-                        </FluentCard>
-                        <FluentCard Class="detail-card" aria-label="Total gain or loss">
-                            <span class="detail-card__label">Gain / loss</span>
-                            @if (_performance.TotalGainLoss.HasValue)
-                            {
-                                var gainClass = _performance.TotalGainLoss.Value >= 0 ? "amount--positive" : "amount--negative";
-                                <strong class="@gainClass">
-                                    @_performance.TotalGainLoss.Value.ToString("C")
-                                    (@(_performance.TotalGainLossPercent?.ToString("F2") ?? "—")%)
-                                </strong>
-                            }
-                            else
-                            {
-                                <strong class="txn-no-value">—</strong>
-                            }
-                        </FluentCard>
-                        <FluentCard Class="detail-card" aria-label="Money-weighted return">
-                            <span class="detail-card__label">MWR (annualised)</span>
-                            @if (_performance.PortfolioMoneyWeightedReturn.HasValue)
-                            {
-                                var mwrClass = _performance.PortfolioMoneyWeightedReturn.Value >= 0 ? "amount--positive" : "amount--negative";
-                                <strong class="@mwrClass">@_performance.PortfolioMoneyWeightedReturn.Value.ToString("F2")%</strong>
-                            }
-                            else
-                            {
-                                <strong class="txn-no-value">—</strong>
-                            }
-                        </FluentCard>
-                    </div>
-
-                    <div class="txn-table-wrapper" role="region" aria-label="Holdings performance">
-                        <table class="txn-table" aria-label="Holdings performance">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="txn-col--desc">Security</th>
-                                    <th scope="col" class="txn-col--cat">Symbol</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Current price</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Market value</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Book value</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Gain / loss</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">MWR</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var hp in _performance.Holdings)
-                                {
-                                    var gainClass = hp.GainLoss.HasValue && hp.GainLoss.Value >= 0 ? "amount--positive" : "amount--negative";
-                                    <tr class="txn-row" @key="hp.HoldingId">
-                                        <td class="txn-cell--desc">
-                                            <span class="txn-desc-primary txn-desc-primary--full">@hp.SecurityName</span>
-                                        </td>
-                                        <td class="txn-cell--cat">
-                                            <span class="txn-category">@hp.Symbol</span>
-                                            <span class="txn-category" style="margin-left:.35rem;opacity:.85;">@hp.PriceSource</span>
-                                            @if (hp.IsPriceStale)
-                                            {
-                                                <span title="Price data is stale" aria-label="Stale price" style="color:var(--warning);font-size:.75em;margin-left:.25rem;">⚠</span>
-                                            }
-                                        </td>
-                                        <td class="txn-cell--amount txn-cell--right">@hp.Quantity.ToString("N4")</td>
-                                        <td class="txn-cell--amount txn-cell--right">
-                                            @if (hp.CurrentPrice.HasValue)
-                                            {
-                                                @($"{hp.CurrentPrice.Value.ToString("C")} {hp.Currency}")
-                                                @if (hp.IsFxConverted && hp.FxRateToAccountCurrency.HasValue)
-                                                {
-                                                    <span class="txn-desc-sub">FX @hp.QuoteCurrency->@hp.Currency @@ @hp.FxRateToAccountCurrency.Value.ToString("F6")</span>
-                                                }
-                                                @if (hp.PriceAsOfDate.HasValue)
-                                                {
-                                                    <span class="txn-desc-sub">@hp.PriceAsOfDate.Value.ToString("MMM d")</span>
-                                                }
-                                            }
-                                            else
-                                            {
-                                                <span class="txn-no-value">—</span>
-                                            }
-                                        </td>
-                                        <td class="txn-cell--amount txn-cell--right">
-                                            @if (hp.MarketValue.HasValue)
-                                            {
-                                                @($"{hp.MarketValue.Value.ToString("C")} {hp.Currency}")
-                                            }
-                                            else
-                                            {
-                                                <span class="txn-no-value">—</span>
-                                            }
-                                        </td>
-                                        <td class="txn-cell--amount txn-cell--right">@hp.BookValue.ToString("C") @hp.Currency</td>
-                                        <td class="txn-cell--amount txn-cell--right">
-                                            @if (hp.GainLoss.HasValue)
-                                            {
-                                                <span class="@gainClass">
-                                                    @hp.GainLoss.Value.ToString("C")
-                                                    @if (hp.GainLossPercent.HasValue)
-                                                    {
-                                                        <span>(@hp.GainLossPercent.Value.ToString("F2")%)</span>
-                                                    }
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="txn-no-value">—</span>
-                                            }
-                                        </td>
-                                        <td class="txn-cell--amount txn-cell--right">
-                                            @if (hp.MoneyWeightedReturn.HasValue)
-                                            {
-                                                var mwrCls = hp.MoneyWeightedReturn.Value >= 0 ? "amount--positive" : "amount--negative";
-                                                <span class="@mwrCls">@hp.MoneyWeightedReturn.Value.ToString("F2")%</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="txn-no-value">—</span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-
-                <div style="margin-top:.5rem;text-align:right;">
-                    <small class="txn-no-value">Calculated @(_performance?.CalculatedAt.ToString("MMM d, yyyy HH:mm") ?? "—") UTC</small>
-                </div>
-            </FluentCard>
-
-            <FluentCard Class="surface-card transaction-panel" aria-labelledby="holdings-title">
-                <div class="section-heading-row">
-                    <div>
-                        <h2 id="holdings-title" class="section-heading">Holdings and lot details</h2>
-                        <p class="section-copy">Current positions with lot-level cost basis records for this investment account.</p>
-                    </div>
-                    <div class="summary-strip summary-strip--compact">
-                        <div>
-                            <span class="summary-strip__label">Positions</span>
-                            <strong>@_holdings.Count</strong>
-                        </div>
-                    </div>
-                </div>
-
-                @if (_isLoadingHoldings)
-                {
-                    <div class="empty-state-shell">
-                        <FluentProgressRing aria-label="Loading holdings" />
-                    </div>
-                }
-                else if (!string.IsNullOrWhiteSpace(_holdingErrorMessage))
-                {
-                    <FluentMessageBar Intent="@MessageIntent.Warning">@_holdingErrorMessage</FluentMessageBar>
-                }
-                else if (_holdings.Count == 0)
-                {
-                    <div class="empty-inline">
-                        <strong>No holdings found.</strong>
-                        <span>Imported investment trades will appear here as holdings and lots.</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="txn-table-wrapper" role="region" aria-label="Holdings">
-                        <table class="txn-table" aria-label="Holdings">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="txn-col--desc">Security</th>
-                                    <th scope="col" class="txn-col--cat">Symbol</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Avg cost</th>
-                                    <th scope="col" class="txn-col--cat">Lots</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var holding in _holdings)
-                                {
-                                    var lots = _lotsByHoldingId.GetValueOrDefault(holding.Id) ?? [];
-                                    var aliases = _aliasesByHoldingId.GetValueOrDefault(holding.Id) ?? [];
-                                    var newAliasSymbol = _aliasSymbolByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
-                                    var newAliasSource = _aliasSourceByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
-                                    var isPrimaryAlias = _aliasPrimaryByHoldingId.GetValueOrDefault(holding.Id);
-                                    var aliasMessage = _aliasMessageByHoldingId.GetValueOrDefault(holding.Id);
-                                    var isAliasBusy = _aliasBusyHoldingIds.Contains(holding.Id);
-                                    <tr class="txn-row" @key="holding.Id">
-                                        <td class="txn-cell--desc">
-                                            <span class="txn-desc-primary txn-desc-primary--full">@holding.SecurityName</span>
-                                            @if (!string.IsNullOrWhiteSpace(holding.Notes))
-                                            {
-                                                <span class="txn-desc-sub">@holding.Notes</span>
-                                            }
-
-                                            <div style="margin-top:0.5rem; display:grid; gap:0.4rem;">
-                                                <div style="display:flex; flex-wrap:wrap; gap:0.3rem; align-items:center;">
-                                                    @if (aliases.Count == 0)
-                                                    {
-                                                        <span class="txn-no-value">No aliases configured.</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        @foreach (var alias in aliases)
-                                                        {
-                                                            <span class="txn-category" style="display:inline-flex; gap:0.3rem; align-items:center;">
-                                                                @alias.Symbol
-                                                                @if (!string.IsNullOrWhiteSpace(alias.Source))
-                                                                {
-                                                                    <span class="txn-no-value">(@alias.Source)</span>
-                                                                }
-                                                                @if (alias.IsPrimary)
-                                                                {
-                                                                    <strong style="font-size:0.72rem;">primary</strong>
-                                                                }
-                                                                <button type="button" class="app-button app-button--secondary"
-                                                                        style="padding:0.1rem 0.45rem; font-size:0.72rem;"
-                                                                        disabled="@isAliasBusy"
-                                                                        @onclick="() => DeleteAliasAsync(holding.Id, alias.Id)">
-                                                                    Remove
-                                                                </button>
-                                                            </span>
-                                                        }
-                                                    }
-                                                </div>
-
-                                                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
-                                                    <input class="filter-input" style="max-width:9rem;" placeholder="Alias symbol"
-                                                           value="@newAliasSymbol"
-                                                           @oninput="e => _aliasSymbolByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
-                                                    <input class="filter-input" style="max-width:9rem;" placeholder="Source (optional)"
-                                                           value="@newAliasSource"
-                                                           @oninput="e => _aliasSourceByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
-                                                    <label style="display:inline-flex; gap:0.3rem; align-items:center; font-size:0.8rem;">
-                                                        <input type="checkbox" checked="@isPrimaryAlias"
-                                                               @onchange="e => _aliasPrimaryByHoldingId[holding.Id] = e.Value as bool? == true" />
-                                                        Primary
-                                                    </label>
-                                                    <button type="button" class="app-button app-button--secondary"
-                                                            disabled="@isAliasBusy"
-                                                            @onclick="() => AddAliasAsync(holding.Id)">
-                                                        Add alias
-                                                    </button>
-                                                </div>
-
-                                                @if (!string.IsNullOrWhiteSpace(aliasMessage))
-                                                {
-                                                    <span class="txn-desc-sub">@aliasMessage</span>
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="txn-cell--cat"><span class="txn-category">@holding.Symbol</span></td>
-                                        <td class="txn-cell--amount txn-cell--right">@holding.Quantity</td>
-                                        <td class="txn-cell--amount txn-cell--right">
-                                            @holding.AverageCostPerUnit.ToString("C") @holding.Currency
-                                        </td>
-                                        <td class="txn-cell--cat">@lots.Count</td>
-                                    </tr>
-                                    <tr @key="@($"{holding.Id}-lots")">
-                                        <td colspan="5" class="txn-cell--desc" style="padding-top:0.25rem;padding-bottom:1rem;">
-                                            @if (lots.Count == 0)
-                                            {
-                                                <span class="txn-no-value">No lots recorded for this holding.</span>
-                                            }
-                                            else
-                                            {
-                                                <div class="txn-table-wrapper" role="region" aria-label="Lots for @holding.Symbol">
-                                                    <table class="txn-table" aria-label="Lots for @holding.Symbol">
-                                                        <thead>
-                                                            <tr>
-                                                                <th scope="col" class="txn-col--date">Acquired</th>
-                                                                <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
-                                                                <th scope="col" class="txn-col--amount txn-cell--right">Unit cost</th>
-                                                                <th scope="col" class="txn-col--cat">Source</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            @foreach (var lot in lots)
-                                                            {
-                                                                <tr class="txn-row" @key="lot.Id">
-                                                                    <td class="txn-cell--date">@lot.AcquiredDate.ToString("MMM d, yyyy")</td>
-                                                                    <td class="txn-cell--amount txn-cell--right">@lot.Quantity</td>
-                                                                    <td class="txn-cell--amount txn-cell--right">@lot.UnitCost.ToString("C") @lot.Currency</td>
-                                                                    <td class="txn-cell--cat">
-                                                                        @if (!string.IsNullOrWhiteSpace(lot.Source))
-                                                                        {
-                                                                            <span class="txn-category">@lot.Source</span>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <span class="txn-no-value">—</span>
-                                                                        }
-                                                                    </td>
-                                                                </tr>
-                                                            }
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </FluentCard>
-
-            <FluentCard Class="surface-card transaction-panel" aria-labelledby="investment-transactions-title">
-                <div class="section-heading-row">
-                    <div>
-                        <h2 id="investment-transactions-title" class="section-heading">Recent investment activity</h2>
-                        <p class="section-copy">Imported trades and cash movements for this account (last 90 days).</p>
-                    </div>
-                </div>
-
-                @if (_isLoadingTransactions)
-                {
-                    <div class="empty-state-shell">
-                        <FluentProgressRing aria-label="Loading investment transactions" />
-                    </div>
-                }
-                else if (_transactions.Count == 0)
-                {
-                    <div class="empty-inline">
-                        <strong>No transactions found.</strong>
-                        <span>Import a brokerage file or add a manual transaction.</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="txn-table-wrapper" role="region" aria-label="Recent investment transactions">
-                        <table class="txn-table" aria-label="Recent investment transactions">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="txn-col--date">Date</th>
-                                    <th scope="col" class="txn-col--desc">Description</th>
-                                    <th scope="col" class="txn-col--cat">Symbol</th>
-                                    <th scope="col" class="txn-col--amount txn-cell--right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var transaction in _transactions.Take(15))
-                                {
-                                    <tr class="txn-row" @key="transaction.Id">
-                                        <td class="txn-cell--date">@transaction.Date.ToString("MMM d, yyyy")</td>
-                                        <td class="txn-cell--desc">
-                                            <span class="txn-desc-primary">@transaction.Description</span>
-                                            @if (!string.IsNullOrWhiteSpace(transaction.ActivitySubType))
-                                            {
-                                                <span class="txn-desc-sub">@transaction.ActivitySubType</span>
-                                            }
-                                        </td>
-                                        <td class="txn-cell--cat">
-                                            @if (!string.IsNullOrWhiteSpace(transaction.Symbol))
-                                            {
-                                                <span class="txn-category">@transaction.Symbol</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="txn-no-value">—</span>
-                                            }
-                                        </td>
-                                        <td class="txn-cell--amount txn-cell--right @GetTransactionAmountClass(transaction)">
-                                            @FormatTransactionAmount(transaction)
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </FluentCard>
+            <PortfolioPerformanceSection Performance="_performance"
+                                         IsLoading="_isLoadingPerformance"
+                                         ErrorMessage="@_performanceErrorMessage" />
+            <HoldingsLotsSection AccountId="Id" OnAliasChanged="HandleAliasChanged" />
+            <InvestmentTransactionsSection Transactions="_transactions" IsLoading="_isLoadingTransactions" />
         }
         else
         {
-            <FluentCard Class="surface-card transaction-panel" aria-labelledby="recent-transactions-title">
-                <div class="section-heading-row">
-                    <div>
-                        <h2 id="recent-transactions-title" class="section-heading">Recent transactions</h2>
-                        <p class="section-copy">Filter by time range, narrow with search, and page through account activity
-                            without leaving the drilldown.</p>
-                        </div>
-                        <div class="summary-strip summary-strip--compact">
-                            <div>
-                                <span class="summary-strip__label">Visible items</span>
-                                <strong>@_transactions.Count</strong>
-                            </div>
-                            <div>
-                                <span class="summary-strip__label">Range</span>
-                                <strong>@GetRangeSummary()</strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form class="transaction-filters" @onsubmit="HandleFilterSubmitAsync" @onsubmit:preventDefault="true">
-                        <div class="transaction-filters__search">
-                            <label class="filter-label" for="transaction-search">Search</label>
-                            <input id="transaction-search" class="filter-input" type="search"
-                                   placeholder="Description, payee, category, or notes" @bind="_searchTerm" @bind:event="oninput" />
-                        </div>
-
-                        <div class="transaction-filters__dates">
-                            <div>
-                                <label class="filter-label" for="from-date">From</label>
-                                <input id="from-date" class="filter-input" type="date" value="@_fromDateInput"
-                                       @onchange="HandleFromDateChanged" />
-                            </div>
-                            <div>
-                                <label class="filter-label" for="to-date">To</label>
-                                <input id="to-date" class="filter-input" type="date" value="@_toDateInput"
-                                       @onchange="HandleToDateChanged" />
-                            </div>
-                        </div>
-
-                        <div class="transaction-filters__actions">
-                            <button type="submit" class="app-button app-button--primary">Apply</button>
-                            <button type="button" class="app-button app-button--secondary"
-                                    @onclick="ResetFiltersAsync">Reset</button>
-                        </div>
-                    </form>
-
-                    <div class="filter-chip-row" role="group" aria-label="Date range presets">
-                        @foreach (var preset in _datePresets)
-                        {
-                            <button type="button"
-                                    class="filter-chip @(preset.Key == _selectedDatePreset ? "filter-chip--active" : string.Empty)"
-                                    @onclick='() => ApplyDatePresetAsync(preset.Key)'>
-                                @preset.Label
-                            </button>
-                        }
-                    </div>
-
-                    @if (_isLoadingTransactions)
-                    {
-                        <div class="empty-state-shell">
-                            <FluentProgressRing aria-label="Loading transactions" />
-                        </div>
-                    }
-                    else if (!string.IsNullOrWhiteSpace(_transactionErrorMessage))
-                    {
-                        <FluentMessageBar Intent="@MessageIntent.Warning">@_transactionErrorMessage</FluentMessageBar>
-                    }
-                    else if (_transactions.Count == 0)
-                    {
-                        <div class="empty-inline">
-                            <strong>No transactions match these filters.</strong>
-                            <span>Try a wider date range or clear the search term.</span>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="txn-table-wrapper" role="region" aria-label="Recent transactions">
-                            <table class="txn-table" aria-label="Recent transactions">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" class="txn-col--date">Date</th>
-                                        <th scope="col" class="txn-col--desc">Description</th>
-                                        <th scope="col" class="txn-col--cat">Category</th>
-                                        <th scope="col" class="txn-col--amount txn-cell--right">Amount</th>
-                                        <th scope="col" class="txn-col--balance txn-cell--right">Balance</th>
-                                        <th scope="col" class="txn-col--action"><span class="sr-only">Actions</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var transaction in _transactions)
-                                    {
-                                        <tr class="txn-row" @key="transaction.Id">
-                                            <td class="txn-cell--date">@transaction.Date.ToString("MMM d, yyyy")</td>
-                                            <td class="txn-cell--desc">
-                                                <span class="txn-desc-primary">@transaction.Description</span>
-                                                @if (!string.IsNullOrWhiteSpace(transaction.PayeeName))
-                                                {
-                                                    <span class="txn-desc-sub">@transaction.PayeeName</span>
-                                                }
-                                                @if (transaction.IsReconciled)
-                                                {
-                                                    <span class="txn-badge txn-badge--reconciled" title="Reconciled">R</span>
-                                                }
-                                                @if (transaction.IsSplit)
-                                                {
-                                                    <span class="txn-badge" title="Split transaction">S</span>
-                                                }
-                                            </td>
-                                            <td class="txn-cell--cat">
-                                                @if (!string.IsNullOrWhiteSpace(transaction.CategoryName))
-                                                {
-                                                    <span class="txn-category">@transaction.CategoryName</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="txn-no-value">—</span>
-                                                }
-                                            </td>
-                                            <td class="txn-cell--amount txn-cell--right @GetTransactionAmountClass(transaction)">
-                                                @FormatTransactionAmount(transaction)
-                                            </td>
-                                            <td class="txn-cell--balance txn-cell--right">
-                                                @transaction.RunningBalance.ToString("C") @transaction.Currency
-                                            </td>
-                                            <td class="txn-cell--action">
-                                                <button type="button" class="app-button app-button--secondary app-button--xs"
-                                                        @onclick='() => Navigation.NavigateTo($"/transactions/{transaction.Id}")'>
-                                                    View
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-
-                    <div class="pager-row">
-                        <button type="button" class="app-button app-button--secondary"
-                                disabled="@(!_hasPreviousPage || _isLoadingTransactions)" @onclick="LoadPreviousPageAsync">
-                            Previous
-                        </button>
-                        <span class="pager-status">Page @(_cursorHistory.Count + 1)</span>
-                        <button type="button" class="app-button app-button--secondary"
-                                disabled="@(!_hasNextPage || _isLoadingTransactions)" @onclick="LoadNextPageAsync">
-                            Next
-                        </button>
-                    </div>
-                </FluentCard>
-            }
-        </section>
-    }
+            <TransactionListSection AccountId="Id" />
+        }
+    </section>
+}
 
 @code {
     [Parameter] public Guid Id { get; set; }
 
     private AccountResponse? _account;
-    private readonly List<TransactionResponse> _transactions = new();
-    private readonly List<ValuationResponse> _valuations = new();
-    private readonly List<TransactionResponse> _propertyExpenses = new();
-    private readonly List<AccountResponse> _mortgageAccounts = new();
-    private readonly List<HoldingResponse> _holdings = new();
-    private readonly Dictionary<Guid, IReadOnlyList<LotResponse>> _lotsByHoldingId = [];
-    private readonly Dictionary<Guid, IReadOnlyList<SecurityAliasResponse>> _aliasesByHoldingId =
-        [];
-    private readonly Dictionary<Guid, string> _aliasSymbolByHoldingId = [];
-    private readonly Dictionary<Guid, string> _aliasSourceByHoldingId = [];
-    private readonly Dictionary<Guid, bool> _aliasPrimaryByHoldingId = [];
-    private readonly Dictionary<Guid, string> _aliasMessageByHoldingId = [];
-    private readonly HashSet<Guid> _aliasBusyHoldingIds = [];
     private AccountValueHistoryResponse? _valueHistory;
-    private bool _isLoadingValueHistory = true;
-    private string? _valueHistoryErrorMessage;
-    private bool _isSyncingHistoricalPrices;
-    private string? _historicalPriceSyncMessage;
-    private MessageIntent _historicalPriceSyncIntent = MessageIntent.Success;
     private PortfolioPerformanceResponse? _performance;
-    private bool _isLoadingPerformance = true;
-    private string? _performanceErrorMessage;
-    private readonly List<string?> _cursorHistory = [];
-    private readonly IReadOnlyList<DatePreset> _datePresets =
-    [
-        new("30d", "30D"),
-        new("90d", "90D"),
-        new("ytd", "YTD"),
-        new("1y", "1Y"),
-        new("all", "All")
-    ];
+    private readonly List<TransactionResponse> _transactions = new();
 
     private bool _isLoading = true;
+    private bool _isLoadingValueHistory = true;
+    private bool _isLoadingPerformance = true;
     private bool _isLoadingTransactions = true;
-    private bool _isLoadingValuations = true;
-    private bool _isLoadingPropertyExpenses = true;
-    private bool _isLoadingMortgageSchedule = true;
-    private bool _isLoadingHoldings = true;
-    private bool _showValuationForm;
-    private bool _isSavingValuation;
-    private bool _hasNextPage;
-    private bool _hasPreviousPage;
-    private string? _nextCursor;
-    private string? _currentCursor;
-    private string? _transactionErrorMessage;
-    private string? _valuationErrorMessage;
-    private string? _propertyExpenseErrorMessage;
-    private string? _mortgageScheduleErrorMessage;
-    private string? _valuationSaveMessage;
-    private string? _holdingErrorMessage;
-    private string _searchTerm = string.Empty;
-    private string _appliedSearchTerm = string.Empty;
+    private bool _isSyncingHistoricalPrices;
+
+    private string? _valueHistoryErrorMessage;
+    private string? _performanceErrorMessage;
+    private string? _historicalPriceSyncMessage;
+    private MessageIntent _historicalPriceSyncIntent = MessageIntent.Success;
     private string _selectedValueHistoryRange = "1y";
-    private string _selectedDatePreset = "90d";
-    private string _fromDateInput = string.Empty;
-    private string _toDateInput = string.Empty;
-    private decimal _propertyExpenseTotal90Days;
-    private AmortizationScheduleResponse? _mortgageSchedule;
-    private string _selectedMortgageAccountId = string.Empty;
-    private decimal _valuationAmount;
-    private DateTime? _valuationEffectiveDate = DateTime.Today;
-    private string _valuationSource = "Manual";
-    private string _valuationNotes = string.Empty;
-    private MessageIntent _valuationSaveIntent = MessageIntent.Success;
 
     private bool IsPropertyAccount =>
         _account?.AccountType.Equals("Property", StringComparison.OrdinalIgnoreCase) == true;
@@ -1028,27 +151,19 @@ else
         {
             if (IsPropertyAccount)
             {
-                await Task.WhenAll(
-                    LoadValueHistoryAsync(),
-                    LoadValuationsAsync(),
-                    LoadPropertyExpensesAsync(),
-                    LoadMortgageTrackingAsync()
-                );
+                await LoadValueHistoryAsync();
             }
             else if (IsInvestmentAccount)
             {
-                SetDatePreset("90d");
                 await Task.WhenAll(
                     LoadValueHistoryAsync(),
-                    LoadHoldingsAsync(),
                     LoadPerformanceAsync(),
-                    LoadTransactionsAsync(resetPaging: true)
+                    LoadInvestmentTransactionsAsync()
                 );
             }
             else
             {
-                SetDatePreset("90d");
-                await Task.WhenAll(LoadValueHistoryAsync(), LoadTransactionsAsync(resetPaging: true));
+                await LoadValueHistoryAsync();
             }
         }
     }
@@ -1119,305 +234,6 @@ else
         };
     }
 
-    private async Task HandleFilterSubmitAsync()
-    {
-        if (!TryParseDateInputs(out var fromDate, out var toDate))
-        {
-            _transactionErrorMessage = "Enter a valid date range before applying filters.";
-            return;
-        }
-
-        _transactionErrorMessage = null;
-        _appliedSearchTerm = _searchTerm.Trim();
-        _selectedDatePreset = string.Empty;
-        _fromDateInput = FormatDateInput(fromDate);
-        _toDateInput = FormatDateInput(toDate);
-        await LoadTransactionsAsync(resetPaging: true);
-    }
-
-    private async Task ApplyDatePresetAsync(string presetKey)
-    {
-        SetDatePreset(presetKey);
-        await LoadTransactionsAsync(resetPaging: true);
-    }
-
-    private async Task ResetFiltersAsync()
-    {
-        _searchTerm = string.Empty;
-        _appliedSearchTerm = string.Empty;
-        SetDatePreset("90d");
-        await LoadTransactionsAsync(resetPaging: true);
-    }
-
-    private void HandleFromDateChanged(ChangeEventArgs args)
-    {
-        _fromDateInput = args.Value?.ToString() ?? string.Empty;
-    }
-
-    private void HandleToDateChanged(ChangeEventArgs args)
-    {
-        _toDateInput = args.Value?.ToString() ?? string.Empty;
-    }
-
-    private async Task LoadNextPageAsync()
-    {
-        if (!_hasNextPage || _nextCursor is null)
-            return;
-
-        _cursorHistory.Add(_currentCursor);
-        _currentCursor = _nextCursor;
-        await LoadTransactionsAsync(resetPaging: false);
-    }
-
-    private async Task LoadPreviousPageAsync()
-    {
-        if (_cursorHistory.Count == 0)
-            return;
-
-        _currentCursor = _cursorHistory[^1];
-        _cursorHistory.RemoveAt(_cursorHistory.Count - 1);
-        await LoadTransactionsAsync(resetPaging: false);
-    }
-
-    private async Task LoadTransactionsAsync(bool resetPaging)
-    {
-        _isLoadingTransactions = true;
-        _transactionErrorMessage = null;
-
-        if (resetPaging)
-        {
-            _currentCursor = null;
-            _nextCursor = null;
-            _cursorHistory.Clear();
-        }
-
-        try
-        {
-            var fromDate = ParseDateInput(_fromDateInput);
-            var toDate = ParseDateInput(_toDateInput);
-            var result = await TransactionService.GetTransactionsAsync(
-                Id,
-                pageSize: 15,
-                cursor: _currentCursor,
-                fromDate: fromDate,
-                toDate: toDate,
-                searchTerm: _appliedSearchTerm
-            );
-
-            _transactions.Clear();
-            _transactions.AddRange(result.Items);
-            _nextCursor = result.NextCursor;
-            _hasNextPage = result.HasNextPage;
-            _hasPreviousPage = _cursorHistory.Count > 0;
-        }
-        catch
-        {
-            _transactions.Clear();
-            _nextCursor = null;
-            _hasNextPage = false;
-            _hasPreviousPage = _cursorHistory.Count > 0;
-            _transactionErrorMessage = "Transactions could not be loaded right now.";
-        }
-        finally
-        {
-            _isLoadingTransactions = false;
-        }
-    }
-
-    private async Task LoadValuationsAsync()
-    {
-        _isLoadingValuations = true;
-        _valuationErrorMessage = null;
-
-        try
-        {
-            var result = await ValuationService.GetValuationsAsync(Id);
-            _valuations.Clear();
-            _valuations.AddRange(result);
-        }
-        catch
-        {
-            _valuations.Clear();
-            _valuationErrorMessage = "Valuations could not be loaded right now.";
-        }
-        finally
-        {
-            _isLoadingValuations = false;
-        }
-    }
-
-    private async Task LoadPropertyExpensesAsync()
-    {
-        _isLoadingPropertyExpenses = true;
-        _propertyExpenseErrorMessage = null;
-
-        try
-        {
-            var toDate = DateTime.UtcNow;
-            var fromDate = toDate.AddDays(-90);
-
-            var result = await TransactionService.GetTransactionsAsync(
-                Id,
-                pageSize: 100,
-                fromDate: fromDate,
-                toDate: toDate
-            );
-
-            _propertyExpenses.Clear();
-            _propertyExpenses.AddRange(
-                result.Items
-                    .Where(t =>
-                        t.TransactionType.Equals("Debit", StringComparison.OrdinalIgnoreCase)
-                        || t.Amount < 0
-                    )
-                    .OrderByDescending(t => t.Date)
-            );
-
-            _propertyExpenseTotal90Days = _propertyExpenses.Sum(t => Math.Abs(t.Amount));
-        }
-        catch
-        {
-            _propertyExpenses.Clear();
-            _propertyExpenseTotal90Days = 0m;
-            _propertyExpenseErrorMessage = "Property expenses could not be loaded right now.";
-        }
-        finally
-        {
-            _isLoadingPropertyExpenses = false;
-        }
-    }
-
-    private async Task LoadMortgageTrackingAsync()
-    {
-        _isLoadingMortgageSchedule = true;
-        _mortgageScheduleErrorMessage = null;
-
-        try
-        {
-            var accounts = await AccountService.GetAccountsAsync();
-            _mortgageAccounts.Clear();
-            _mortgageAccounts.AddRange(
-                accounts.Where(a =>
-                        a.AccountSubType.Equals("Mortgage", StringComparison.OrdinalIgnoreCase)
-                        || a.AccountType.Equals("Loan", StringComparison.OrdinalIgnoreCase)
-                    )
-                    .OrderBy(a => a.Name)
-            );
-
-            if (_mortgageAccounts.Count == 0)
-            {
-                _mortgageSchedule = null;
-                _selectedMortgageAccountId = string.Empty;
-                return;
-            }
-
-            if (
-                string.IsNullOrWhiteSpace(_selectedMortgageAccountId)
-                || !_mortgageAccounts.Any(a => a.Id.ToString() == _selectedMortgageAccountId)
-            )
-            {
-                _selectedMortgageAccountId = _mortgageAccounts[0].Id.ToString();
-            }
-
-            await LoadMortgageScheduleAsync();
-        }
-        catch
-        {
-            _mortgageSchedule = null;
-            _mortgageScheduleErrorMessage =
-                "Mortgage amortization could not be loaded right now.";
-        }
-        finally
-        {
-            _isLoadingMortgageSchedule = false;
-        }
-    }
-
-    private async Task HandleMortgageAccountChanged(ChangeEventArgs _)
-    {
-        await LoadMortgageScheduleAsync();
-    }
-
-    private async Task LoadMortgageScheduleAsync()
-    {
-        if (!Guid.TryParse(_selectedMortgageAccountId, out var mortgageAccountId))
-        {
-            _mortgageSchedule = null;
-            return;
-        }
-
-        _isLoadingMortgageSchedule = true;
-        _mortgageScheduleErrorMessage = null;
-
-        try
-        {
-            _mortgageSchedule = await AmortizationService.GetScheduleAsync(mortgageAccountId);
-        }
-        catch
-        {
-            _mortgageSchedule = null;
-            _mortgageScheduleErrorMessage = "Unable to load mortgage schedule.";
-        }
-        finally
-        {
-            _isLoadingMortgageSchedule = false;
-        }
-    }
-
-    private void ToggleValuationForm()
-    {
-        _showValuationForm = !_showValuationForm;
-        _valuationSaveMessage = null;
-
-        if (_showValuationForm)
-        {
-            _valuationAmount = _account?.CurrentBalance ?? 0m;
-            _valuationEffectiveDate = DateTime.Today;
-            _valuationSource = "Manual";
-            _valuationNotes = string.Empty;
-        }
-    }
-
-    private async Task SaveValuationAsync()
-    {
-        if (_valuationAmount <= 0 || string.IsNullOrWhiteSpace(_valuationSource))
-        {
-            _valuationSaveIntent = MessageIntent.Warning;
-            _valuationSaveMessage = "Enter a valid amount and source.";
-            return;
-        }
-
-        _isSavingValuation = true;
-        try
-        {
-            var request = new CreateValuationRequest
-            {
-                Amount = _valuationAmount,
-                Currency = _account?.Currency ?? "CAD",
-                EffectiveDate = DateOnly.FromDateTime(_valuationEffectiveDate ?? DateTime.Today),
-                Source = _valuationSource.Trim(),
-                Notes = string.IsNullOrWhiteSpace(_valuationNotes) ? null : _valuationNotes.Trim(),
-            };
-
-            var created = await ValuationService.CreateValuationAsync(Id, request);
-            if (created is null)
-            {
-                _valuationSaveIntent = MessageIntent.Error;
-                _valuationSaveMessage = "Failed to save valuation.";
-                return;
-            }
-
-            _valuationSaveIntent = MessageIntent.Success;
-            _valuationSaveMessage = "Valuation saved.";
-            _showValuationForm = false;
-            await LoadValuationsAsync();
-        }
-        finally
-        {
-            _isSavingValuation = false;
-        }
-    }
-
     private async Task LoadPerformanceAsync()
     {
         _isLoadingPerformance = true;
@@ -1440,6 +256,33 @@ else
         }
     }
 
+    private async Task LoadInvestmentTransactionsAsync()
+    {
+        _isLoadingTransactions = true;
+
+        try
+        {
+            var fromDate = DateTime.Today.AddDays(-90);
+            var result = await TransactionService.GetTransactionsAsync(
+                Id,
+                pageSize: 15,
+                fromDate: fromDate,
+                toDate: DateTime.Today
+            );
+
+            _transactions.Clear();
+            _transactions.AddRange(result.Items);
+        }
+        catch
+        {
+            _transactions.Clear();
+        }
+        finally
+        {
+            _isLoadingTransactions = false;
+        }
+    }
+
     private decimal GetDisplayedCurrentBalance()
     {
         if (IsInvestmentAccount && _performance?.TotalMarketValue is { } marketValue)
@@ -1448,185 +291,13 @@ else
         return _account?.CurrentBalance ?? 0m;
     }
 
-    private async Task LoadHoldingsAsync()
+    private async Task HandleValuationSaved()
     {
-        _isLoadingHoldings = true;
-        _holdingErrorMessage = null;
-
-        try
-        {
-            var holdings = await HoldingService.GetHoldingsAsync(Id);
-            _holdings.Clear();
-            _holdings.AddRange(holdings.OrderBy(h => h.Symbol, StringComparer.OrdinalIgnoreCase));
-
-            _lotsByHoldingId.Clear();
-            _aliasesByHoldingId.Clear();
-            foreach (var holding in _holdings)
-            {
-                var lots = await LotService.GetLotsAsync(holding.Id);
-                _lotsByHoldingId[holding.Id] = lots;
-
-                var aliases = await HoldingService.GetAliasesAsync(holding.Id);
-                _aliasesByHoldingId[holding.Id] = aliases;
-            }
-        }
-        catch
-        {
-            _holdings.Clear();
-            _lotsByHoldingId.Clear();
-            _aliasesByHoldingId.Clear();
-            _holdingErrorMessage = "Holdings could not be loaded right now.";
-        }
-        finally
-        {
-            _isLoadingHoldings = false;
-        }
+        await LoadValueHistoryAsync();
     }
 
-    private async Task AddAliasAsync(Guid holdingId)
+    private async Task HandleAliasChanged()
     {
-        var symbol = (_aliasSymbolByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(symbol))
-        {
-            _aliasMessageByHoldingId[holdingId] = "Enter an alias symbol before saving.";
-            return;
-        }
-
-        _aliasBusyHoldingIds.Add(holdingId);
-        _aliasMessageByHoldingId[holdingId] = string.Empty;
-
-        try
-        {
-            var source = (_aliasSourceByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
-            var created = await HoldingService.AddAliasAsync(
-                holdingId,
-                new AddSecurityAliasRequest
-                {
-                    Symbol = symbol,
-                    Source = string.IsNullOrWhiteSpace(source) ? null : source,
-                    IsPrimary = _aliasPrimaryByHoldingId.GetValueOrDefault(holdingId),
-                }
-            );
-
-            if (created is null)
-            {
-                _aliasMessageByHoldingId[holdingId] = "Alias could not be saved.";
-                return;
-            }
-
-            _aliasSymbolByHoldingId[holdingId] = string.Empty;
-            _aliasSourceByHoldingId[holdingId] = string.Empty;
-            _aliasPrimaryByHoldingId[holdingId] = false;
-            _aliasesByHoldingId[holdingId] = await HoldingService.GetAliasesAsync(holdingId);
-            _aliasMessageByHoldingId[holdingId] = "Alias saved.";
-            await LoadPerformanceAsync();
-            await LoadHoldingsAsync();
-        }
-        finally
-        {
-            _aliasBusyHoldingIds.Remove(holdingId);
-        }
+        await LoadPerformanceAsync();
     }
-
-    private async Task DeleteAliasAsync(Guid holdingId, Guid aliasId)
-    {
-        _aliasBusyHoldingIds.Add(holdingId);
-        _aliasMessageByHoldingId[holdingId] = string.Empty;
-
-        try
-        {
-            var deleted = await HoldingService.DeleteAliasAsync(holdingId, aliasId);
-            if (!deleted)
-            {
-                _aliasMessageByHoldingId[holdingId] =
-                    "Alias could not be removed. Promote another display alias first if needed.";
-                return;
-            }
-
-            _aliasesByHoldingId[holdingId] = await HoldingService.GetAliasesAsync(holdingId);
-            _aliasMessageByHoldingId[holdingId] = "Alias removed.";
-            await LoadPerformanceAsync();
-            await LoadHoldingsAsync();
-        }
-        finally
-        {
-            _aliasBusyHoldingIds.Remove(holdingId);
-        }
-    }
-
-    private void SetDatePreset(string presetKey)
-    {
-        _selectedDatePreset = presetKey;
-        var today = DateTime.Today;
-
-        var range = presetKey switch
-        {
-            "30d" => ((DateTime?)today.AddDays(-30), (DateTime?)today),
-            "90d" => ((DateTime?)today.AddDays(-90), (DateTime?)today),
-            "ytd" => ((DateTime?)new DateTime(today.Year, 1, 1), (DateTime?)today),
-            "1y" => ((DateTime?)today.AddYears(-1), (DateTime?)today),
-            _ => ((DateTime?)null, (DateTime?)null),
-        };
-
-        var (fromDate, toDate) = range;
-
-        _fromDateInput = FormatDateInput(fromDate);
-        _toDateInput = FormatDateInput(toDate);
-    }
-
-    private bool TryParseDateInputs(out DateTime? fromDate, out DateTime? toDate)
-    {
-        fromDate = ParseDateInput(_fromDateInput);
-        toDate = ParseDateInput(_toDateInput);
-
-        if ((_fromDateInput.Length > 0 && !fromDate.HasValue) || (_toDateInput.Length > 0 && !toDate.HasValue))
-            return false;
-
-        if (fromDate.HasValue && toDate.HasValue && fromDate > toDate)
-            return false;
-
-        return true;
-    }
-
-    private static DateTime? ParseDateInput(string value) =>
-        DateTime.TryParse(value, out var parsed) ? parsed : null;
-
-    private static string FormatDateInput(DateTime? value) =>
-        value.HasValue ? value.Value.ToString("yyyy-MM-dd") : string.Empty;
-
-    private string GetRangeSummary()
-    {
-        var fromDate = ParseDateInput(_fromDateInput);
-        var toDate = ParseDateInput(_toDateInput);
-
-        return (fromDate, toDate) switch
-        {
-            (null, null) => "All time",
-            (not null, null) => $"Since {fromDate.Value:MMM d}",
-            (null, not null) => $"Until {toDate.Value:MMM d}",
-            _ => $"{fromDate.Value:MMM d} to {toDate.Value:MMM d}",
-        };
-    }
-
-    private static string FormatTransactionAmount(TransactionResponse transaction)
-    {
-        var prefix = transaction.TransactionType switch
-        {
-            "Credit" => "+",
-            "Debit" => "-",
-            _ => string.Empty,
-        };
-
-        return $"{prefix}{Math.Abs(transaction.Amount):C} {transaction.Currency}";
-    }
-
-    private static string GetTransactionAmountClass(TransactionResponse transaction) =>
-        transaction.TransactionType switch
-        {
-            "Credit" => "transaction-amount--positive",
-            "Debit" => "transaction-amount--negative",
-            _ => string.Empty,
-        };
-
-    private sealed record DatePreset(string Key, string Label);
 }

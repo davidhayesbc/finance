@@ -7,7 +7,8 @@
 <PageTitle>Sinking Funds — Privestio</PageTitle>
 
 <section class="page-shell">
-    <PageHeader Eyebrow="Sinking Funds" Title="Savings goals" Description="Track targeted savings toward lump-sum expenses.">
+    <PageHeader Eyebrow="Sinking Funds" Title="Savings goals"
+                Description="Track targeted savings toward lump-sum expenses.">
         <Actions>
             <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">
                 Add Sinking Fund
@@ -30,34 +31,22 @@
                 <FluentValidationSummary />
 
                 <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                    <FluentTextField @bind-Value="_form.Name" Label="Name" Placeholder="e.g., Annual Insurance" Required="true" maxlength="200" />
+                    <FluentTextField @bind-Value="_form.Name" Label="Name" Placeholder="e.g., Annual Insurance"
+                                     Required="true" maxlength="200" />
                     <FluentValidationMessage For="@(() => _form.Name)" />
 
-                    <FluentNumberField @bind-Value="_form.TargetAmount" Label="Target amount" Step="0.01m" Required="true" />
+                    <FluentNumberField @bind-Value="_form.TargetAmount" Label="Target amount" Step="0.01m"
+                                       Required="true" />
                     <FluentValidationMessage For="@(() => _form.TargetAmount)" />
 
                     <FluentDatePicker @bind-Value="_formDueDate" Label="Due date" Required="true" />
 
-                    <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency">
-                        <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
-                        <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
-                    </FluentSelect>
+                    <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
 
-                    <FluentSelect TOption="string" @bind-Value="_form.AccountId" Label="Funding account (optional)">
-                        <FluentOption TOption="string" Value="">None</FluentOption>
-                        @foreach (var acct in _accounts)
-                        {
-                            <FluentOption TOption="string" Value="@acct.Id.ToString()">@acct.Name</FluentOption>
-                        }
-                    </FluentSelect>
+                    <AccountSelect Accounts="_accounts" @bind-Value="_form.AccountId" Label="Funding account (optional)"
+                                   Placeholder="None" />
 
-                    <FluentSelect TOption="string" @bind-Value="_form.CategoryId" Label="Category (optional)">
-                        <FluentOption TOption="string" Value="">None</FluentOption>
-                        @foreach (var cat in _categories)
-                        {
-                            <FluentOption TOption="string" Value="@cat.Id.ToString()">@cat.Name</FluentOption>
-                        }
-                    </FluentSelect>
+                    <CategorySelect Categories="_categories" @bind-Value="_form.CategoryId" Label="Category (optional)" />
 
                     <FluentTextArea @bind-Value="_form.Notes" Label="Notes" Rows="2" />
 
@@ -80,92 +69,99 @@
             <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
                 <FluentNumberField @bind-Value="_contributeAmount" Label="Contribution amount" Step="0.01m" />
                 <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
-                    <FluentButton Appearance="Appearance.Accent" Loading="_isSaving" OnClick="SubmitContributionAsync">Contribute</FluentButton>
-                    <FluentButton Appearance="Appearance.Stealth" OnClick="CancelContribute">Cancel</FluentButton>
+                    <FluentButton Appearance="Appearance.Accent" Loading="_isSaving" OnClick="SubmitContributionAsync">
+                        Contribute</FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelContribute">Cancel</FluentButton>
+                    </FluentStack>
                 </FluentStack>
-            </FluentStack>
-        </FluentCard>
-    }
+            </FluentCard>
+        }
 
-    @if (_isLoading)
-    {
-        <FluentProgressRing />
-    }
-    else if (_funds.Count == 0)
-    {
-        <EmptyStateCard Message="No sinking funds yet. Start saving toward your next big expense.">
-            <Actions>
-                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">Add Sinking Fund</FluentButton>
-            </Actions>
-        </EmptyStateCard>
-    }
-    else
-    {
-        <FluentCard Class="surface-card data-card">
-            <div class="summary-strip">
-                <div>
-                    <span class="summary-strip__label">Active funds</span>
-                    <strong>@_funds.Count(f => f.IsActive)</strong>
+        @if (_isLoading)
+        {
+            <LoadingSpinner AriaLabel="Loading sinking funds" />
+        }
+        else if (_funds.Count == 0)
+        {
+            <EmptyStateCard Message="No sinking funds yet. Start saving toward your next big expense.">
+                <Actions>
+                    <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">Add Sinking Fund</FluentButton>
+                </Actions>
+            </EmptyStateCard>
+        }
+        else
+        {
+            <FluentCard Class="surface-card data-card">
+                <div class="summary-strip">
+                    <div>
+                        <span class="summary-strip__label">Active funds</span>
+                        <strong>@_funds.Count(f => f.IsActive)</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Total target</span>
+                        <strong>@_funds.Where(f => f.IsActive).Sum(f => f.TargetAmount).ToString("C")</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Total saved</span>
+                        <strong>@_funds.Where(f => f.IsActive).Sum(f => f.AccumulatedAmount).ToString("C")</strong>
+                    </div>
+                    <div>
+                        <span class="summary-strip__label">Behind schedule</span>
+                        <strong>@_funds.Count(f => f.IsActive && !f.IsOnTrack)</strong>
+                    </div>
                 </div>
-                <div>
-                    <span class="summary-strip__label">Total target</span>
-                    <strong>@_funds.Where(f => f.IsActive).Sum(f => f.TargetAmount).ToString("C")</strong>
-                </div>
-                <div>
-                    <span class="summary-strip__label">Total saved</span>
-                    <strong>@_funds.Where(f => f.IsActive).Sum(f => f.AccumulatedAmount).ToString("C")</strong>
-                </div>
-                <div>
-                    <span class="summary-strip__label">Behind schedule</span>
-                    <strong>@_funds.Count(f => f.IsActive && !f.IsOnTrack)</strong>
-                </div>
-            </div>
 
-            <FluentDataGrid Items="_funds.AsQueryable()" TGridItem="SinkingFundResponse" Class="data-grid--elevated">
-                <PropertyColumn Property="@(f => f.Name)" Title="Name" Sortable="true" />
-                <TemplateColumn Title="Progress">
-                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 0.5rem;">
-                        <FluentProgress Value="@((int)Math.Min(context.ProgressPercentage, 100))" Min="0" Max="100" Style="flex: 1;" />
-                        <span style="font-size: 0.85rem; min-width: 3rem;">@context.ProgressPercentage.ToString("F0")%</span>
-                    </FluentStack>
-                </TemplateColumn>
-                <TemplateColumn Title="Saved / Target">
-                    @context.AccumulatedAmount.ToString("C") / @context.TargetAmount.ToString("C")
-                </TemplateColumn>
-                <TemplateColumn Title="Monthly">
-                    @context.MonthlySetAside.ToString("C")
-                </TemplateColumn>
-                <TemplateColumn Title="Due">
-                    @context.DueDate.ToString("MMM d, yyyy")
-                </TemplateColumn>
-                <TemplateColumn Title="Status">
-                    @if (!context.IsActive)
-                    {
-                        <FluentBadge Appearance="Appearance.Neutral">Completed</FluentBadge>
-                    }
-                    else if (context.IsOnTrack)
-                    {
-                        <FluentBadge Appearance="Appearance.Accent">On Track</FluentBadge>
-                    }
-                    else
-                    {
-                        <FluentBadge Appearance="Appearance.Accent" BackgroundColor="#c50f1f" Color="white">Behind</FluentBadge>
-                    }
-                </TemplateColumn>
-                <TemplateColumn Title="">
-                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
-                        @if (context.IsActive)
+                <FluentDataGrid Items="_funds.AsQueryable()" TGridItem="SinkingFundResponse" Class="data-grid--elevated">
+                    <PropertyColumn Property="@(f => f.Name)" Title="Name" Sortable="true" />
+                    <TemplateColumn Title="Progress">
+                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                                     Style="gap: 0.5rem;">
+                            <FluentProgress Value="@((int)Math.Min(context.ProgressPercentage, 100))" Min="0" Max="100"
+                                            Style="flex: 1;" />
+                            <span
+                            style="font-size: 0.85rem; min-width: 3rem;">@context.ProgressPercentage.ToString("F0")%</span>
+                        </FluentStack>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Saved / Target">
+                        @context.AccumulatedAmount.ToString("C") / @context.TargetAmount.ToString("C")
+                    </TemplateColumn>
+                    <TemplateColumn Title="Monthly">
+                        @context.MonthlySetAside.ToString("C")
+                    </TemplateColumn>
+                    <TemplateColumn Title="Due">
+                        @context.DueDate.ToString("MMM d, yyyy")
+                    </TemplateColumn>
+                    <TemplateColumn Title="Status">
+                        @if (!context.IsActive)
                         {
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => ShowContribute(context))">Contribute</FluentButton>
+                            <FluentBadge Appearance="Appearance.Neutral">Completed</FluentBadge>
                         }
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditFund(context))">Edit</FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteFundAsync(context.Id))">Delete</FluentButton>
-                    </FluentStack>
-                </TemplateColumn>
-            </FluentDataGrid>
-        </FluentCard>
-    }
-</section>
+                        else if (context.IsOnTrack)
+                        {
+                            <FluentBadge Appearance="Appearance.Accent">On Track</FluentBadge>
+                        }
+                        else
+                        {
+                            <FluentBadge Appearance="Appearance.Accent" BackgroundColor="#c50f1f" Color="white">Behind</FluentBadge>
+                        }
+                    </TemplateColumn>
+                    <TemplateColumn Title="">
+                        <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                            @if (context.IsActive)
+                            {
+                                <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => ShowContribute(context))">Contribute
+                                </FluentButton>
+                            }
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditFund(context))">Edit
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteFundAsync(context.Id))">Delete
+                            </FluentButton>
+                        </FluentStack>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            </FluentCard>
+        }
+    </section>
 
 @code {
     private List<SinkingFundResponse> _funds = [];
@@ -264,7 +260,8 @@
         {
             var result = await SinkingFundService.UpdateSinkingFundAsync(
                 _editingFundId.Value,
-                new UpdateSinkingFundRequest(_form.Name, _form.TargetAmount, _form.DueDate, _form.Currency, accountId, categoryId, _form.Notes)
+                new UpdateSinkingFundRequest(_form.Name, _form.TargetAmount, _form.DueDate, _form.Currency, accountId, categoryId,
+_form.Notes)
             );
             if (result is null)
             {
@@ -276,7 +273,8 @@
         else
         {
             var result = await SinkingFundService.CreateSinkingFundAsync(
-                new CreateSinkingFundRequest(_form.Name, _form.TargetAmount, _form.DueDate, _form.Currency, accountId, categoryId, _form.Notes)
+                new CreateSinkingFundRequest(_form.Name, _form.TargetAmount, _form.DueDate, _form.Currency, accountId, categoryId,
+_form.Notes)
             );
             if (result is null)
             {

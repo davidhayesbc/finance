@@ -11,7 +11,7 @@
         <FluentBreadcrumbItem>History</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="Import"        Title="Import history"
+    <PageHeader Eyebrow="Import" Title="Import history"
                 Description="Inspect previous import batches, error counts, and rollback candidates in one table."
                 Compact="true">
         <Actions>
@@ -42,9 +42,7 @@
 
     @if (_isLoading)
     {
-        <div class="empty-state-shell">
-            <FluentProgressRing aria-label="Loading import history" />
-        </div>
+        <LoadingSpinner AriaLabel="Loading import history" />
     }
     else if (_batches.Count == 0)
     {
@@ -69,7 +67,7 @@
                 <TemplateColumn Title="">
                     @if (context.Status is "Completed" or "CompletedWithErrors")
                     {
-                        <FluentButton Appearance="Appearance.Stealth"        OnClick="@(() => RollbackAsync(context.Id))"
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => RollbackAsync(context.Id))"
                                       aria-label="@($"Rollback import {context.FileName}")">
                             Rollback
                         </FluentButton>

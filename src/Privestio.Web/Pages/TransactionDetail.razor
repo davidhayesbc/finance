@@ -8,9 +8,7 @@
 
 @if (_isLoading)
 {
-    <div class="empty-state-shell page-shell">
-        <FluentProgressRing aria-label="Loading transaction" />
-    </div>
+    <LoadingSpinner AriaLabel="Loading transaction" Class="page-shell" />
 }
 else if (_transaction is null)
 {
@@ -38,22 +36,10 @@ else
                     Compact="true" />
 
         <div class="detail-grid">
-            <FluentCard Class="detail-card" aria-label="Date">
-                <span class="detail-card__label">Date</span>
-                <strong>@_transaction.Date.ToString("MMMM d, yyyy")</strong>
-            </FluentCard>
-            <FluentCard Class="detail-card" aria-label="Amount">
-                <span class="detail-card__label">Amount</span>
-                <strong>@_transaction.Amount.ToString("C") @_transaction.Currency</strong>
-            </FluentCard>
-            <FluentCard Class="detail-card" aria-label="Type">
-                <span class="detail-card__label">Type</span>
-                <strong>@_transaction.TransactionType</strong>
-            </FluentCard>
-            <FluentCard Class="detail-card" aria-label="Category">
-                <span class="detail-card__label">Category</span>
-                <strong>@(_transaction.CategoryName ?? "Uncategorized")</strong>
-            </FluentCard>
+            <StatCard Label="Date">@_transaction.Date.ToString("MMMM d, yyyy")</StatCard>
+            <StatCard Label="Amount">@_transaction.Amount.ToString("C") @_transaction.Currency</StatCard>
+            <StatCard Label="Type">@_transaction.TransactionType</StatCard>
+            <StatCard Label="Category">@(_transaction.CategoryName ?? "Uncategorized")</StatCard>
         </div>
 
         @if (!string.IsNullOrEmpty(_transaction.Notes))
@@ -78,24 +64,7 @@ else
                 </Actions>
             </PageHeader>
 
-            @if (!string.IsNullOrEmpty(_splitError) || !string.IsNullOrEmpty(_splitSuccess))
-            {
-                <div class="message-stack">
-                    @if (!string.IsNullOrEmpty(_splitError))
-                    {
-                        <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
-                            @_splitError
-                        </FluentMessageBar>
-                    }
-
-                    @if (!string.IsNullOrEmpty(_splitSuccess))
-                    {
-                        <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
-                            @_splitSuccess
-                        </FluentMessageBar>
-                    }
-                </div>
-            }
+            <MessageStack ErrorMessage="@_splitError" SuccessMessage="@_splitSuccess" />
 
             @if (_transaction.IsSplit && !_isEditingSplits)
             {

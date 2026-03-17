@@ -1,0 +1,10 @@
+<FluentCard Class="detail-card" aria-label="@(AriaLabel ?? Label)">
+    <span class="detail-card__label">@Label</span>
+    <strong>@ChildContent</strong>
+</FluentCard>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

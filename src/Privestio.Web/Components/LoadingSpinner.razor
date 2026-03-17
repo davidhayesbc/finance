@@ -1,0 +1,8 @@
+<div class="empty-state-shell @Class">
+    <FluentProgressRing aria-label="@AriaLabel" />
+</div>
+
+@code {
+    [Parameter] public string AriaLabel { get; set; } = "Loading";
+    [Parameter] public string? Class { get; set; }
+}

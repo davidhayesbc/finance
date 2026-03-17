@@ -48,7 +48,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading scenarios" />
     }
     else if (_scenarios.Count == 0)
     {
@@ -93,15 +93,15 @@
             <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0 0 1rem 0;">Net Worth Projection — @_selectedForecast.ScenarioName</h3>
 
-                <ApexChart TItem="NetWorthForecastPeriod"               Title=""     Height="400">
-                    <ApexPointSeries TItem="NetWorthForecastPeriod"             Items="_selectedForecast.Periods.ToList()"
-                                     SeriesType="SeriesType.Line"                                  Name="Net Worth"                                  XValue="@(p => p.Date.ToString("MMM yyyy"))"
+                <ApexChart TItem="NetWorthForecastPeriod" Title="" Height="400">
+                    <ApexPointSeries TItem="NetWorthForecastPeriod" Items="_selectedForecast.Periods.ToList()"
+                                     SeriesType="SeriesType.Line" Name="Net Worth" XValue="@(p => p.Date.ToString("MMM yyyy"))"
                                      YAggregate="@(items => items.Sum(i => i.ProjectedNetWorth))" />
-                    <ApexPointSeries TItem="NetWorthForecastPeriod"                          Items="_selectedForecast.Periods.ToList()"
-                                     SeriesType="SeriesType.Line"          Name="Assets"                                     XValue="@(p => p.Date.ToString("MMM yyyy"))"
+                    <ApexPointSeries TItem="NetWorthForecastPeriod" Items="_selectedForecast.Periods.ToList()"
+                                     SeriesType="SeriesType.Line" Name="Assets" XValue="@(p => p.Date.ToString("MMM yyyy"))"
                                      YAggregate="@(items => items.Sum(i => i.ProjectedAssets))" />
-                    <ApexPointSeries TItem="NetWorthForecastPeriod"                                     Items="_selectedForecast.Periods.ToList()"
-                                     SeriesType="SeriesType.Line"                                     Name="Liabilities"                                     XValue="@(p => p.Date.ToString("MMM yyyy"))"
+                    <ApexPointSeries TItem="NetWorthForecastPeriod" Items="_selectedForecast.Periods.ToList()"
+                                     SeriesType="SeriesType.Line" Name="Liabilities" XValue="@(p => p.Date.ToString("MMM yyyy"))"
                                      YAggregate="@(items => items.Sum(i => i.ProjectedLiabilities))" />
                 </ApexChart>
             </FluentCard>

@@ -1,0 +1,23 @@
+@if (!string.IsNullOrEmpty(ErrorMessage) || !string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="message-stack">
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <FluentMessageBar Intent="@MessageIntent.Error" aria-live="assertive">
+                @ErrorMessage
+            </FluentMessageBar>
+        }
+
+        @if (!string.IsNullOrEmpty(SuccessMessage))
+        {
+            <FluentMessageBar Intent="@MessageIntent.Success" aria-live="polite">
+                @SuccessMessage
+            </FluentMessageBar>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public string? SuccessMessage { get; set; }
+}

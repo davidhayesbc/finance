@@ -9,7 +9,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading conflicts" />
     }
     else if (_conflicts.Count == 0)
     {
@@ -25,7 +25,7 @@
                                  Style="gap: 1rem;">
                         <h3 style="margin: 0;">@conflict.EntityType</h3>
                         <FluentBadge Appearance="Appearance.Neutral">@conflict.Status</FluentBadge>
-                        <span style="opacity: 0.6; font-size: 0.85rem;">Detected @conflict.DetectedAt.ToString("MMM dd, yyyy      HH:mm")</span>
+                        <span style="opacity: 0.6; font-size: 0.85rem;">Detected @conflict.DetectedAt.ToString("MMM dd, yyyy             HH:mm")</span>
                     </FluentStack>
 
                     <FluentStack Orientation="Orientation.Horizontal" Style="gap: 1rem; width: 100%;">
@@ -40,11 +40,11 @@
                     </FluentStack>
 
                     <FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem;">
-                        <FluentButton Appearance="Appearance.Accent"                                     OnClick="@(() => ResolveAsync(conflict.Id, "KeepLocal"))"
+                        <FluentButton Appearance="Appearance.Accent" OnClick="@(() => ResolveAsync(conflict.Id, "KeepLocal"))"
                                       Loading="@(_resolvingId == conflict.Id)">
                             Keep Local
                         </FluentButton>
-                        <FluentButton Appearance="Appearance.Outline"                                   OnClick="@(() => ResolveAsync(conflict.Id, "KeepServer"))"
+                        <FluentButton Appearance="Appearance.Outline" OnClick="@(() => ResolveAsync(conflict.Id, "KeepServer"))"
                                       Loading="@(_resolvingId == conflict.Id)">
                             Keep Server
                         </FluentButton>

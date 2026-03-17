@@ -1,0 +1,19 @@
+<FluentSelect TOption="string" Value="@Value" ValueChanged="ValueChanged" Label="@Label"
+              aria-required="@(Required ? "true" : null)">
+    <FluentOption TOption="string" Value="">@Placeholder</FluentOption>
+    @foreach (var account in Accounts)
+    {
+        <FluentOption TOption="string" Value="@account.Id.ToString()">
+            @account.Name (@account.AccountType)
+        </FluentOption>
+    }
+</FluentSelect>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AccountResponse> Accounts { get; set; } = [];
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Account";
+    [Parameter] public string Placeholder { get; set; } = "Select an account...";
+    [Parameter] public bool Required { get; set; }
+}

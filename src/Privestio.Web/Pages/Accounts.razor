@@ -25,9 +25,7 @@
 
     @if (_isLoading)
     {
-        <div class="empty-state-shell">
-            <FluentProgressRing aria-label="Loading accounts" />
-        </div>
+        <LoadingSpinner AriaLabel="Loading accounts" />
     }
     else if (_accounts.Count == 0)
     {
@@ -61,9 +59,7 @@
 
                 @if (_isLoadingHistory)
                 {
-                    <div class="empty-state-shell">
-                        <FluentProgressRing aria-label="Loading net worth history" />
-                    </div>
+                    <LoadingSpinner AriaLabel="Loading net worth history" />
                 }
                 else
                 {

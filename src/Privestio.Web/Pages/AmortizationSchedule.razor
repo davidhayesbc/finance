@@ -49,10 +49,7 @@
                 <FluentNumberField @bind-Value="_monthlyPayment" Label="Monthly payment" Step="0.01m" Required="true" />
                 <FluentDatePicker @bind-Value="_startDate" Label="Start date" />
 
-                <FluentSelect TOption="string" @bind-Value="_currency" Label="Currency">
-                    <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
-                    <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
-                </FluentSelect>
+                <CurrencySelect @bind-Value="_currency" Label="Currency" />
 
                 <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
                     <FluentButton Appearance="Appearance.Accent" OnClick="GenerateScheduleAsync" Loading="_isSaving">
@@ -66,7 +63,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading amortization schedule" />
     }
     else if (_schedule is null && !string.IsNullOrEmpty(_selectedAccountIdStr))
     {
@@ -103,9 +100,9 @@
             <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0 0 1rem 0;">Balance Over Time</h3>
 
-                <ApexChart TItem="AmortizationEntryResponse"                       Title=""                       Height="350">
-                    <ApexPointSeries TItem="AmortizationEntryResponse"                                 Items="_schedule.Entries.ToList()"
-                                     SeriesType="SeriesType.Line"                                 Name="Remaining Balance"
+                <ApexChart TItem="AmortizationEntryResponse" Title="" Height="350">
+                    <ApexPointSeries TItem="AmortizationEntryResponse" Items="_schedule.Entries.ToList()"
+                                     SeriesType="SeriesType.Line" Name="Remaining Balance"
                                      XValue="@(e => e.PaymentDate.ToString("MMM yyyy"))"
                                      YAggregate="@(items => items.Sum(i => i.RemainingBalance))" />
                 </ApexChart>

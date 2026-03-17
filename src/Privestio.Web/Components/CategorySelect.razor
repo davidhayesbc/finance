@@ -1,0 +1,17 @@
+<FluentSelect TOption="string" Value="@Value" ValueChanged="ValueChanged" Label="@Label"
+              aria-required="@(Required ? "true" : null)">
+    <FluentOption TOption="string" Value="">@NoneLabel</FluentOption>
+    @foreach (var category in Categories)
+    {
+        <FluentOption TOption="string" Value="@category.Id.ToString()">@category.Name</FluentOption>
+    }
+</FluentSelect>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<CategoryResponse> Categories { get; set; } = [];
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Category";
+    [Parameter] public string NoneLabel { get; set; } = "None";
+    [Parameter] public bool Required { get; set; }
+}

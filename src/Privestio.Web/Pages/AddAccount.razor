@@ -55,10 +55,7 @@
                     <FluentOption TOption="string" Value="Mortgage">Mortgage</FluentOption>
                 </FluentSelect>
 
-                <FluentSelect TOption="string" @bind-Value="_form.Currency" Label="Currency" id="account-currency">
-                    <FluentOption TOption="string" Value="CAD">CAD — Canadian Dollar</FluentOption>
-                    <FluentOption TOption="string" Value="USD">USD — US Dollar</FluentOption>
-                </FluentSelect>
+                <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
 
                 <FluentTextField @bind-Value="_form.Institution" Label="Institution" Placeholder="e.g., RBC, TD"
                                  maxlength="200" id="account-institution" />

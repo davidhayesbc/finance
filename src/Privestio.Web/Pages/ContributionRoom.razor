@@ -28,7 +28,7 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading contribution room" />
     }
     else if (string.IsNullOrEmpty(_selectedAccountIdStr))
     {

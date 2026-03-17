@@ -1,0 +1,302 @@
+@inject IHoldingService HoldingService
+@inject ILotService LotService
+@using Privestio.Contracts.Requests
+
+<FluentCard Class="surface-card transaction-panel" aria-labelledby="holdings-title">
+    <div class="section-heading-row">
+        <div>
+            <h2 id="holdings-title" class="section-heading">Holdings and lot details</h2>
+            <p class="section-copy">Current positions with lot-level cost basis records for this investment account.</p>
+        </div>
+        <div class="summary-strip summary-strip--compact">
+            <div>
+                <span class="summary-strip__label">Positions</span>
+                <strong>@_holdings.Count</strong>
+            </div>
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <LoadingSpinner AriaLabel="Loading holdings" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <FluentMessageBar Intent="@MessageIntent.Warning">@_errorMessage</FluentMessageBar>
+    }
+    else if (_holdings.Count == 0)
+    {
+        <div class="empty-inline">
+            <strong>No holdings found.</strong>
+            <span>Imported investment trades will appear here as holdings and lots.</span>
+        </div>
+    }
+    else
+    {
+        <div class="txn-table-wrapper" role="region" aria-label="Holdings">
+            <table class="txn-table" aria-label="Holdings">
+                <thead>
+                    <tr>
+                        <th scope="col" class="txn-col--desc">Security</th>
+                        <th scope="col" class="txn-col--cat">Symbol</th>
+                        <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
+                        <th scope="col" class="txn-col--amount txn-cell--right">Avg cost</th>
+                        <th scope="col" class="txn-col--cat">Lots</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var holding in _holdings)
+                    {
+                        var lots = _lotsByHoldingId.GetValueOrDefault(holding.Id) ?? [];
+                        var aliases = _aliasesByHoldingId.GetValueOrDefault(holding.Id) ?? [];
+                        var newAliasSymbol = _aliasSymbolByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
+                        var newAliasSource = _aliasSourceByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
+                        var isPrimaryAlias = _aliasPrimaryByHoldingId.GetValueOrDefault(holding.Id);
+                        var aliasMessage = _aliasMessageByHoldingId.GetValueOrDefault(holding.Id);
+                        var isAliasBusy = _aliasBusyHoldingIds.Contains(holding.Id);
+                        <tr class="txn-row" @key="holding.Id">
+                            <td class="txn-cell--desc">
+                                <span class="txn-desc-primary txn-desc-primary--full">@holding.SecurityName</span>
+                                @if (!string.IsNullOrWhiteSpace(holding.Notes))
+                                {
+                                    <span class="txn-desc-sub">@holding.Notes</span>
+                                }
+
+                                <div style="margin-top:0.5rem; display:grid; gap:0.4rem;">
+                                    <div style="display:flex; flex-wrap:wrap; gap:0.3rem; align-items:center;">
+                                        @if (aliases.Count == 0)
+                                        {
+                                            <span class="txn-no-value">No aliases configured.</span>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var alias in aliases)
+                                            {
+                                                <span class="txn-category" style="display:inline-flex; gap:0.3rem; align-items:center;">
+                                                    @alias.Symbol
+                                                    @if (!string.IsNullOrWhiteSpace(alias.Source))
+                                                    {
+                                                        <span class="txn-no-value">(@alias.Source)</span>
+                                                    }
+                                                    @if (alias.IsPrimary)
+                                                    {
+                                                        <strong style="font-size:0.72rem;">primary</strong>
+                                                    }
+                                                    <button type="button" class="app-button app-button--secondary"
+                                                            style="padding:0.1rem 0.45rem; font-size:0.72rem;"                                                         disabled="@isAliasBusy"
+                                                            @onclick="() => DeleteAliasAsync(holding.Id, alias.Id)">
+                                                        Remove
+                                                    </button>
+                                                </span>
+                                            }
+                                        }
+                                    </div>
+
+                                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+                                        <input class="filter-input" style="max-width:9rem;" placeholder="Alias symbol"
+                                               value="@newAliasSymbol"
+                                               @oninput="e => _aliasSymbolByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
+                                        <input class="filter-input" style="max-width:9rem;" placeholder="Source (optional)"
+                                               value="@newAliasSource"
+                                               @oninput="e => _aliasSourceByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
+                                        <label style="display:inline-flex; gap:0.3rem; align-items:center; font-size:0.8rem;">
+                                            <input type="checkbox" checked="@isPrimaryAlias"
+                                                   @onchange="e => _aliasPrimaryByHoldingId[holding.Id] = e.Value as bool? == true" />
+                                            Primary
+                                        </label>
+                                        <button type="button" class="app-button app-button--secondary"                              disabled="@isAliasBusy"
+                                                @onclick="() => AddAliasAsync(holding.Id)">
+                                            Add alias
+                                        </button>
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(aliasMessage))
+                                    {
+                                        <span class="txn-desc-sub">@aliasMessage</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="txn-cell--cat"><span class="txn-category">@holding.Symbol</span></td>
+                            <td class="txn-cell--amount txn-cell--right">@holding.Quantity</td>
+                            <td class="txn-cell--amount txn-cell--right">
+                                @holding.AverageCostPerUnit.ToString("C") @holding.Currency
+                            </td>
+                            <td class="txn-cell--cat">@lots.Count</td>
+                        </tr>
+                        <tr @key="@($"{holding.Id}-lots")">
+                            <td colspan="5" class="txn-cell--desc" style="padding-top:0.25rem;padding-bottom:1rem;">
+                                @if (lots.Count == 0)
+                                {
+                                    <span class="txn-no-value">No lots recorded for this holding.</span>
+                                }
+                                else
+                                {
+                                    <div class="txn-table-wrapper" role="region" aria-label="Lots for @holding.Symbol">
+                                        <table class="txn-table" aria-label="Lots for @holding.Symbol">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col" class="txn-col--date">Acquired</th>
+                                                    <th scope="col" class="txn-col--amount txn-cell--right">Quantity</th>
+                                                    <th scope="col" class="txn-col--amount txn-cell--right">Unit cost</th>
+                                                    <th scope="col" class="txn-col--cat">Source</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var lot in lots)
+                                                {
+                                                    <tr class="txn-row" @key="lot.Id">
+                                                        <td class="txn-cell--date">@lot.AcquiredDate.ToString("MMM d, yyyy")</td>
+                                                        <td class="txn-cell--amount txn-cell--right">@lot.Quantity</td>
+                                                        <td class="txn-cell--amount txn-cell--right">@lot.UnitCost.ToString("C")
+                                                            @lot.Currency</td>
+                                                            <td class="txn-cell--cat">
+                                                                @if (!string.IsNullOrWhiteSpace(lot.Source))
+                                                                {
+                                                                    <span class="txn-category">@lot.Source</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="txn-no-value">—</span>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </FluentCard>
+
+@code {
+    [Parameter, EditorRequired] public Guid AccountId { get; set; }
+    [Parameter] public EventCallback OnAliasChanged { get; set; }
+
+    private readonly List<HoldingResponse> _holdings = new();
+    private readonly Dictionary<Guid, IReadOnlyList<LotResponse>> _lotsByHoldingId = [];
+    private readonly Dictionary<Guid, IReadOnlyList<SecurityAliasResponse>> _aliasesByHoldingId = [];
+    private readonly Dictionary<Guid, string> _aliasSymbolByHoldingId = [];
+    private readonly Dictionary<Guid, string> _aliasSourceByHoldingId = [];
+    private readonly Dictionary<Guid, bool> _aliasPrimaryByHoldingId = [];
+    private readonly Dictionary<Guid, string> _aliasMessageByHoldingId = [];
+    private readonly HashSet<Guid> _aliasBusyHoldingIds = [];
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadHoldingsAsync();
+    }
+
+    private async Task LoadHoldingsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var holdings = await HoldingService.GetHoldingsAsync(AccountId);
+            _holdings.Clear();
+            _holdings.AddRange(holdings.OrderBy(h => h.Symbol, StringComparer.OrdinalIgnoreCase));
+
+            _lotsByHoldingId.Clear();
+            _aliasesByHoldingId.Clear();
+            foreach (var holding in _holdings)
+            {
+                var lots = await LotService.GetLotsAsync(holding.Id);
+                _lotsByHoldingId[holding.Id] = lots;
+
+                var aliases = await HoldingService.GetAliasesAsync(holding.Id);
+                _aliasesByHoldingId[holding.Id] = aliases;
+            }
+        }
+        catch
+        {
+            _holdings.Clear();
+            _lotsByHoldingId.Clear();
+            _aliasesByHoldingId.Clear();
+            _errorMessage = "Holdings could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task AddAliasAsync(Guid holdingId)
+    {
+        var symbol = (_aliasSymbolByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(symbol))
+        {
+            _aliasMessageByHoldingId[holdingId] = "Enter an alias symbol before saving.";
+            return;
+        }
+
+        _aliasBusyHoldingIds.Add(holdingId);
+        _aliasMessageByHoldingId[holdingId] = string.Empty;
+
+        try
+        {
+            var source = (_aliasSourceByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
+            var created = await HoldingService.AddAliasAsync(
+                holdingId,
+                new AddSecurityAliasRequest
+                {
+                    Symbol = symbol,
+                    Source = string.IsNullOrWhiteSpace(source) ? null : source,
+                    IsPrimary = _aliasPrimaryByHoldingId.GetValueOrDefault(holdingId),
+                }
+            );
+
+            if (created is null)
+            {
+                _aliasMessageByHoldingId[holdingId] = "Alias could not be saved.";
+                return;
+            }
+
+            _aliasSymbolByHoldingId[holdingId] = string.Empty;
+            _aliasSourceByHoldingId[holdingId] = string.Empty;
+            _aliasPrimaryByHoldingId[holdingId] = false;
+            _aliasesByHoldingId[holdingId] = await HoldingService.GetAliasesAsync(holdingId);
+            _aliasMessageByHoldingId[holdingId] = "Alias saved.";
+            await OnAliasChanged.InvokeAsync();
+            await LoadHoldingsAsync();
+        }
+        finally
+        {
+            _aliasBusyHoldingIds.Remove(holdingId);
+        }
+    }
+
+    private async Task DeleteAliasAsync(Guid holdingId, Guid aliasId)
+    {
+        _aliasBusyHoldingIds.Add(holdingId);
+        _aliasMessageByHoldingId[holdingId] = string.Empty;
+
+        try
+        {
+            var deleted = await HoldingService.DeleteAliasAsync(holdingId, aliasId);
+            if (!deleted)
+            {
+                _aliasMessageByHoldingId[holdingId] =
+                    "Alias could not be removed. Promote another display alias first if needed.";
+                return;
+            }
+
+            _aliasesByHoldingId[holdingId] = await HoldingService.GetAliasesAsync(holdingId);
+            _aliasMessageByHoldingId[holdingId] = "Alias removed.";
+            await OnAliasChanged.InvokeAsync();
+            await LoadHoldingsAsync();
+        }
+        finally
+        {
+            _aliasBusyHoldingIds.Remove(holdingId);
+        }
+    }
+}

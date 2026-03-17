@@ -1,0 +1,144 @@
+@inject IAmortizationService AmortizationService
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<FluentCard Class="surface-card transaction-panel" aria-labelledby="mortgage-amortization-title">
+    <div class="section-heading-row">
+        <div>
+            <h2 id="mortgage-amortization-title" class="section-heading">Mortgage amortization</h2>
+            <p class="section-copy">Track principal and interest progress from linked mortgage or loan accounts.</p>
+        </div>
+        <FluentButton Appearance="Appearance.Outline" @onclick='() => Navigation.NavigateTo("/amortization")'>
+            Open Full Schedule
+        </FluentButton>
+    </div>
+
+    @if (_mortgageAccounts.Count == 0)
+    {
+        <div class="empty-inline">
+            <strong>No mortgage accounts found.</strong>
+            <span>Create a loan/mortgage account to generate and track amortization.</span>
+        </div>
+    }
+    else
+    {
+        <FluentSelect TOption="string" @bind-Value="_selectedMortgageAccountId" Label="Mortgage account"
+                      Style="max-width:320px;margin-bottom:1rem;" @onchange="HandleMortgageAccountChanged">
+            @foreach (var mortgage in _mortgageAccounts)
+            {
+                <FluentOption TOption="string" Value="@mortgage.Id.ToString()">@mortgage.Name</FluentOption>
+            }
+        </FluentSelect>
+
+        @if (_isLoading)
+        {
+            <LoadingSpinner AriaLabel="Loading mortgage amortization" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <FluentMessageBar Intent="@MessageIntent.Warning">@_errorMessage</FluentMessageBar>
+        }
+        else if (_schedule is null || _schedule.Entries.Count == 0)
+        {
+            <div class="empty-inline">
+                <strong>No amortization schedule generated.</strong>
+                <span>Generate one from the Amortization Schedule page.</span>
+            </div>
+        }
+        else
+        {
+            var nextPayment = _schedule.Entries.FirstOrDefault(e => e.PaymentDate >= DateOnly.FromDateTime(DateTime.UtcNow));
+            var lastPayment = _schedule.Entries.Last();
+            <div class="detail-grid">
+                <StatCard Label="Total principal">@_schedule.TotalPrincipal.ToString("C") @_schedule.Currency</StatCard>
+                <StatCard Label="Total interest">@_schedule.TotalInterest.ToString("C") @_schedule.Currency</StatCard>
+                <StatCard Label="Remaining balance">@lastPayment.RemainingBalance.ToString("C") @_schedule.Currency</StatCard>
+                <StatCard Label="Next payment">@(nextPayment is null ? "Paid off" : nextPayment.PaymentDate.ToString("MMM d,            yyyy"))</StatCard>
+            </div>
+        }
+    }
+</FluentCard>
+
+@code {
+    private readonly List<AccountResponse> _mortgageAccounts = new();
+    private AmortizationScheduleResponse? _schedule;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string _selectedMortgageAccountId = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var accounts = await AccountService.GetAccountsAsync();
+            _mortgageAccounts.Clear();
+            _mortgageAccounts.AddRange(
+                accounts.Where(a =>
+                        a.AccountSubType.Equals("Mortgage", StringComparison.OrdinalIgnoreCase)
+                        || a.AccountType.Equals("Loan", StringComparison.OrdinalIgnoreCase)
+                    )
+                    .OrderBy(a => a.Name)
+            );
+
+            if (_mortgageAccounts.Count == 0)
+            {
+                _schedule = null;
+                _selectedMortgageAccountId = string.Empty;
+                return;
+            }
+
+            if (
+                string.IsNullOrWhiteSpace(_selectedMortgageAccountId)
+                || !_mortgageAccounts.Any(a => a.Id.ToString() == _selectedMortgageAccountId)
+            )
+            {
+                _selectedMortgageAccountId = _mortgageAccounts[0].Id.ToString();
+            }
+
+            await LoadScheduleAsync();
+        }
+        catch
+        {
+            _schedule = null;
+            _errorMessage = "Mortgage amortization could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleMortgageAccountChanged(ChangeEventArgs _)
+    {
+        await LoadScheduleAsync();
+    }
+
+    private async Task LoadScheduleAsync()
+    {
+        if (!Guid.TryParse(_selectedMortgageAccountId, out var mortgageAccountId))
+        {
+            _schedule = null;
+            return;
+        }
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _schedule = await AmortizationService.GetScheduleAsync(mortgageAccountId);
+        }
+        catch
+        {
+            _schedule = null;
+            _errorMessage = "Unable to load mortgage schedule.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

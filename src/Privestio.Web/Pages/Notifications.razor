@@ -22,7 +22,8 @@
     </PageHeader>
 
     <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                     Style="gap: 1rem;">
             <FluentCheckbox @bind-Value="_includeRead" Label="Show read notifications" />
             <FluentButton Appearance="Appearance.Stealth" OnClick="LoadDataAsync">Refresh</FluentButton>
         </FluentStack>
@@ -30,13 +31,15 @@
 
     @if (_isLoading)
     {
-        <FluentProgressRing />
+        <LoadingSpinner AriaLabel="Loading notifications" />
     }
     else if (_notifications.Count == 0)
     {
-        <EmptyStateCard Message="No notifications. Run 'Check Alerts' to scan for budget overages, low balances, and sinking fund issues.">
+        <EmptyStateCard
+            Message="No notifications. Run 'Check Alerts' to scan for budget overages, low balances, and sinking fund issues.">
             <Actions>
-                <FluentButton Appearance="Appearance.Accent" OnClick="CheckAlertsAsync" Loading="_isChecking">Check Alerts</FluentButton>
+                <FluentButton Appearance="Appearance.Accent" OnClick="CheckAlertsAsync" Loading="_isChecking">Check Alerts
+                </FluentButton>
             </Actions>
         </EmptyStateCard>
     }
@@ -55,10 +58,12 @@
 
         @foreach (var notification in _notifications)
         {
-            <FluentCard Class="surface-card" Style="@($"margin-bottom: 0.75rem; opacity: {(notification.IsRead ? "0.7" : "1")}")">
+            <FluentCard Class="surface-card"
+                        Style="@($"margin-bottom: 0.75rem; opacity: {(notification.IsRead ? "0.7" : "1")}")">
                 <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Top" Style="gap: 1rem;">
                     <div style="flex: 1;">
-                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 0.5rem; margin-bottom: 0.25rem;">
+                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                                     Style="gap: 0.5rem; margin-bottom: 0.25rem;">
                             <FluentBadge Appearance="@GetSeverityAppearance(notification.Severity)"
                                          BackgroundColor="@GetSeverityColor(notification.Severity)"
                                          Color="@(notification.Severity == "Info" ? null : "white")">
@@ -71,20 +76,21 @@
                             }
                         </FluentStack>
                         <strong>@notification.Title</strong>
-                        <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: var(--neutral-foreground-hint);">@notification.Message</p>
-                        <span style="font-size: 0.8rem; color: var(--neutral-foreground-hint);">@notification.CreatedAtUtc.ToLocalTime().ToString("g")</span>
-                    </div>
-                    @if (!notification.IsRead)
-                    {
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => MarkReadAsync(notification.Id))">
-                            Mark Read
-                        </FluentButton>
-                    }
-                </FluentStack>
-            </FluentCard>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: var(--neutral-foreground-hint);">
+                            @notification.Message</p>
+                            <span style="font-size: 0.8rem; color: var(--neutral-foreground-hint);">@notification.CreatedAtUtc.ToLocalTime().ToString("g")</span>
+                        </div>
+                        @if (!notification.IsRead)
+                        {
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => MarkReadAsync(notification.Id))">
+                                Mark Read
+                            </FluentButton>
+                        }
+                    </FluentStack>
+                </FluentCard>
+            }
         }
-    }
-</section>
+    </section>
 
 @code {
     private List<NotificationResponse> _notifications = [];
