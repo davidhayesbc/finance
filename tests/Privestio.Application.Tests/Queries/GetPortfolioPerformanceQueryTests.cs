@@ -92,13 +92,16 @@ public class GetPortfolioPerformanceQueryTests
         _securityResolutionService = SecurityTestHelper.CreateSecurityResolutionService(_uow);
     }
 
-    private GetPortfolioPerformanceQueryHandler CreateHandler() =>
-        new(
+    private GetPortfolioPerformanceQueryHandler CreateHandler()
+    {
+        var valuationService = new InvestmentPortfolioValuationService(
             _uow.Object,
             _priceFeed.Object,
             _exchangeRateProvider.Object,
             _securityResolutionService
         );
+        return new GetPortfolioPerformanceQueryHandler(_uow.Object, valuationService);
+    }
 
     private Account MakeAccount(Guid userId) =>
         new(

@@ -18,7 +18,10 @@ public class GetAccountsQueryTests
     private readonly Mock<IHoldingRepository> _holdingRepositoryMock;
     private readonly Mock<IPriceHistoryRepository> _priceHistoryRepositoryMock;
     private readonly Mock<IPriceFeedProvider> _priceFeedProviderMock;
+    private readonly Mock<IExchangeRateRepository> _exchangeRateRepositoryMock;
+    private readonly Mock<IExchangeRateProvider> _exchangeRateProviderMock;
     private readonly SecurityResolutionService _securityResolutionService;
+    private readonly InvestmentPortfolioValuationService _investmentPortfolioValuationService;
 
     public GetAccountsQueryTests()
     {
@@ -28,20 +31,55 @@ public class GetAccountsQueryTests
         _holdingRepositoryMock = new Mock<IHoldingRepository>();
         _priceHistoryRepositoryMock = new Mock<IPriceHistoryRepository>();
         _priceFeedProviderMock = new Mock<IPriceFeedProvider>();
+        _exchangeRateRepositoryMock = new Mock<IExchangeRateRepository>();
+        _exchangeRateProviderMock = new Mock<IExchangeRateProvider>();
 
         _unitOfWorkMock.SetupGet(x => x.Accounts).Returns(_accountRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.Transactions).Returns(_transactionRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.Holdings).Returns(_holdingRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.PriceHistories).Returns(_priceHistoryRepositoryMock.Object);
+        _unitOfWorkMock.SetupGet(x => x.ExchangeRates).Returns(_exchangeRateRepositoryMock.Object);
+        _unitOfWorkMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
         _securityResolutionService = SecurityTestHelper.CreateSecurityResolutionService(
             _unitOfWorkMock
         );
+        _investmentPortfolioValuationService = new InvestmentPortfolioValuationService(
+            _unitOfWorkMock.Object,
+            _priceFeedProviderMock.Object,
+            _exchangeRateProviderMock.Object,
+            _securityResolutionService
+        );
+
         _priceFeedProviderMock.SetupGet(x => x.ProviderName).Returns("YahooFinance");
+        _exchangeRateProviderMock.SetupGet(x => x.ProviderName).Returns("Frankfurter");
 
         _priceFeedProviderMock
             .Setup(x =>
                 x.GetLatestPricesAsync(
                     It.IsAny<IEnumerable<PriceLookup>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
+
+        _exchangeRateProviderMock
+            .Setup(x =>
+                x.GetLatestRatesAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
+
+        _exchangeRateProviderMock
+            .Setup(x =>
+                x.GetHistoricalRatesAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<DateOnly>(),
+                    It.IsAny<DateOnly>(),
                     It.IsAny<CancellationToken>()
                 )
             )
@@ -61,10 +99,39 @@ public class GetAccountsQueryTests
             .ReturnsAsync(
                 (IReadOnlyDictionary<Guid, PriceHistory>)new Dictionary<Guid, PriceHistory>()
             );
+
+        _priceHistoryRepositoryMock
+            .Setup(x =>
+                x.GetExistingKeysAsync(
+                    It.IsAny<IEnumerable<(Guid SecurityId, DateOnly AsOfDate)>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(new HashSet<(Guid SecurityId, DateOnly AsOfDate)>());
+
+        _exchangeRateRepositoryMock
+            .Setup(x =>
+                x.GetLatestByPairAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync((ExchangeRate?)null);
+
+        _exchangeRateRepositoryMock
+            .Setup(x =>
+                x.GetAllAsync(
+                    It.IsAny<string?>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
     }
 
     private GetAccountsQueryHandler CreateHandler() =>
-        new(_unitOfWorkMock.Object, _priceFeedProviderMock.Object, _securityResolutionService);
+        new(_unitOfWorkMock.Object, _investmentPortfolioValuationService);
 
     [Fact]
     public async Task Handle_NoAccounts_ReturnsEmptyList()
@@ -254,6 +321,74 @@ public class GetAccountsQueryTests
     }
 
     [Fact]
+    public async Task Handle_InvestmentAccount_ConvertsQuoteCurrencyToAccountCurrency()
+    {
+        var ownerId = Guid.NewGuid();
+        var investment = CreateAccount(
+            ownerId,
+            "Wealthsimple RESP",
+            AccountType.Investment,
+            AccountSubType.RESP,
+            0.01m
+        );
+        var security = SecurityTestHelper.CreateSecurity("EEMV", "Emerging Markets ETF", "USD");
+        var holding = SecurityTestHelper.CreateHolding(
+            investment.Id,
+            security,
+            100m,
+            new Money(12m, "CAD")
+        );
+        var asOfDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        _accountRepositoryMock
+            .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Account> { investment });
+
+        _transactionRepositoryMock
+            .Setup(x =>
+                x.GetSignedSumsByAccountIdsAsync(
+                    It.Is<IEnumerable<Guid>>(ids => !ids.Any()),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(new Dictionary<Guid, decimal>());
+
+        _holdingRepositoryMock
+            .Setup(x => x.GetByAccountIdAsync(investment.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([holding]);
+
+        _priceHistoryRepositoryMock
+            .Setup(x =>
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory>
+                    {
+                        [security.Id] = SecurityTestHelper.CreatePriceHistory(
+                            security,
+                            10m,
+                            asOfDate,
+                            "Yahoo"
+                        ),
+                    }
+            );
+
+        _exchangeRateRepositoryMock
+            .Setup(x => x.GetAllAsync("USD", "CAD", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new ExchangeRate("USD", "CAD", 1.25m, asOfDate, "Frankfurter")]);
+
+        var result = await CreateHandler()
+            .Handle(new GetAccountsQuery(ownerId), CancellationToken.None);
+
+        result.Should().HaveCount(1);
+        result[0].CurrentBalance.Should().Be(1250m);
+    }
+
+    [Fact]
     public async Task Handle_InvestmentAccount_MissingStoredPrice_UsesLiveQuote()
     {
         var ownerId = Guid.NewGuid();
@@ -296,7 +431,7 @@ public class GetAccountsQueryTests
             .ReturnsAsync([holding]);
 
         _priceHistoryRepositoryMock
-            .Setup(x =>
+            .SetupSequence(x =>
                 x.GetLatestBySecurityIdsAsync(
                     It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<CancellationToken>()
@@ -304,6 +439,19 @@ public class GetAccountsQueryTests
             )
             .ReturnsAsync(
                 (IReadOnlyDictionary<Guid, PriceHistory>)new Dictionary<Guid, PriceHistory>()
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory>
+                    {
+                        [security.Id] = SecurityTestHelper.CreatePriceHistory(
+                            security,
+                            40m,
+                            DateOnly.FromDateTime(DateTime.UtcNow),
+                            "YahooFinance",
+                            "XEQT.TO"
+                        ),
+                    }
             );
 
         _priceFeedProviderMock

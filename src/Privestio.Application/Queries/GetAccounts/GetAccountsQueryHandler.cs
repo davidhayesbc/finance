@@ -5,7 +5,6 @@ using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
-using Privestio.Domain.Interfaces;
 
 namespace Privestio.Application.Queries.GetAccounts;
 
@@ -13,18 +12,15 @@ public class GetAccountsQueryHandler
     : IRequestHandler<GetAccountsQuery, IReadOnlyList<AccountResponse>>
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IPriceFeedProvider _priceFeedProvider;
-    private readonly SecurityResolutionService _securityResolutionService;
+    private readonly InvestmentPortfolioValuationService _investmentPortfolioValuationService;
 
     public GetAccountsQueryHandler(
         IUnitOfWork unitOfWork,
-        IPriceFeedProvider priceFeedProvider,
-        SecurityResolutionService securityResolutionService
+        InvestmentPortfolioValuationService investmentPortfolioValuationService
     )
     {
         _unitOfWork = unitOfWork;
-        _priceFeedProvider = priceFeedProvider;
-        _securityResolutionService = securityResolutionService;
+        _investmentPortfolioValuationService = investmentPortfolioValuationService;
     }
 
     public async Task<IReadOnlyList<AccountResponse>> Handle(
@@ -72,76 +68,14 @@ public class GetAccountsQueryHandler
 
         if (account.AccountType == AccountType.Investment)
         {
-            return await ComputeInvestmentBalanceAsync(account, cancellationToken);
+            var valuation = await _investmentPortfolioValuationService.CalculateAsync(
+                account,
+                cancellationToken
+            );
+            return valuation.TotalMarketValue ?? account.CurrentBalance.Amount;
         }
 
         signedSums.TryGetValue(account.Id, out var sum);
         return account.OpeningBalance.Amount + sum;
     }
-
-    private async Task<decimal> ComputeInvestmentBalanceAsync(
-        Account account,
-        CancellationToken cancellationToken
-    )
-    {
-        var holdings = await _unitOfWork.Holdings.GetByAccountIdAsync(
-            account.Id,
-            cancellationToken
-        );
-        if (holdings.Count == 0)
-            return account.CurrentBalance.Amount;
-
-        var symbols = holdings.Select(h => h.SecurityId).Distinct().ToList();
-        var latestPrices = await _unitOfWork.PriceHistories.GetLatestBySecurityIdsAsync(
-            symbols,
-            cancellationToken
-        );
-
-        var missingHoldings = holdings
-            .Where(h => !latestPrices.ContainsKey(h.SecurityId) && h.Security is not null)
-            .ToList();
-
-        var fetchedBySecurityId = new Dictionary<Guid, decimal>();
-        if (missingHoldings.Count > 0)
-        {
-            var lookups = missingHoldings
-                .Where(h => h.Security is not null)
-                .Select(h => new PriceLookup(
-                    h.SecurityId,
-                    _securityResolutionService.GetPreferredPriceLookupSymbol(
-                        h.Security!,
-                        _priceFeedProvider.ProviderName
-                    )
-                ))
-                .DistinctBy(l => l.SecurityId)
-                .ToList();
-
-            var fetchedQuotes = await _priceFeedProvider.GetLatestPricesAsync(
-                lookups,
-                cancellationToken
-            );
-
-            foreach (var quote in fetchedQuotes.Where(q => q.Price > 0))
-            {
-                fetchedBySecurityId[quote.SecurityId] = quote.Price;
-            }
-        }
-
-        var total = holdings.Sum(h =>
-        {
-            var price = latestPrices.GetValueOrDefault(h.SecurityId);
-            var unitPrice =
-                price?.Price.Amount
-                ?? ResolveFetchedPrice(fetchedBySecurityId, h.SecurityId)
-                ?? h.AverageCostPerUnit.Amount;
-            return Math.Round(h.Quantity * unitPrice, 2, MidpointRounding.ToEven);
-        });
-
-        return total;
-    }
-
-    private static decimal? ResolveFetchedPrice(
-        IReadOnlyDictionary<Guid, decimal> fetchedBySecurityId,
-        Guid securityId
-    ) => fetchedBySecurityId.TryGetValue(securityId, out var price) ? price : null;
 }
