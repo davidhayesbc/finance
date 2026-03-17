@@ -421,7 +421,7 @@ else
                                     var gainClass = hp.GainLoss.HasValue && hp.GainLoss.Value >= 0 ? "amount--positive" : "amount--negative";
                                     <tr class="txn-row" @key="hp.HoldingId">
                                         <td class="txn-cell--desc">
-                                            <span class="txn-desc-primary">@hp.SecurityName</span>
+                                            <span class="txn-desc-primary txn-desc-primary--full">@hp.SecurityName</span>
                                         </td>
                                         <td class="txn-cell--cat">
                                             <span class="txn-category">@hp.Symbol</span>
@@ -552,7 +552,7 @@ else
                                     var isAliasBusy = _aliasBusyHoldingIds.Contains(holding.Id);
                                     <tr class="txn-row" @key="holding.Id">
                                         <td class="txn-cell--desc">
-                                            <span class="txn-desc-primary">@holding.SecurityName</span>
+                                            <span class="txn-desc-primary txn-desc-primary--full">@holding.SecurityName</span>
                                             @if (!string.IsNullOrWhiteSpace(holding.Notes))
                                             {
                                                 <span class="txn-desc-sub">@holding.Notes</span>

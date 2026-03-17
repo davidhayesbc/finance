@@ -23,6 +23,9 @@ public class SecurityResolutionService
     ];
 
     private readonly IUnitOfWork _unitOfWork;
+    private readonly Dictionary<string, Security> _resolvedSymbolCache = new(
+        StringComparer.Ordinal
+    );
 
     public SecurityResolutionService(IUnitOfWork unitOfWork)
     {
@@ -46,30 +49,32 @@ public class SecurityResolutionService
         var normalizedSymbol = SecuritySymbolMatcher.Normalize(symbol);
         var normalizedCurrency = currency.Trim().ToUpperInvariant();
 
+        if (TryGetCachedSecurity(normalizedSymbol, out var cached))
+        {
+            ApplyUpdates(
+                cached,
+                normalizedSymbol,
+                securityName,
+                preferSymbolAsDisplay,
+                isCashEquivalent
+            );
+            CacheSecurity(cached, normalizedSymbol);
+            return cached;
+        }
+
         var existing = await ResolveAsync(normalizedSymbol, cancellationToken);
         if (existing is not null)
         {
-            if (!existing.HasAlias(normalizedSymbol))
-            {
-                existing.AddOrUpdateAlias(normalizedSymbol, null);
-            }
-
-            if (preferSymbolAsDisplay)
-            {
-                existing.UpdateDisplaySymbol(normalizedSymbol);
-            }
-
-            if (!string.IsNullOrWhiteSpace(securityName))
-            {
-                existing.Rename(securityName);
-            }
-
-            if (isCashEquivalent.GetValueOrDefault() || IsCashEquivalentSymbol(normalizedSymbol))
-            {
-                existing.MarkCashEquivalent();
-            }
+            ApplyUpdates(
+                existing,
+                normalizedSymbol,
+                securityName,
+                preferSymbolAsDisplay,
+                isCashEquivalent
+            );
 
             await _unitOfWork.Securities.UpdateAsync(existing, cancellationToken);
+            CacheSecurity(existing, normalizedSymbol);
             return existing;
         }
 
@@ -83,7 +88,54 @@ public class SecurityResolutionService
         );
 
         await _unitOfWork.Securities.AddAsync(created, cancellationToken);
+        CacheSecurity(created, normalizedSymbol);
         return created;
+    }
+
+    private bool TryGetCachedSecurity(string normalizedSymbol, out Security security)
+    {
+        return _resolvedSymbolCache.TryGetValue(normalizedSymbol, out security!);
+    }
+
+    private void CacheSecurity(Security security, string normalizedSymbol)
+    {
+        _resolvedSymbolCache[normalizedSymbol] = security;
+        _resolvedSymbolCache[security.CanonicalSymbol] = security;
+        _resolvedSymbolCache[security.DisplaySymbol] = security;
+
+        foreach (var alias in security.Aliases)
+        {
+            _resolvedSymbolCache[alias.Symbol] = security;
+        }
+    }
+
+    private static void ApplyUpdates(
+        Security security,
+        string normalizedSymbol,
+        string? securityName,
+        bool preferSymbolAsDisplay,
+        bool? isCashEquivalent
+    )
+    {
+        if (!security.HasAlias(normalizedSymbol))
+        {
+            security.AddOrUpdateAlias(normalizedSymbol, null);
+        }
+
+        if (preferSymbolAsDisplay)
+        {
+            security.UpdateDisplaySymbol(normalizedSymbol);
+        }
+
+        if (!string.IsNullOrWhiteSpace(securityName))
+        {
+            security.Rename(securityName);
+        }
+
+        if (isCashEquivalent.GetValueOrDefault() || IsCashEquivalentSymbol(normalizedSymbol))
+        {
+            security.MarkCashEquivalent();
+        }
     }
 
     public string GetPreferredPriceLookupSymbol(Security security, string providerName)

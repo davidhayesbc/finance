@@ -13,16 +13,19 @@ public class GetPortfolioPerformanceQueryHandler
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPriceFeedProvider _priceFeedProvider;
+    private readonly IExchangeRateProvider _exchangeRateProvider;
     private readonly SecurityResolutionService _securityResolutionService;
 
     public GetPortfolioPerformanceQueryHandler(
         IUnitOfWork unitOfWork,
         IPriceFeedProvider priceFeedProvider,
+        IExchangeRateProvider exchangeRateProvider,
         SecurityResolutionService securityResolutionService
     )
     {
         _unitOfWork = unitOfWork;
         _priceFeedProvider = priceFeedProvider;
+        _exchangeRateProvider = exchangeRateProvider;
         _securityResolutionService = securityResolutionService;
     }
 
@@ -84,43 +87,76 @@ public class GetPortfolioPerformanceQueryHandler
             }
         }
 
-        var holdingContexts = activeHoldings
-            .Select(h =>
-            {
-                var price = latestPrices.GetValueOrDefault(h.SecurityId);
-                var resolvedCurrentPrice =
-                    price?.Price.Amount
-                    ?? (
-                        h.Security?.IsCashEquivalent == true
-                            ? h.AverageCostPerUnit.Amount
-                            : (decimal?)null
-                    );
+        var holdingContexts = new List<HoldingContext>(activeHoldings.Count);
+        var fxRateCache = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        var fxRatesChanged = false;
 
-                var source = ResolvePriceSource(price, h);
+        foreach (var holding in activeHoldings)
+        {
+            var price = latestPrices.GetValueOrDefault(holding.SecurityId);
+            var source = ResolvePriceSource(price, holding);
 
-                var input = new PortfolioPerformanceCalculator.HoldingInput(
-                    h.Id,
-                    h.Symbol,
-                    h.SecurityName,
-                    h.Quantity,
-                    h.AverageCostPerUnit.Amount,
-                    h.AverageCostPerUnit.CurrencyCode,
-                    resolvedCurrentPrice,
-                    price?.AsOfDate,
-                    price?.RecordedAt,
-                    h.Lots.Select(l => new PortfolioPerformanceCalculator.LotInput(
-                            l.AcquiredDate,
-                            l.Quantity,
-                            l.UnitCost.Amount,
-                            l.Source
-                        ))
-                        .ToList()
-                        .AsReadOnly()
+            var rawCurrentPrice =
+                price?.Price.Amount
+                ?? (
+                    holding.Security?.IsCashEquivalent == true
+                        ? holding.AverageCostPerUnit.Amount
+                        : (decimal?)null
                 );
 
-                return new HoldingContext(input, source);
-            })
-            .ToList();
+            var rawPriceCurrency =
+                price?.Price.CurrencyCode
+                ?? (
+                    holding.Security?.IsCashEquivalent == true
+                        ? holding.AverageCostPerUnit.CurrencyCode
+                        : null
+                );
+
+            decimal? convertedCurrentPrice = null;
+            if (rawCurrentPrice.HasValue && !string.IsNullOrWhiteSpace(rawPriceCurrency))
+            {
+                convertedCurrentPrice = await ConvertPriceToAccountCurrencyAsync(
+                    rawCurrentPrice.Value,
+                    rawPriceCurrency!,
+                    account.Currency,
+                    fxRateCache,
+                    cancellationToken,
+                    changed => fxRatesChanged |= changed
+                );
+
+                if (!convertedCurrentPrice.HasValue && price is not null)
+                {
+                    source = $"{source} (FX missing: {rawPriceCurrency}->{account.Currency})";
+                }
+            }
+
+            var input = new PortfolioPerformanceCalculator.HoldingInput(
+                holding.Id,
+                holding.Symbol,
+                holding.SecurityName,
+                holding.Quantity,
+                holding.AverageCostPerUnit.Amount,
+                account.Currency,
+                convertedCurrentPrice,
+                price?.AsOfDate,
+                price?.RecordedAt,
+                holding.Lots.Select(l => new PortfolioPerformanceCalculator.LotInput(
+                        l.AcquiredDate,
+                        l.Quantity,
+                        l.UnitCost.Amount,
+                        l.Source
+                    ))
+                    .ToList()
+                    .AsReadOnly()
+            );
+
+            holdingContexts.Add(new HoldingContext(input, source));
+        }
+
+        if (fxRatesChanged)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
 
         var result = PortfolioPerformanceCalculator.Calculate(holdingContexts.Select(c => c.Input));
         var sourceByHoldingId = holdingContexts.ToDictionary(c => c.Input.HoldingId, c => c.Source);
@@ -227,5 +263,98 @@ public class GetPortfolioPerformanceQueryHandler
         await _unitOfWork.PriceHistories.AddRangeAsync(newEntries, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task<decimal?> ConvertPriceToAccountCurrencyAsync(
+        decimal price,
+        string fromCurrency,
+        string toCurrency,
+        Dictionary<string, decimal> fxRateCache,
+        CancellationToken cancellationToken,
+        Action<bool> markChanged
+    )
+    {
+        var normalizedFrom = fromCurrency.Trim().ToUpperInvariant();
+        var normalizedTo = toCurrency.Trim().ToUpperInvariant();
+
+        if (normalizedFrom == normalizedTo)
+            return price;
+
+        var cacheKey = $"{normalizedFrom}->{normalizedTo}";
+        if (!fxRateCache.TryGetValue(cacheKey, out var rate))
+        {
+            var resolvedRate = await ResolveFxRateAsync(
+                normalizedFrom,
+                normalizedTo,
+                cancellationToken,
+                markChanged
+            );
+            if (!resolvedRate.HasValue)
+                return null;
+
+            rate = resolvedRate.Value;
+            fxRateCache[cacheKey] = rate;
+        }
+
+        return Math.Round(price * rate, 4, MidpointRounding.ToEven);
+    }
+
+    private async Task<decimal?> ResolveFxRateAsync(
+        string fromCurrency,
+        string toCurrency,
+        CancellationToken cancellationToken,
+        Action<bool> markChanged
+    )
+    {
+        var direct = await _unitOfWork.ExchangeRates.GetLatestByPairAsync(
+            fromCurrency,
+            toCurrency,
+            cancellationToken
+        );
+        if (direct is not null)
+            return direct.Rate;
+
+        var inverse = await _unitOfWork.ExchangeRates.GetLatestByPairAsync(
+            toCurrency,
+            fromCurrency,
+            cancellationToken
+        );
+        if (inverse is not null)
+            return 1m / inverse.Rate;
+
+        var fetched = await _exchangeRateProvider.GetLatestRatesAsync(
+            fromCurrency,
+            [toCurrency],
+            cancellationToken
+        );
+
+        var quote = fetched.FirstOrDefault(q =>
+            string.Equals(q.FromCurrency, fromCurrency, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(q.ToCurrency, toCurrency, StringComparison.OrdinalIgnoreCase)
+        );
+
+        if (quote is null || quote.Rate <= 0m)
+            return null;
+
+        var existing = await _unitOfWork.ExchangeRates.GetLatestByPairAsync(
+            fromCurrency,
+            toCurrency,
+            cancellationToken
+        );
+
+        if (existing is null || existing.AsOfDate != quote.AsOfDate)
+        {
+            var exchangeRate = new ExchangeRate(
+                fromCurrency,
+                toCurrency,
+                quote.Rate,
+                quote.AsOfDate,
+                _exchangeRateProvider.ProviderName
+            );
+            await _unitOfWork.ExchangeRates.AddAsync(exchangeRate, cancellationToken);
+            markChanged(true);
+        }
+
+        return quote.Rate;
     }
 }

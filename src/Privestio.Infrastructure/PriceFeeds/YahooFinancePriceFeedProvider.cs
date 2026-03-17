@@ -37,6 +37,7 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
             if (quote is not null)
                 results.Add(quote);
         }
+
         return results.AsReadOnly();
     }
 
@@ -82,35 +83,58 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
         CancellationToken cancellationToken
     )
     {
-        var url = $"v8/finance/chart/{Uri.EscapeDataString(lookup.Symbol)}?interval=1d&range=1d";
-        try
+        foreach (var candidateSymbol in BuildLookupCandidates(lookup.Symbol))
         {
-            var response = await _httpClient.GetFromJsonAsync<YahooChartResponse>(
-                url,
-                cancellationToken
-            );
-            var meta = response?.Chart?.Result?.FirstOrDefault()?.Meta;
-            if (meta is null || meta.RegularMarketPrice <= 0)
-                return null;
+            var url =
+                $"v8/finance/chart/{Uri.EscapeDataString(candidateSymbol)}?interval=1d&range=1d";
 
-            return new PriceQuote(
-                lookup.SecurityId,
-                lookup.Symbol,
-                Math.Round((decimal)meta.RegularMarketPrice, 6, MidpointRounding.ToEven),
-                (meta.Currency ?? "USD").ToUpperInvariant(),
-                DateOnly.FromDateTime(DateTime.UtcNow)
-            );
+            try
+            {
+                var response = await _httpClient.GetFromJsonAsync<YahooChartResponse>(
+                    url,
+                    cancellationToken
+                );
+                var meta = response?.Chart?.Result?.FirstOrDefault()?.Meta;
+                if (meta is null || meta.RegularMarketPrice <= 0)
+                    continue;
+
+                return new PriceQuote(
+                    lookup.SecurityId,
+                    lookup.Symbol,
+                    Math.Round((decimal)meta.RegularMarketPrice, 6, MidpointRounding.ToEven),
+                    (meta.Currency ?? "USD").ToUpperInvariant(),
+                    DateOnly.FromDateTime(DateTime.UtcNow)
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(
+                    ex,
+                    "Yahoo latest lookup failed for security {SecurityId} using symbol {CandidateSymbol}",
+                    lookup.SecurityId,
+                    candidateSymbol
+                );
+            }
         }
-        catch (Exception ex)
+
+        _logger.LogWarning(
+            "Failed to fetch latest price for security {SecurityId} using {LookupSymbol}",
+            lookup.SecurityId,
+            lookup.Symbol
+        );
+
+        return null;
+    }
+
+    private static IReadOnlyList<string> BuildLookupCandidates(string symbol)
+    {
+        var normalized = symbol.Trim().ToUpperInvariant();
+        if (normalized.EndsWith(".TO", StringComparison.Ordinal))
         {
-            _logger.LogWarning(
-                ex,
-                "Failed to fetch latest price for security {SecurityId} using {LookupSymbol}",
-                lookup.SecurityId,
-                lookup.Symbol
-            );
-            return null;
+            return [normalized, normalized[..^3]];
         }
+
+        return [normalized];
     }
 
     private static IReadOnlyList<PriceQuote> ParseHistoricalPrices(
@@ -145,10 +169,11 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
                 )
             );
         }
+
         return prices.AsReadOnly();
     }
 
-    // ── Private JSON DTOs ────────────────────────────────────────────────────
+    // Private JSON DTOs
 
     private sealed class YahooChartResponse
     {

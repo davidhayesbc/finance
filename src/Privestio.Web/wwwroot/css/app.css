@@ -927,6 +927,12 @@ fluent-anchor.brand-link::part(control) {
     text-overflow: ellipsis;
 }
 
+.txn-desc-primary--full {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
 .txn-desc-sub {
     display: block;
     font-size: 0.8rem;
