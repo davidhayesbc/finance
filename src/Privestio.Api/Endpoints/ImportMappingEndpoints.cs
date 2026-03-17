@@ -83,7 +83,13 @@ public static class ImportMappingEndpoints
             request.DateFormat,
             request.HasHeaderRow,
             request.AmountDebitColumn,
-            request.AmountCreditColumn
+            request.AmountCreditColumn,
+            request.BuyKeywords,
+            request.SellKeywords,
+            request.IncomeKeywords,
+            request.CashEquivalentSymbols,
+            request.IgnoreRowPatterns,
+            request.AmountSignFlipped
         );
 
         var result = await mediator.Send(command, cancellationToken);
@@ -110,7 +116,13 @@ public static class ImportMappingEndpoints
             request.DateFormat,
             request.HasHeaderRow,
             request.AmountDebitColumn,
-            request.AmountCreditColumn
+            request.AmountCreditColumn,
+            request.BuyKeywords,
+            request.SellKeywords,
+            request.IncomeKeywords,
+            request.CashEquivalentSymbols,
+            request.IgnoreRowPatterns,
+            request.AmountSignFlipped
         );
 
         var result = await mediator.Send(command, cancellationToken);

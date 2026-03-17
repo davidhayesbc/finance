@@ -16,6 +16,7 @@ public class ImportPolicyTests
     private readonly Mock<ITransactionRepository> _transactionRepo;
     private readonly Mock<IImportBatchRepository> _importBatchRepo;
     private readonly Mock<IImportMappingRepository> _importMappingRepo;
+    private readonly Mock<IAccountRepository> _accountRepo;
     private readonly Mock<ITransactionImporter> _csvImporter;
     private readonly TransactionFingerprintService _fingerprintService;
     private readonly ImportTransactionsCommandHandler _handler;
@@ -28,12 +29,27 @@ public class ImportPolicyTests
         _transactionRepo = new Mock<ITransactionRepository>();
         _importBatchRepo = new Mock<IImportBatchRepository>();
         _importMappingRepo = new Mock<IImportMappingRepository>();
+        _accountRepo = new Mock<IAccountRepository>();
         _unitOfWork = new Mock<IUnitOfWork>();
 
         _unitOfWork.Setup(u => u.Transactions).Returns(_transactionRepo.Object);
         _unitOfWork.Setup(u => u.ImportBatches).Returns(_importBatchRepo.Object);
         _unitOfWork.Setup(u => u.ImportMappings).Returns(_importMappingRepo.Object);
+        _unitOfWork.Setup(u => u.Accounts).Returns(_accountRepo.Object);
         _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var account = new Account(
+            "Chequing",
+            AccountType.Banking,
+            AccountSubType.Chequing,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId
+        );
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(account);
 
         _importBatchRepo
             .Setup(r => r.AddAsync(It.IsAny<ImportBatch>(), It.IsAny<CancellationToken>()))

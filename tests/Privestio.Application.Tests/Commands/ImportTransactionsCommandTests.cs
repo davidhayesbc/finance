@@ -574,6 +574,265 @@ public class ImportTransactionsCommandTests
         );
     }
 
+    [Fact]
+    public async Task Handle_CustomBuyKeywords_CreatesHoldingForConfiguredTerm()
+    {
+        var mappingId = Guid.NewGuid();
+        var mapping = new ImportMapping("WS", "CSV", _userId, new());
+        mapping.BuyKeywords = ["ACQUIRE"];
+        mapping.SellKeywords = ["DISPOSE"];
+        mapping.IncomeKeywords = ["interest", "dividend", "distribution"];
+        mapping.CashEquivalentSymbols = ["CASH"];
+
+        _importMappingRepo
+            .Setup(r => r.GetByIdAsync(mappingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mapping);
+
+        var investmentAccount = new Account(
+            "TFSA",
+            AccountType.Investment,
+            AccountSubType.TFSA,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId
+        );
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(investmentAccount);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(
+                DateTime.Parse("2025-03-01"),
+                -100m,
+                "ACQUIRE",
+                ActivityType: "ACQUIRE",
+                Symbol: "VFV",
+                Quantity: 1m,
+                UnitPrice: 100m
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = new ImportTransactionsCommand(
+            Stream.Null,
+            "transactions.csv",
+            _accountId,
+            _userId,
+            MappingId: mappingId
+        );
+        await _handler.Handle(command, CancellationToken.None);
+
+        _holdingRepo.Verify(
+            h =>
+                h.AddAsync(
+                    It.Is<Holding>(x => x.Symbol == "VFV" && x.Quantity == 1m),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_CustomSellKeywords_DecreasesHoldingForConfiguredTerm()
+    {
+        var mappingId = Guid.NewGuid();
+        var mapping = new ImportMapping("WS", "CSV", _userId, new());
+        mapping.BuyKeywords = ["buy"];
+        mapping.SellKeywords = ["LIQUIDATE"];
+        mapping.IncomeKeywords = ["interest", "dividend", "distribution"];
+        mapping.CashEquivalentSymbols = ["CASH"];
+
+        _importMappingRepo
+            .Setup(r => r.GetByIdAsync(mappingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mapping);
+
+        var investmentAccount = new Account(
+            "TFSA",
+            AccountType.Investment,
+            AccountSubType.TFSA,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId
+        );
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(investmentAccount);
+
+        var existingHolding = new Holding(
+            _accountId,
+            "VFV",
+            "Vanguard S&P 500",
+            5m,
+            new Domain.ValueObjects.Money(100m)
+        );
+        _holdingRepo
+            .Setup(r => r.GetByAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([existingHolding]);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(
+                DateTime.Parse("2025-03-01"),
+                200m,
+                "LIQUIDATE",
+                Direction: "LIQUIDATE",
+                Symbol: "VFV",
+                Quantity: 2m,
+                UnitPrice: 100m
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = new ImportTransactionsCommand(
+            Stream.Null,
+            "transactions.csv",
+            _accountId,
+            _userId,
+            MappingId: mappingId
+        );
+        await _handler.Handle(command, CancellationToken.None);
+
+        _holdingRepo.Verify(
+            h =>
+                h.UpdateAsync(
+                    It.Is<Holding>(x => x.Symbol == "VFV" && x.Quantity == 3m),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_CustomIncomeKeywords_DetectsIncomeForReinvestment()
+    {
+        var mappingId = Guid.NewGuid();
+        var mapping = new ImportMapping("WS", "CSV", _userId, new());
+        mapping.BuyKeywords = ["buy", "long"];
+        mapping.SellKeywords = ["sell"];
+        mapping.IncomeKeywords = ["DIST"];
+        mapping.CashEquivalentSymbols = ["CASH"];
+
+        _importMappingRepo
+            .Setup(r => r.GetByIdAsync(mappingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mapping);
+
+        var investmentAccount = new Account(
+            "TFSA",
+            AccountType.Investment,
+            AccountSubType.TFSA,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId
+        );
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(investmentAccount);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(DateTime.Parse("2025-10-07"), 0.4m, "Distribution", ActivityType: "DIST"),
+            new(
+                DateTime.Parse("2025-10-08"),
+                -0.4m,
+                "Buy",
+                SettlementDate: new DateOnly(2025, 10, 8),
+                ActivityType: "Trade",
+                Direction: "LONG",
+                Symbol: "CASH",
+                SecurityName: "Cash ETF",
+                Quantity: 0.008m,
+                UnitPrice: 50m
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = new ImportTransactionsCommand(
+            Stream.Null,
+            "transactions.csv",
+            _accountId,
+            _userId,
+            MappingId: mappingId
+        );
+        await _handler.Handle(command, CancellationToken.None);
+
+        _lotRepo.Verify(
+            l =>
+                l.AddAsync(
+                    It.Is<Lot>(x => x.Source == "ReinvestedIncome"),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_CustomCashEquivalentSymbols_TagsReinvestedLot()
+    {
+        var mappingId = Guid.NewGuid();
+        var mapping = new ImportMapping("WS", "CSV", _userId, new());
+        mapping.BuyKeywords = ["buy", "long"];
+        mapping.SellKeywords = ["sell"];
+        mapping.IncomeKeywords = ["interest", "dividend", "distribution"];
+        mapping.CashEquivalentSymbols = ["PSA"];
+
+        _importMappingRepo
+            .Setup(r => r.GetByIdAsync(mappingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mapping);
+
+        var investmentAccount = new Account(
+            "TFSA",
+            AccountType.Investment,
+            AccountSubType.TFSA,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId
+        );
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(investmentAccount);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(DateTime.Parse("2025-10-07"), 0.4m, "Dividend", ActivityType: "Dividend"),
+            new(
+                DateTime.Parse("2025-10-08"),
+                -0.4m,
+                "Buy",
+                SettlementDate: new DateOnly(2025, 10, 8),
+                ActivityType: "Trade",
+                Direction: "LONG",
+                Symbol: "PSA",
+                SecurityName: "Purpose High Interest Savings ETF",
+                Quantity: 0.004m,
+                UnitPrice: 100m
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = new ImportTransactionsCommand(
+            Stream.Null,
+            "transactions.csv",
+            _accountId,
+            _userId,
+            MappingId: mappingId
+        );
+        await _handler.Handle(command, CancellationToken.None);
+
+        _lotRepo.Verify(
+            l =>
+                l.AddAsync(
+                    It.Is<Lot>(x => x.Source == "ReinvestedIncome"),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
     private ImportTransactionsCommand CreateCommand(string fileName) =>
         new(Stream.Null, fileName, _accountId, _userId);
 

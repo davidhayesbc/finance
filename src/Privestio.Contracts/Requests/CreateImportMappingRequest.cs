@@ -10,4 +10,10 @@ public record CreateImportMappingRequest
     public bool HasHeaderRow { get; init; } = true;
     public string? AmountDebitColumn { get; init; }
     public string? AmountCreditColumn { get; init; }
+    public List<string>? BuyKeywords { get; init; }
+    public List<string>? SellKeywords { get; init; }
+    public List<string>? IncomeKeywords { get; init; }
+    public List<string>? CashEquivalentSymbols { get; init; }
+    public List<string>? IgnoreRowPatterns { get; init; }
+    public bool AmountSignFlipped { get; init; }
 }

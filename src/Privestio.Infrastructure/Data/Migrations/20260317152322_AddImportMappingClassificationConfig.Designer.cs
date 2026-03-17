@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Privestio.Domain.ValueObjects;
@@ -13,9 +14,11 @@ using Privestio.Infrastructure.Data;
 namespace Privestio.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(PrivestioDbContext))]
-    partial class PrivestioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317152322_AddImportMappingClassificationConfig")]
+    partial class AddImportMappingClassificationConfig
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

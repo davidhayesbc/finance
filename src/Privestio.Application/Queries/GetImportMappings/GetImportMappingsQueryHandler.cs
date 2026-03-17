@@ -33,6 +33,12 @@ public class GetImportMappingsQueryHandler
                 HasHeaderRow = m.HasHeaderRow,
                 AmountDebitColumn = m.AmountDebitColumn,
                 AmountCreditColumn = m.AmountCreditColumn,
+                BuyKeywords = m.BuyKeywords,
+                SellKeywords = m.SellKeywords,
+                IncomeKeywords = m.IncomeKeywords,
+                CashEquivalentSymbols = m.CashEquivalentSymbols,
+                IgnoreRowPatterns = m.IgnoreRowPatterns,
+                AmountSignFlipped = m.AmountSignFlipped,
             })
             .ToList();
     }

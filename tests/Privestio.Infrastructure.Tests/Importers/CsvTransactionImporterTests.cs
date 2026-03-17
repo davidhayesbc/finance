@@ -279,7 +279,8 @@ public class CsvTransactionImporterTests
                 { "name", "SecurityName" },
                 { "quantity", "Quantity" },
                 { "unit_price", "UnitPrice" },
-            }
+            },
+            ignoreRowPatterns: ["As of "]
         );
 
         var result = await ParseCsv(csv, mapping);
@@ -288,17 +289,100 @@ public class CsvTransactionImporterTests
         result.Rows.Should().HaveCount(1);
     }
 
+    [Fact]
+    public async Task ParseAsync_CustomIgnoreRowPatterns_SkipsMatchingRows()
+    {
+        var csv = """
+            Date,Amount,Description
+            2025-01-15,-42.99,GROCERY STORE
+            TOTAL: as at 2025-01-31,,,
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "Date", "Date" },
+                { "Amount", "Amount" },
+                { "Description", "Description" },
+            },
+            ignoreRowPatterns: ["TOTAL:"]
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        result.Errors.Should().BeEmpty();
+        result.Rows.Should().HaveCount(1);
+        result.Rows[0].Description.Should().Be("GROCERY STORE");
+    }
+
+    [Fact]
+    public async Task ParseAsync_NoIgnorePatterns_DoesNotSkipAnyRows()
+    {
+        // With an empty IgnoreRowPatterns list, even rows that start with "As of"
+        // should NOT be skipped — the old hardcoded behaviour is gone.
+        var csv = """
+            Date,Amount,Description
+            As of 2025-01-15,-42.99,SOME LEGIT ROW
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "Date", "Date" },
+                { "Amount", "Amount" },
+                { "Description", "Description" },
+            }
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        // Will fail to parse as date, recorded as an error — but notably NOT silently skipped.
+        result.Rows.Should().BeEmpty();
+        result.Errors.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ParseAsync_AmountSignFlipped_NegatesAmounts()
+    {
+        var csv = """
+            Date,Amount,Description
+            2025-01-15,42.99,GROCERY STORE
+            2025-01-17,-2500.00,PAYROLL DEPOSIT
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "Date", "Date" },
+                { "Amount", "Amount" },
+                { "Description", "Description" },
+            },
+            amountSignFlipped: true
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        result.Rows.Should().HaveCount(2);
+        result.Rows[0].Amount.Should().Be(-42.99m);
+        result.Rows[1].Amount.Should().Be(2500.00m);
+    }
+
     private static ImportMapping CreateMapping(
         Dictionary<string, string> columnMappings,
         string? dateFormat = null,
         string? amountDebitColumn = null,
-        string? amountCreditColumn = null
+        string? amountCreditColumn = null,
+        List<string>? ignoreRowPatterns = null,
+        bool amountSignFlipped = false
     )
     {
         var mapping = new ImportMapping("Test", "CSV", Guid.NewGuid(), columnMappings);
         mapping.DateFormat = dateFormat;
         mapping.AmountDebitColumn = amountDebitColumn;
         mapping.AmountCreditColumn = amountCreditColumn;
+        if (ignoreRowPatterns is not null)
+            mapping.IgnoreRowPatterns = ignoreRowPatterns;
+        mapping.AmountSignFlipped = amountSignFlipped;
         return mapping;
     }
 

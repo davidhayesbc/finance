@@ -138,6 +138,30 @@
                         </FluentDataGrid>
                     </div>
 
+                    <details>
+                        <summary style="cursor:pointer;padding:0.5rem 0;font-weight:600">Advanced Settings</summary>
+                        <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack" style="margin-top:0.75rem">
+                            <FluentTextField Label="Buy keywords (comma-separated)" @bind-Value="_buyKeywords"
+                                             style="width:100%"
+                                             Placeholder="buy, purchase, long, ..." />
+                            <FluentTextField Label="Sell keywords (comma-separated)" @bind-Value="_sellKeywords"
+                                             style="width:100%"
+                                             Placeholder="sell, redeem, withdraw, ..." />
+                            <FluentTextField Label="Income keywords (comma-separated)" @bind-Value="_incomeKeywords"
+                                             style="width:100%"
+                                             Placeholder="interest, dividend, distribution, ..." />
+                            <FluentTextField Label="Cash-equivalent symbol prefixes (comma-separated)" @bind-Value="_cashEquivalentSymbols"
+                                             style="width:100%"
+                                             Placeholder="CASH, PSA, CSAV, ..." />
+                            <FluentTextField Label="Ignore row patterns — skip rows whose Date cell starts with (comma-separated)"
+                                             @bind-Value="_ignoreRowPatterns"
+                                             style="width:100%"
+                                             Placeholder="As of , TOTAL:, ..." />
+                            <FluentCheckbox Label="Invert amount sign (institution exports debits as positive)"
+                                            @bind-Value="_amountSignFlipped" />
+                        </FluentStack>
+                    </details>
+
                     <div class="action-cluster">
                         <FluentButton Appearance="Appearance.Accent" Disabled="@(!HasRequiredMappings() || _isLoading)"
                                       Loading="_isLoading" OnClick="RunPreviewImportAsync">
@@ -268,6 +292,14 @@
     private string? _successMessage;
     private bool _isLoading;
 
+    // Advanced import settings — comma-separated strings converted to lists on save/preview.
+    private string _buyKeywords = "buy, purchase, contribution, reinvest, deposit, in, long";
+    private string _sellKeywords = "sell, redeem, withdraw, out";
+    private string _incomeKeywords = "interest, dividend, distribution";
+    private string _cashEquivalentSymbols = "CASH";
+    private string _ignoreRowPatterns = "";
+    private bool _amountSignFlipped;
+
     protected override async Task OnInitializedAsync()
     {
         _accounts = (await AccountService.GetAccountsAsync()).ToList();
@@ -375,6 +407,12 @@
             FileFormat = _filePreview.FileFormat,
             ColumnMappings = _columnMappings,
             HasHeaderRow = true,
+            BuyKeywords = ParseKeywordList(_buyKeywords),
+            SellKeywords = ParseKeywordList(_sellKeywords),
+            IncomeKeywords = ParseKeywordList(_incomeKeywords),
+            CashEquivalentSymbols = ParseKeywordList(_cashEquivalentSymbols),
+            IgnoreRowPatterns = ParseKeywordList(_ignoreRowPatterns),
+            AmountSignFlipped = _amountSignFlipped,
         };
 
         var result = await ImportService.CreateMappingAsync(request);
@@ -472,6 +510,12 @@
             FileFormat = _filePreview.FileFormat,
             ColumnMappings = _columnMappings,
             HasHeaderRow = true,
+            BuyKeywords = ParseKeywordList(_buyKeywords),
+            SellKeywords = ParseKeywordList(_sellKeywords),
+            IncomeKeywords = ParseKeywordList(_incomeKeywords),
+            CashEquivalentSymbols = ParseKeywordList(_cashEquivalentSymbols),
+            IgnoreRowPatterns = ParseKeywordList(_ignoreRowPatterns),
+            AmountSignFlipped = _amountSignFlipped,
         };
 
         var result = await ImportService.CreateMappingAsync(request);
@@ -495,7 +539,20 @@
         _sampleRows.Clear();
         _errorMessage = null;
         _successMessage = null;
+        _buyKeywords = "buy, purchase, contribution, reinvest, deposit, in, long";
+        _sellKeywords = "sell, redeem, withdraw, out";
+        _incomeKeywords = "interest, dividend, distribution";
+        _cashEquivalentSymbols = "CASH";
+        _ignoreRowPatterns = "";
+        _amountSignFlipped = false;
     }
+
+    private static List<string>? ParseKeywordList(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? null
+            : value
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
 
     public record SampleRow
     {

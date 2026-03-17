@@ -17,6 +17,15 @@ public class ImportTransactionsCommandHandler
     private readonly IEnumerable<ITransactionImporter> _importers;
     private readonly TransactionFingerprintService _fingerprintService;
 
+    // Default keyword lists — match the original hardcoded values so existing imports
+    // continue to work when no mapping-level overrides are configured.
+    private static readonly ImportClassificationConfig DefaultConfig = new(
+        BuyKeywords: ["buy", "purchase", "contribution", "reinvest", "deposit", "in", "long"],
+        SellKeywords: ["sell", "redeem", "withdraw", "out"],
+        IncomeKeywords: ["interest", "dividend", "distribution"],
+        CashEquivalentSymbols: ["CASH"]
+    );
+
     public ImportTransactionsCommandHandler(
         IUnitOfWork unitOfWork,
         IEnumerable<ITransactionImporter> importers,
@@ -56,6 +65,26 @@ public class ImportTransactionsCommandHandler
                 cancellationToken
             );
         }
+
+        // Build classification config from the mapping, falling back to defaults.
+        // Empty lists (e.g. rows migrated before this feature was added) also fall back
+        // to defaults so no existing import is silently broken.
+        var config = mapping is not null
+            ? new ImportClassificationConfig(
+                BuyKeywords: mapping.BuyKeywords.Count > 0
+                    ? mapping.BuyKeywords
+                    : DefaultConfig.BuyKeywords,
+                SellKeywords: mapping.SellKeywords.Count > 0
+                    ? mapping.SellKeywords
+                    : DefaultConfig.SellKeywords,
+                IncomeKeywords: mapping.IncomeKeywords.Count > 0
+                    ? mapping.IncomeKeywords
+                    : DefaultConfig.IncomeKeywords,
+                CashEquivalentSymbols: mapping.CashEquivalentSymbols.Count > 0
+                    ? mapping.CashEquivalentSymbols
+                    : DefaultConfig.CashEquivalentSymbols
+            )
+            : DefaultConfig;
 
         // Create the import batch
         var batch = new ImportBatch(
@@ -223,6 +252,7 @@ public class ImportTransactionsCommandHandler
                     request.AccountId,
                     account.Currency,
                     importedRows,
+                    config,
                     cancellationToken
                 );
             }
@@ -280,6 +310,7 @@ public class ImportTransactionsCommandHandler
         Guid accountId,
         string accountCurrency,
         IEnumerable<ImportedTransactionRow> rows,
+        ImportClassificationConfig config,
         CancellationToken cancellationToken
     )
     {
@@ -291,7 +322,7 @@ public class ImportTransactionsCommandHandler
 
         foreach (var row in rows)
         {
-            if (IsIncomeCashCredit(row))
+            if (IsIncomeCashCredit(row, config))
             {
                 pendingIncomeCredits.Add((DateOnly.FromDateTime(row.Date), row.Amount));
             }
@@ -304,7 +335,7 @@ public class ImportTransactionsCommandHandler
                 continue;
 
             var quantityMagnitude = Math.Abs(row.Quantity.Value);
-            var signedQuantityDelta = DetermineSignedQuantityDelta(row, quantityMagnitude);
+            var signedQuantityDelta = DetermineSignedQuantityDelta(row, quantityMagnitude, config);
             if (signedQuantityDelta == 0)
                 continue;
 
@@ -365,7 +396,7 @@ public class ImportTransactionsCommandHandler
 
             if (signedQuantityDelta > 0)
             {
-                var lotSource = ResolveLotSource(row, symbol, pendingIncomeCredits);
+                var lotSource = ResolveLotSource(row, symbol, pendingIncomeCredits, config);
                 var lot = new Lot(
                     holding.Id,
                     row.SettlementDate ?? DateOnly.FromDateTime(row.Date),
@@ -394,10 +425,14 @@ public class ImportTransactionsCommandHandler
     private static string? ResolveLotSource(
         ImportedTransactionRow row,
         string symbol,
-        List<(DateOnly Date, decimal Amount)> pendingIncomeCredits
+        List<(DateOnly Date, decimal Amount)> pendingIncomeCredits,
+        ImportClassificationConfig config
     )
     {
-        if (IsCashEquivalentSymbol(symbol) && TryMatchIncomeReinvestment(row, pendingIncomeCredits))
+        if (
+            IsCashEquivalentSymbol(symbol, config)
+            && TryMatchIncomeReinvestment(row, pendingIncomeCredits, config)
+        )
             return "ReinvestedIncome";
 
         return Truncate(
@@ -408,7 +443,8 @@ public class ImportTransactionsCommandHandler
 
     private static bool TryMatchIncomeReinvestment(
         ImportedTransactionRow row,
-        List<(DateOnly Date, decimal Amount)> pendingIncomeCredits
+        List<(DateOnly Date, decimal Amount)> pendingIncomeCredits,
+        ImportClassificationConfig config
     )
     {
         if (row.Amount >= 0)
@@ -419,8 +455,9 @@ public class ImportTransactionsCommandHandler
         var direction = row.Direction?.Trim();
 
         var isTradeBuy =
-            MatchesAny(activityType, ["trade"]) && MatchesAny(activitySubType, ["buy"])
-            || MatchesAny(direction, ["buy", "long"]);
+            MatchesAny(activitySubType, config.BuyKeywords)
+            || MatchesAny(direction, config.BuyKeywords)
+            || MatchesAny(activityType, config.BuyKeywords);
 
         if (!isTradeBuy)
             return false;
@@ -446,22 +483,28 @@ public class ImportTransactionsCommandHandler
         return false;
     }
 
-    private static bool IsIncomeCashCredit(ImportedTransactionRow row) =>
+    private static bool IsIncomeCashCredit(
+        ImportedTransactionRow row,
+        ImportClassificationConfig config
+    ) =>
         row.Amount > 0
         && (
-            MatchesAny(row.ActivityType, ["interest", "dividend", "distribution"])
-            || MatchesAny(row.ActivitySubType, ["interest", "dividend", "distribution"])
+            MatchesAny(row.ActivityType, config.IncomeKeywords)
+            || MatchesAny(row.ActivitySubType, config.IncomeKeywords)
         );
 
-    private static bool IsCashEquivalentSymbol(string symbol)
+    private static bool IsCashEquivalentSymbol(string symbol, ImportClassificationConfig config)
     {
         var normalized = symbol.Trim().ToUpperInvariant();
-        return normalized.StartsWith("CASH", StringComparison.Ordinal);
+        return config.CashEquivalentSymbols.Any(prefix =>
+            normalized.StartsWith(prefix.Trim().ToUpperInvariant(), StringComparison.Ordinal)
+        );
     }
 
     private static decimal DetermineSignedQuantityDelta(
         ImportedTransactionRow row,
-        decimal quantityMagnitude
+        decimal quantityMagnitude,
+        ImportClassificationConfig config
     )
     {
         var direction = row.Direction?.Trim().ToLowerInvariant();
@@ -469,14 +512,14 @@ public class ImportTransactionsCommandHandler
         var subType = row.ActivitySubType?.Trim().ToLowerInvariant();
 
         var isSell =
-            MatchesAny(direction, ["sell", "redeem", "withdraw", "out"])
-            || MatchesAny(activity, ["sell", "redeem", "withdraw"])
-            || MatchesAny(subType, ["sell", "redeem", "withdraw"]);
+            MatchesAny(direction, config.SellKeywords)
+            || MatchesAny(activity, config.SellKeywords)
+            || MatchesAny(subType, config.SellKeywords);
 
         var isBuy =
-            MatchesAny(direction, ["buy", "deposit", "in", "long"])
-            || MatchesAny(activity, ["buy", "purchase", "contribution", "reinvest"])
-            || MatchesAny(subType, ["buy", "purchase", "contribution", "reinvest"]);
+            MatchesAny(direction, config.BuyKeywords)
+            || MatchesAny(activity, config.BuyKeywords)
+            || MatchesAny(subType, config.BuyKeywords);
 
         if (isSell)
             return -quantityMagnitude;
@@ -518,4 +561,11 @@ public class ImportTransactionsCommandHandler
         var trimmed = value.Trim();
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
+
+    private record ImportClassificationConfig(
+        IReadOnlyList<string> BuyKeywords,
+        IReadOnlyList<string> SellKeywords,
+        IReadOnlyList<string> IncomeKeywords,
+        IReadOnlyList<string> CashEquivalentSymbols
+    );
 }

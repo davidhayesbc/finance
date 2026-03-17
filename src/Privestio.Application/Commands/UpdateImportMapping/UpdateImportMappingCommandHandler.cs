@@ -26,6 +26,18 @@ public class UpdateImportMappingCommandHandler
         mapping.HasHeaderRow = request.HasHeaderRow;
         mapping.AmountDebitColumn = request.AmountDebitColumn;
         mapping.AmountCreditColumn = request.AmountCreditColumn;
+        mapping.AmountSignFlipped = request.AmountSignFlipped;
+
+        if (request.BuyKeywords is not null)
+            mapping.BuyKeywords = request.BuyKeywords;
+        if (request.SellKeywords is not null)
+            mapping.SellKeywords = request.SellKeywords;
+        if (request.IncomeKeywords is not null)
+            mapping.IncomeKeywords = request.IncomeKeywords;
+        if (request.CashEquivalentSymbols is not null)
+            mapping.CashEquivalentSymbols = request.CashEquivalentSymbols;
+        if (request.IgnoreRowPatterns is not null)
+            mapping.IgnoreRowPatterns = request.IgnoreRowPatterns;
 
         await _unitOfWork.ImportMappings.UpdateAsync(mapping, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -41,6 +53,12 @@ public class UpdateImportMappingCommandHandler
             HasHeaderRow = mapping.HasHeaderRow,
             AmountDebitColumn = mapping.AmountDebitColumn,
             AmountCreditColumn = mapping.AmountCreditColumn,
+            BuyKeywords = mapping.BuyKeywords,
+            SellKeywords = mapping.SellKeywords,
+            IncomeKeywords = mapping.IncomeKeywords,
+            CashEquivalentSymbols = mapping.CashEquivalentSymbols,
+            IgnoreRowPatterns = mapping.IgnoreRowPatterns,
+            AmountSignFlipped = mapping.AmountSignFlipped,
         };
     }
 }

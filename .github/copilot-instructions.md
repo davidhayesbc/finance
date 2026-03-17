@@ -58,7 +58,7 @@ docker/
 - `RecurringTransaction` - Expected recurring income/expense pattern
 - `ForecastScenario` - Named net worth forecast with per-account/asset-class growth rate assumptions
 - `CategorizationRule` - User-defined rule (conditions + actions as JSON); can include auto-split templates
-- `ImportMapping` - Saved column mapping for a file format/institution
+- `ImportMapping` - Saved column mapping for a file format/institution; includes configurable transaction classification keywords (`BuyKeywords`, `SellKeywords`, `IncomeKeywords`), cash-equivalent symbol prefixes (`CashEquivalentSymbols`), ignorable row patterns (`IgnoreRowPatterns`), and an amount sign-inversion flag (`AmountSignFlipped`). All list properties stored as JSONB. Defaults match original Wealthsimple-compatible behaviour so existing mappings work without migration.
 
 ## Coding Standards
 

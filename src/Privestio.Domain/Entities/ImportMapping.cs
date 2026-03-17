@@ -44,6 +44,39 @@ public class ImportMapping : BaseEntity
     public string? AmountDebitColumn { get; set; }
     public string? AmountCreditColumn { get; set; }
 
+    /// <summary>
+    /// Keywords that identify a buy/acquisition in Direction, ActivityType, or ActivitySubType fields.
+    /// Matching is case-insensitive substring.
+    /// </summary>
+    public List<string> BuyKeywords { get; set; } =
+    ["buy", "purchase", "contribution", "reinvest", "deposit", "in", "long"];
+
+    /// <summary>
+    /// Keywords that identify a sell/disposition in Direction, ActivityType, or ActivitySubType fields.
+    /// </summary>
+    public List<string> SellKeywords { get; set; } = ["sell", "redeem", "withdraw", "out"];
+
+    /// <summary>
+    /// Keywords that identify income credits (dividends, interest, distributions).
+    /// </summary>
+    public List<string> IncomeKeywords { get; set; } = ["interest", "dividend", "distribution"];
+
+    /// <summary>
+    /// Symbol prefixes that identify cash-equivalent holdings (e.g. "CASH" matches CASH, CASHX, CASH.TO).
+    /// </summary>
+    public List<string> CashEquivalentSymbols { get; set; } = ["CASH"];
+
+    /// <summary>
+    /// Row skip patterns: if the Date column value starts with any of these strings, the row is ignored.
+    /// Useful for institution-specific footer/metadata rows.
+    /// </summary>
+    public List<string> IgnoreRowPatterns { get; set; } = [];
+
+    /// <summary>
+    /// When true, the parsed amount sign is inverted (for institutions that export debits as positive).
+    /// </summary>
+    public bool AmountSignFlipped { get; set; }
+
     public void UpdateMappings(Dictionary<string, string> columnMappings)
     {
         ArgumentNullException.ThrowIfNull(columnMappings);

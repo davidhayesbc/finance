@@ -18,6 +18,11 @@ public class ImportMappingConfiguration : IEntityTypeConfiguration<ImportMapping
         builder.Property(m => m.AmountCreditColumn).HasMaxLength(100);
 
         builder.Property(m => m.ColumnMappings).HasColumnType("jsonb");
+        builder.Property(m => m.BuyKeywords).HasColumnType("jsonb");
+        builder.Property(m => m.SellKeywords).HasColumnType("jsonb");
+        builder.Property(m => m.IncomeKeywords).HasColumnType("jsonb");
+        builder.Property(m => m.CashEquivalentSymbols).HasColumnType("jsonb");
+        builder.Property(m => m.IgnoreRowPatterns).HasColumnType("jsonb");
 
         builder.HasIndex(m => m.UserId);
     }

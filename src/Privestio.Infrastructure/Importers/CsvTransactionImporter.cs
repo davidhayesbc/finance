@@ -46,6 +46,8 @@ public class CsvTransactionImporter : ITransactionImporter
         var dateFormat = mapping?.DateFormat;
         var debitColumn = mapping?.AmountDebitColumn;
         var creditColumn = mapping?.AmountCreditColumn;
+        var ignoreRowPatterns = mapping?.IgnoreRowPatterns ?? [];
+        var amountSignFlipped = mapping?.AmountSignFlipped ?? false;
 
         var rowNumber = 1;
         while (await csv.ReadAsync())
@@ -53,14 +55,21 @@ public class CsvTransactionImporter : ITransactionImporter
             cancellationToken.ThrowIfCancellationRequested();
             rowNumber++;
 
-            if (IsIgnorableMetadataRow(csv, columnMap))
+            if (IsIgnorableMetadataRow(csv, columnMap, ignoreRowPatterns))
             {
                 continue;
             }
 
             try
             {
-                var row = ParseRow(csv, columnMap, dateFormat, debitColumn, creditColumn);
+                var row = ParseRow(
+                    csv,
+                    columnMap,
+                    dateFormat,
+                    debitColumn,
+                    creditColumn,
+                    amountSignFlipped
+                );
                 rows.Add(row);
             }
             catch (Exception ex)
@@ -73,15 +82,22 @@ public class CsvTransactionImporter : ITransactionImporter
         return new ImportParseResult(rows, errors);
     }
 
-    private static bool IsIgnorableMetadataRow(CsvReader csv, Dictionary<string, string> columnMap)
+    private static bool IsIgnorableMetadataRow(
+        CsvReader csv,
+        Dictionary<string, string> columnMap,
+        IReadOnlyList<string> ignoreRowPatterns
+    )
     {
+        if (ignoreRowPatterns.Count == 0)
+            return false;
+
         var dateValue = GetMappedField(csv, columnMap, "Date");
         if (string.IsNullOrWhiteSpace(dateValue))
             return false;
 
-        // Wealthsimple exports append a footer line such as:
-        // "As of 2026-03-13 16:02 GMT-07:00"
-        return dateValue.StartsWith("As of ", StringComparison.OrdinalIgnoreCase);
+        return ignoreRowPatterns.Any(pattern =>
+            dateValue.StartsWith(pattern, StringComparison.OrdinalIgnoreCase)
+        );
     }
 
     private static ImportedTransactionRow ParseRow(
@@ -89,7 +105,8 @@ public class CsvTransactionImporter : ITransactionImporter
         Dictionary<string, string> columnMap,
         string? dateFormat,
         string? debitColumn,
-        string? creditColumn
+        string? creditColumn,
+        bool amountSignFlipped
     )
     {
         var dateStr =
@@ -98,6 +115,9 @@ public class CsvTransactionImporter : ITransactionImporter
 
         var date = ParseDate(dateStr, dateFormat);
         var amount = ParseAmount(csv, columnMap, debitColumn, creditColumn);
+
+        if (amountSignFlipped)
+            amount = -amount;
 
         var description =
             GetMappedField(csv, columnMap, "Description")
