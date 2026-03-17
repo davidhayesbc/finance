@@ -39,7 +39,9 @@ public class GetPortfolioPerformanceQueryHandler
             cancellationToken
         );
 
-        if (holdings.Count == 0)
+        var activeHoldings = holdings.Where(h => h.Quantity > 0m).ToList();
+
+        if (activeHoldings.Count == 0)
         {
             return new PortfolioPerformanceResponse
             {
@@ -55,13 +57,13 @@ public class GetPortfolioPerformanceQueryHandler
             };
         }
 
-        var symbols = holdings.Select(h => h.Symbol).ToList();
+        var symbols = activeHoldings.Select(h => h.Symbol).ToList();
         var latestPrices = await _unitOfWork.PriceHistories.GetLatestBySymbolsAsync(
             symbols,
             cancellationToken
         );
 
-        var missingSymbols = holdings
+        var missingSymbols = activeHoldings
             .Where(h => ResolvePrice(latestPrices, h.Symbol) is null)
             .Select(h => h.Symbol)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -82,7 +84,7 @@ public class GetPortfolioPerformanceQueryHandler
             }
         }
 
-        var holdingContexts = holdings
+        var holdingContexts = activeHoldings
             .Select(h =>
             {
                 var price = ResolvePrice(latestPrices, h.Symbol);

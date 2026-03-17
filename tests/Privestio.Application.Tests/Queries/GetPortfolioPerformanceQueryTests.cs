@@ -377,4 +377,42 @@ public class GetPortfolioPerformanceQueryTests
         result.Holdings[0].GainLoss.Should().Be(0m);
         result.Holdings[0].PriceSource.Should().Be("Fallback");
     }
+
+    [Fact]
+    public async Task Handle_ZeroQuantityHoldings_AreExcludedFromResponse()
+    {
+        var userId = Guid.NewGuid();
+        var account = MakeAccount(userId);
+        var active = new Holding(account.Id, "XEQT", "iShares Core Equity ETF Portfolio", 10m, new Money(38m, "CAD"), null);
+        var closed = new Holding(account.Id, "ZFL", "BMO Long Federal Bond Index ETF", 0m, new Money(20m, "CAD"), null);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        _accounts
+            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(account);
+        _holdings
+            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([active, closed]);
+        _prices
+            .Setup(x =>
+                x.GetLatestBySymbolsAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<string, PriceHistory>)
+                    new Dictionary<string, PriceHistory>
+                    {
+                        ["XEQT"] = new PriceHistory("XEQT", new Money(40m, "CAD"), today, "YahooFinance"),
+                    }
+            );
+
+        var result = await CreateHandler()
+            .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Holdings.Should().HaveCount(1);
+        result.Holdings[0].Symbol.Should().Be("XEQT");
+    }
 }

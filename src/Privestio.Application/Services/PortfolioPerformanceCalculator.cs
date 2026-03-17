@@ -8,6 +8,7 @@ public static class PortfolioPerformanceCalculator
 {
     /// <summary>Number of days since AsOfDate before a price is considered stale.</summary>
     public const int PriceStaleThresholdDays = 7;
+    private const decimal QuantityTolerance = 0.0001m;
 
     public record LotInput(
         DateOnly AcquiredDate,
@@ -160,7 +161,16 @@ public static class PortfolioPerformanceCalculator
     {
         if (lots.Count > 0)
         {
-            return Math.Round(lots.Sum(l => l.Quantity * l.UnitCost), 2, MidpointRounding.ToEven);
+            var effectiveLotQuantity = lots.Sum(l => l.Quantity);
+
+            if (IsCashEquivalentSymbol(holding.Symbol) || IsQuantityAligned(holding.Quantity, effectiveLotQuantity))
+            {
+                return Math.Round(
+                    lots.Sum(l => l.Quantity * l.UnitCost),
+                    2,
+                    MidpointRounding.ToEven
+                );
+            }
         }
 
         return Math.Round(
@@ -169,6 +179,9 @@ public static class PortfolioPerformanceCalculator
             MidpointRounding.ToEven
         );
     }
+
+    private static bool IsQuantityAligned(decimal holdingQuantity, decimal lotQuantity) =>
+        Math.Abs(holdingQuantity - lotQuantity) <= QuantityTolerance;
 
     private static IReadOnlyList<LotInput> GetEffectiveCostLots(HoldingInput holding)
     {

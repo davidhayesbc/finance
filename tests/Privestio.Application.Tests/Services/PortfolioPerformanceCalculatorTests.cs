@@ -83,6 +83,27 @@ public class PortfolioPerformanceCalculatorTests
     }
 
     [Fact]
+    public void Calculate_NonCashLotQuantityMismatch_UsesAverageCostFallbackForBookValue()
+    {
+        var quantity = 5m;
+        var avgCost = 100m;
+
+        var result = PortfolioPerformanceCalculator.Calculate([
+            Holding(
+                "ABC",
+                quantity,
+                avgCost,
+                90m,
+                lots: [Lot(120, 10m, 100m)]
+            ),
+        ]);
+
+        result.Holdings.Should().HaveCount(1);
+        result.Holdings[0].BookValue.Should().Be(500m);
+        result.Holdings[0].GainLoss.Should().Be(-50m);
+    }
+
+    [Fact]
     public void Calculate_MultipleHoldings_SumsCorrectly()
     {
         var result = PortfolioPerformanceCalculator.Calculate([
