@@ -240,3 +240,13 @@ return Results.Problem("Account not found", statusCode: 404);
 - The `dotnet-ef` tool must be installed globally (`dotnet tool install dotnet-ef --global`)
 - Migrations are auto-applied on startup via `ApplyMigrationsAsync` in `DependencyInjection.cs`
 - Do not suppress `PendingModelChangesWarning` — always create the migration instead
+
+## Data Loader Command
+
+Use this command when loading local manifest data into the API and you want a clean import each run:
+
+```bash
+dotnet run --project tools/Privestio.DataLoader -- --manifest ~/privestio-data/manifest.json --data-dir ~/privestio-data --clear-existing-data
+```
+
+`--clear-existing-data` clears existing loader-managed data for the authenticated user before import starts.

@@ -706,6 +706,68 @@ public class ImportTransactionsCommandTests
     }
 
     [Fact]
+    public async Task Handle_NegativeQuantitySell_UsesAbsoluteQuantityAndDecreasesHolding()
+    {
+        var investmentAccount = new Account(
+            "RESP",
+            AccountType.Investment,
+            AccountSubType.RESP,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId
+        );
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(investmentAccount);
+
+        var existingHolding = new Holding(
+            _accountId,
+            "ZFL",
+            "BMO Long Federal Bond Index ETF",
+            1205.6384m,
+            new Domain.ValueObjects.Money(12.30m)
+        );
+        _holdingRepo
+            .Setup(r => r.GetByAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([existingHolding]);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(
+                DateTime.Parse("2025-10-07"),
+                14826.70m,
+                "Trade",
+                SettlementDate: new DateOnly(2025, 10, 7),
+                ActivityType: "Trade",
+                ActivitySubType: "SELL",
+                Direction: "LONG",
+                Symbol: "ZFL",
+                SecurityName: "BMO Long Federal Bond Index ETF",
+                Quantity: -1205.6384m,
+                UnitPrice: 12.2978m
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        await _handler.Handle(command, CancellationToken.None);
+
+        _holdingRepo.Verify(
+            h =>
+                h.UpdateAsync(
+                    It.Is<Holding>(x => x.Symbol == "ZFL" && x.Quantity == 0m),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+        _lotRepo.Verify(
+            l => l.AddAsync(It.IsAny<Lot>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    [Fact]
     public async Task Handle_CustomIncomeKeywords_DetectsIncomeForReinvestment()
     {
         var mappingId = Guid.NewGuid();

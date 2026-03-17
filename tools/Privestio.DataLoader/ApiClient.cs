@@ -66,6 +66,23 @@ public class ApiClient : IDisposable
         return await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
     }
 
+    public async Task<bool> ClearLoaderDataAsync()
+    {
+        var response = await _http.PostAsync("/api/v1/ops/clear-loader-data", content: null);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            _logger.LogError(
+                "Clear loader data failed ({Status}): {Body}",
+                response.StatusCode,
+                body
+            );
+            return false;
+        }
+
+        return true;
+    }
+
     public async Task<IReadOnlyList<AccountResponse>> GetAccountsAsync() =>
         await _http.GetFromJsonAsync<IReadOnlyList<AccountResponse>>(
             "/api/v1/accounts",

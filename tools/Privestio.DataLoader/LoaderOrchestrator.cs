@@ -10,6 +10,7 @@ public class LoaderOrchestrator
     private readonly DataLoaderConfig _config;
     private readonly string _dataDir;
     private readonly bool _dryRun;
+    private readonly bool _clearExistingData;
     private readonly bool _verboseImportErrors;
     private readonly ILogger<LoaderOrchestrator> _logger;
 
@@ -32,6 +33,7 @@ public class LoaderOrchestrator
         DataLoaderConfig config,
         string dataDir,
         bool dryRun,
+        bool clearExistingData,
         bool verboseImportErrors,
         ILogger<LoaderOrchestrator> logger
     )
@@ -40,6 +42,7 @@ public class LoaderOrchestrator
         _config = config;
         _dataDir = dataDir;
         _dryRun = dryRun;
+        _clearExistingData = clearExistingData;
         _verboseImportErrors = verboseImportErrors;
         _logger = logger;
     }
@@ -49,6 +52,9 @@ public class LoaderOrchestrator
         _logger.LogInformation("Starting data load{DryRun}...", _dryRun ? " (DRY RUN)" : "");
 
         if (!await AuthenticateAsync())
+            return 1;
+
+        if (!await ClearExistingDataIfRequestedAsync())
             return 1;
 
         await LoadCategoriesAsync();
@@ -101,6 +107,32 @@ public class LoaderOrchestrator
             auth.Email,
             response.UserId
         );
+        return true;
+    }
+
+    private async Task<bool> ClearExistingDataIfRequestedAsync()
+    {
+        if (!_clearExistingData)
+        {
+            return true;
+        }
+
+        if (_dryRun)
+        {
+            _logger.LogInformation("[DRY RUN] Would clear existing loader data before import");
+            return true;
+        }
+
+        _logger.LogInformation("Clearing existing loader data before import...");
+        var succeeded = await _api.ClearLoaderDataAsync();
+
+        if (!succeeded)
+        {
+            _logger.LogError("Failed to clear existing loader data");
+            return false;
+        }
+
+        _logger.LogInformation("Existing loader data cleared");
         return true;
     }
 

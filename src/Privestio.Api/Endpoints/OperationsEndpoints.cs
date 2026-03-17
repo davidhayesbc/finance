@@ -19,6 +19,12 @@ public static class OperationsEndpoints
             .WithSummary("Export all user data as a JSON file download");
 
         group
+            .MapPost("/clear-loader-data", ClearLoaderDataAsync)
+            .RequireAuthorization()
+            .WithName("ClearLoaderData")
+            .WithSummary("Clear loader-managed data for the current user before a re-import");
+
+        group
             .MapGet("/health/detailed", GetDetailedHealthAsync)
             .WithName("DetailedHealth")
             .WithSummary(
@@ -77,5 +83,19 @@ public static class OperationsEndpoints
         return report.Status == HealthStatus.Healthy
             ? Results.Ok(result)
             : Results.Json(result, statusCode: 503);
+    }
+
+    private static async Task<IResult> ClearLoaderDataAsync(
+        IUserDataResetService resetService,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var result = await resetService.ClearLoaderDataAsync(userId.Value, cancellationToken);
+        return Results.Ok(result);
     }
 }

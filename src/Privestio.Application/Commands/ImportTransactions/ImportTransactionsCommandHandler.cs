@@ -327,7 +327,7 @@ public class ImportTransactionsCommandHandler
                 pendingIncomeCredits.Add((DateOnly.FromDateTime(row.Date), row.Amount));
             }
 
-            if (string.IsNullOrWhiteSpace(row.Symbol) || row.Quantity is null || row.Quantity <= 0)
+            if (string.IsNullOrWhiteSpace(row.Symbol) || row.Quantity is null || row.Quantity == 0)
                 continue;
 
             var symbol = NormalizeSymbol(row.Symbol, 20);

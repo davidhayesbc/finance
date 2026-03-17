@@ -13,6 +13,13 @@ var apiUrl =
     ?? Environment.GetEnvironmentVariable("PRIVESTIO_API_URL")
     ?? "https://localhost:7292";
 var dryRun = args.Contains("--dry-run");
+var clearExistingData =
+    args.Contains("--clear-existing-data")
+    || string.Equals(
+        Environment.GetEnvironmentVariable("PRIVESTIO_CLEAR_EXISTING_DATA"),
+        "true",
+        StringComparison.OrdinalIgnoreCase
+    );
 var verboseImportErrors =
     args.Contains("--verbose-import-errors")
     || string.Equals(
@@ -29,6 +36,7 @@ if (string.IsNullOrEmpty(manifestPath))
     Console.Error.WriteLine("  --manifest /path/to/manifest.json \\");
     Console.Error.WriteLine("  --data-dir /path/to/data \\");
     Console.Error.WriteLine("  [--api-url https://localhost:7292] \\");
+    Console.Error.WriteLine("  [--clear-existing-data] \\");
     Console.Error.WriteLine("  [--dry-run] \\");
     Console.Error.WriteLine("  [--verbose-import-errors]");
     return 1;
@@ -76,6 +84,7 @@ var config =
 logger.LogInformation("Manifest loaded: {Path}", manifestPath);
 logger.LogInformation("Data directory: {DataDir}", dataDir);
 logger.LogInformation("API URL: {ApiUrl}", apiUrl);
+logger.LogInformation("Clear existing data: {Enabled}", clearExistingData ? "enabled" : "disabled");
 logger.LogInformation(
     "Verbose import errors: {Enabled}",
     verboseImportErrors ? "enabled" : "disabled"
@@ -87,6 +96,7 @@ var orchestrator = new LoaderOrchestrator(
     config,
     dataDir,
     dryRun,
+    clearExistingData,
     verboseImportErrors,
     logger
 );

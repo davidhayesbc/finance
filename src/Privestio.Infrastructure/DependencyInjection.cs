@@ -7,6 +7,7 @@ using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Domain.Interfaces;
 using Privestio.Infrastructure.Data;
+using Privestio.Infrastructure.Data.Services;
 using Privestio.Infrastructure.ExchangeRates;
 using Privestio.Infrastructure.Identity;
 using Privestio.Infrastructure.Importers;
@@ -59,6 +60,7 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IUserDataResetService, UserDataResetService>();
 
         // Ingestion pipeline services (Phase 2)
         services.AddScoped<ITransactionImporter, CsvTransactionImporter>();
