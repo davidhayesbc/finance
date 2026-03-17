@@ -163,7 +163,10 @@ public static class PortfolioPerformanceCalculator
         {
             var effectiveLotQuantity = lots.Sum(l => l.Quantity);
 
-            if (IsCashEquivalentSymbol(holding.Symbol) || IsQuantityAligned(holding.Quantity, effectiveLotQuantity))
+            if (
+                IsCashEquivalentSymbol(holding.Symbol)
+                || IsQuantityAligned(holding.Quantity, effectiveLotQuantity)
+            )
             {
                 return Math.Round(
                     lots.Sum(l => l.Quantity * l.UnitCost),

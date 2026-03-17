@@ -383,8 +383,22 @@ public class GetPortfolioPerformanceQueryTests
     {
         var userId = Guid.NewGuid();
         var account = MakeAccount(userId);
-        var active = new Holding(account.Id, "XEQT", "iShares Core Equity ETF Portfolio", 10m, new Money(38m, "CAD"), null);
-        var closed = new Holding(account.Id, "ZFL", "BMO Long Federal Bond Index ETF", 0m, new Money(20m, "CAD"), null);
+        var active = new Holding(
+            account.Id,
+            "XEQT",
+            "iShares Core Equity ETF Portfolio",
+            10m,
+            new Money(38m, "CAD"),
+            null
+        );
+        var closed = new Holding(
+            account.Id,
+            "ZFL",
+            "BMO Long Federal Bond Index ETF",
+            0m,
+            new Money(20m, "CAD"),
+            null
+        );
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         _accounts
@@ -404,7 +418,12 @@ public class GetPortfolioPerformanceQueryTests
                 (IReadOnlyDictionary<string, PriceHistory>)
                     new Dictionary<string, PriceHistory>
                     {
-                        ["XEQT"] = new PriceHistory("XEQT", new Money(40m, "CAD"), today, "YahooFinance"),
+                        ["XEQT"] = new PriceHistory(
+                            "XEQT",
+                            new Money(40m, "CAD"),
+                            today,
+                            "YahooFinance"
+                        ),
                     }
             );
 

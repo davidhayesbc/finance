@@ -89,13 +89,7 @@ public class PortfolioPerformanceCalculatorTests
         var avgCost = 100m;
 
         var result = PortfolioPerformanceCalculator.Calculate([
-            Holding(
-                "ABC",
-                quantity,
-                avgCost,
-                90m,
-                lots: [Lot(120, 10m, 100m)]
-            ),
+            Holding("ABC", quantity, avgCost, 90m, lots: [Lot(120, 10m, 100m)]),
         ]);
 
         result.Holdings.Should().HaveCount(1);
