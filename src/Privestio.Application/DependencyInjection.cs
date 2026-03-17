@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<NotificationService>();
         services.AddScoped<SecurityResolutionService>();
         services.AddScoped<InvestmentPortfolioValuationService>();
+        services.AddScoped<HistoricalValueTimelineService>();
         services.AddScoped<NetWorthForecastingService>();
         services.AddScoped<AmortizationScheduleService>();
         services.AddScoped<ResourcePermissionService>();

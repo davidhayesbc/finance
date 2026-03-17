@@ -6,6 +6,10 @@ namespace Privestio.Web.Services;
 public interface IAnalyticsService
 {
     Task<NetWorthSummaryResponse?> GetNetWorthSummaryAsync();
+    Task<NetWorthHistoryResponse?> GetNetWorthHistoryAsync(
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null
+    );
     Task<SpendingAnalysisResponse?> GetSpendingAnalysisAsync(DateOnly startDate, DateOnly endDate);
     Task<CashFlowSummaryResponse?> GetCashFlowSummaryAsync(DateOnly startDate, DateOnly endDate);
     Task<DebtOverviewResponse?> GetDebtOverviewAsync();
@@ -23,6 +27,24 @@ public class AnalyticsService : IAnalyticsService
         {
             return await _httpClient.GetFromJsonAsync<NetWorthSummaryResponse>(
                 "/api/v1/analytics/net-worth"
+            );
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<NetWorthHistoryResponse?> GetNetWorthHistoryAsync(
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null
+    )
+    {
+        try
+        {
+            var query = BuildDateRangeQuery(fromDate, toDate);
+            return await _httpClient.GetFromJsonAsync<NetWorthHistoryResponse>(
+                $"/api/v1/analytics/net-worth/history{query}"
             );
         }
         catch
@@ -77,5 +99,16 @@ public class AnalyticsService : IAnalyticsService
         {
             return null;
         }
+    }
+
+    private static string BuildDateRangeQuery(DateOnly? fromDate, DateOnly? toDate)
+    {
+        var parameters = new List<string>();
+        if (fromDate.HasValue)
+            parameters.Add($"fromDate={fromDate:yyyy-MM-dd}");
+        if (toDate.HasValue)
+            parameters.Add($"toDate={toDate:yyyy-MM-dd}");
+
+        return parameters.Count == 0 ? string.Empty : $"?{string.Join("&", parameters)}";
     }
 }

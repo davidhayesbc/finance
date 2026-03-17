@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Privestio.Application.Commands.CreatePriceHistory;
+using Privestio.Application.Commands.SyncHistoricalPrices;
 using Privestio.Application.Queries.GetPriceHistory;
 using Privestio.Contracts.Requests;
 
@@ -30,6 +31,13 @@ public static class PriceHistoryEndpoints
             .MapPost("/batch", BatchCreatePriceHistoryAsync)
             .WithName("BatchCreatePriceHistory")
             .WithSummary("Create multiple price history entries, skipping duplicates");
+
+        group
+            .MapPost("/sync/historical", SyncHistoricalPricesAsync)
+            .WithName("SyncHistoricalPrices")
+            .WithSummary(
+                "Fetch and persist historical prices for the current user's investment holdings"
+            );
 
         return app;
     }
@@ -124,5 +132,35 @@ public static class PriceHistoryEndpoints
                     .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
             );
         }
+    }
+
+    private static async Task<IResult> SyncHistoricalPricesAsync(
+        IMediator mediator,
+        ClaimsPrincipal user,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var effectiveTo = toDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveFrom = fromDate ?? effectiveTo.AddYears(-10);
+
+        if (effectiveFrom > effectiveTo)
+        {
+            return Results.BadRequest(
+                new { message = "fromDate must be less than or equal to toDate." }
+            );
+        }
+
+        var result = await mediator.Send(
+            new SyncHistoricalPricesCommand(userId.Value, effectiveFrom, effectiveTo),
+            cancellationToken
+        );
+
+        return Results.Ok(result);
     }
 }

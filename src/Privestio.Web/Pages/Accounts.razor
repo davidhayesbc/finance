@@ -1,5 +1,7 @@
 @page "/accounts"
 @inject IAccountService AccountService
+@inject IAnalyticsService AnalyticsService
+@inject IPriceHistoryService PriceHistoryService
 @inject NavigationManager Navigation
 
 <PageTitle>Accounts — Privestio</PageTitle>
@@ -8,6 +10,12 @@
     <PageHeader Eyebrow="Accounts" Title="Account workspace"
                 Description="Review balances, institutions, and account types in one consistently styled table.">
         <Actions>
+            <FluentButton Appearance="Appearance.Outline"
+                          Loading="_isSyncingHistory"
+                          @onclick="SyncHistoricalPricesAsync"
+                          aria-label="Sync historical prices from Yahoo Finance">
+                Sync Market History
+            </FluentButton>
             <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
                           aria-label="Add new account">
                 Add Account
@@ -33,6 +41,40 @@
     }
     else
     {
+        @if (!string.IsNullOrWhiteSpace(_syncMessage))
+        {
+            <FluentMessageBar Intent="@_syncMessageIntent" style="margin-bottom: 1rem;">@_syncMessage</FluentMessageBar>
+        }
+
+        @if (_netWorthHistory is not null)
+        {
+            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+                <div class="section-heading-row" style="margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="margin: 0 0 0.25rem 0;">Net Worth Growth</h3>
+                        <p class="section-copy">Trend line built from recorded balances, valuations, and persisted market prices.</p>
+                    </div>
+                    <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
+                                          Disabled="@(_isLoadingHistory || _isSyncingHistory)"
+                                          OnChange="HandleHistoryRangeChangedAsync" />
+                </div>
+
+                @if (_isLoadingHistory)
+                {
+                    <div class="empty-state-shell">
+                        <FluentProgressRing aria-label="Loading net worth history" />
+                    </div>
+                }
+                else
+                {
+                <HistoricalValueChart Points="_netWorthHistory.Points"
+                                      SeriesName="Net Worth"
+                                      EmptyTitle="No net worth history yet."
+                                      EmptyMessage="Sync historical prices and keep account activity current to visualize growth over time." />
+                }
+            </FluentCard>
+        }
+
         <FluentCard Class="surface-card data-card">
             <div class="summary-strip">
                 <div>
@@ -70,11 +112,77 @@
 
 @code {
     private List<AccountResponse> _accounts = new();
+    private NetWorthHistoryResponse? _netWorthHistory;
+    private bool _isLoadingHistory = true;
     private bool _isLoading = true;
+    private bool _isSyncingHistory;
+    private string _selectedHistoryRange = "1y";
+    private string? _syncMessage;
+    private MessageIntent _syncMessageIntent = MessageIntent.Success;
 
     protected override async Task OnInitializedAsync()
     {
-        _accounts = (await AccountService.GetAccountsAsync()).ToList();
+        await LoadPageAsync();
         _isLoading = false;
+    }
+
+    private async Task LoadPageAsync()
+    {
+        _isLoadingHistory = true;
+
+        var accountsTask = AccountService.GetAccountsAsync();
+        await accountsTask;
+        _accounts = (await accountsTask).ToList();
+
+        var (fromDate, toDate) = ResolveHistoryRange();
+        _netWorthHistory = await AnalyticsService.GetNetWorthHistoryAsync(fromDate, toDate);
+        _isLoadingHistory = false;
+    }
+
+    private async Task HandleHistoryRangeChangedAsync(string rangeKey)
+    {
+        _selectedHistoryRange = rangeKey;
+        _isLoadingHistory = true;
+
+        var (fromDate, toDate) = ResolveHistoryRange();
+        _netWorthHistory = await AnalyticsService.GetNetWorthHistoryAsync(fromDate, toDate);
+        _isLoadingHistory = false;
+    }
+
+    private async Task SyncHistoricalPricesAsync()
+    {
+        _isSyncingHistory = true;
+        _syncMessage = null;
+
+        try
+        {
+            var result = await PriceHistoryService.SyncHistoricalPricesAsync();
+            if (result is null)
+            {
+                _syncMessageIntent = MessageIntent.Error;
+                _syncMessage = "Historical price sync failed.";
+                return;
+            }
+
+            _syncMessageIntent = MessageIntent.Success;
+            _syncMessage = $"Historical price sync complete. Inserted {result.QuotesInserted} quotes and skipped {result.QuotesSkipped}.";
+            await LoadPageAsync();
+        }
+        finally
+        {
+            _isSyncingHistory = false;
+        }
+    }
+
+    private (DateOnly? FromDate, DateOnly ToDate) ResolveHistoryRange()
+    {
+        var toDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        return _selectedHistoryRange switch
+        {
+            "90d" => (toDate.AddDays(-89), toDate),
+            "1y" => (toDate.AddYears(-1), toDate),
+            "all" => (_accounts.Count == 0 ? null : _accounts.Min(account => account.OpeningDate), toDate),
+            _ => (toDate.AddYears(-1), toDate),
+        };
     }
 }

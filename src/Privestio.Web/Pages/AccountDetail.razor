@@ -3,6 +3,7 @@
 @inject ITransactionService TransactionService
 @inject IValuationService ValuationService
 @inject IAmortizationService AmortizationService
+@inject IPriceHistoryService PriceHistoryService
 @inject IHoldingService HoldingService
 @inject ILotService LotService
 @inject IPortfolioService PortfolioService
@@ -44,6 +45,15 @@ else
                               aria-label="Add a transaction to this account">
                     Add Transaction
                 </FluentButton>
+                @if (IsInvestmentAccount)
+                {
+                    <FluentButton Appearance="Appearance.Outline"
+                                  Loading="_isSyncingHistoricalPrices"
+                                  @onclick="SyncHistoricalPricesAsync"
+                                  aria-label="Sync historical prices from Yahoo Finance">
+                        Sync Market History
+                    </FluentButton>
+                }
                 @if (IsPropertyAccount)
                 {
                     <FluentButton Appearance="Appearance.Outline"
@@ -73,6 +83,43 @@ else
                 <strong>@_account.OpeningDate.ToString("MMMM d, yyyy")</strong>
             </FluentCard>
         </div>
+
+        <FluentCard Class="surface-card transaction-panel" aria-labelledby="history-title">
+            <div class="section-heading-row">
+                <div>
+                    <h2 id="history-title" class="section-heading">@(IsInvestmentAccount ? "Market value growth" : "Account value history")</h2>
+                    <p class="section-copy">Historical trend based on recorded activity, valuations, and persisted market prices.</p>
+                </div>
+                <HistoryRangeSelector CurrentKey="@_selectedValueHistoryRange"
+                                      Disabled="@(_isLoadingValueHistory || _isSyncingHistoricalPrices)"
+                                      OnChange="HandleValueHistoryRangeChangedAsync" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_historicalPriceSyncMessage))
+            {
+                <FluentMessageBar Intent="@_historicalPriceSyncIntent" style="margin-bottom:1rem;">
+                    @_historicalPriceSyncMessage
+                </FluentMessageBar>
+            }
+
+            @if (_isLoadingValueHistory)
+            {
+                <div class="empty-state-shell">
+                    <FluentProgressRing aria-label="Loading account value history" />
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_valueHistoryErrorMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Warning">@_valueHistoryErrorMessage</FluentMessageBar>
+            }
+            else if (_valueHistory is not null)
+            {
+                <HistoricalValueChart Points="_valueHistory.Points"
+                                      SeriesName="@_valueHistory.Label"
+                                      EmptyTitle="No historical values yet."
+                                      EmptyMessage="Record transactions, valuations, or price history to build this chart." />
+            }
+        </FluentCard>
 
         @if (IsPropertyAccount)
         {
@@ -913,6 +960,12 @@ else
     private readonly Dictionary<Guid, bool> _aliasPrimaryByHoldingId = [];
     private readonly Dictionary<Guid, string> _aliasMessageByHoldingId = [];
     private readonly HashSet<Guid> _aliasBusyHoldingIds = [];
+    private AccountValueHistoryResponse? _valueHistory;
+    private bool _isLoadingValueHistory = true;
+    private string? _valueHistoryErrorMessage;
+    private bool _isSyncingHistoricalPrices;
+    private string? _historicalPriceSyncMessage;
+    private MessageIntent _historicalPriceSyncIntent = MessageIntent.Success;
     private PortfolioPerformanceResponse? _performance;
     private bool _isLoadingPerformance = true;
     private string? _performanceErrorMessage;
@@ -946,6 +999,7 @@ else
     private string? _holdingErrorMessage;
     private string _searchTerm = string.Empty;
     private string _appliedSearchTerm = string.Empty;
+    private string _selectedValueHistoryRange = "1y";
     private string _selectedDatePreset = "90d";
     private string _fromDateInput = string.Empty;
     private string _toDateInput = string.Empty;
@@ -974,12 +1028,18 @@ else
         {
             if (IsPropertyAccount)
             {
-                await Task.WhenAll(LoadValuationsAsync(), LoadPropertyExpensesAsync(), LoadMortgageTrackingAsync());
+                await Task.WhenAll(
+                    LoadValueHistoryAsync(),
+                    LoadValuationsAsync(),
+                    LoadPropertyExpensesAsync(),
+                    LoadMortgageTrackingAsync()
+                );
             }
             else if (IsInvestmentAccount)
             {
                 SetDatePreset("90d");
                 await Task.WhenAll(
+                    LoadValueHistoryAsync(),
                     LoadHoldingsAsync(),
                     LoadPerformanceAsync(),
                     LoadTransactionsAsync(resetPaging: true)
@@ -988,9 +1048,75 @@ else
             else
             {
                 SetDatePreset("90d");
-                await LoadTransactionsAsync(resetPaging: true);
+                await Task.WhenAll(LoadValueHistoryAsync(), LoadTransactionsAsync(resetPaging: true));
             }
         }
+    }
+
+    private async Task LoadValueHistoryAsync()
+    {
+        _isLoadingValueHistory = true;
+        _valueHistoryErrorMessage = null;
+
+        try
+        {
+            var (fromDate, toDate) = ResolveValueHistoryRange();
+            _valueHistory = await AccountService.GetAccountValueHistoryAsync(Id, fromDate, toDate);
+            if (_valueHistory is null)
+                _valueHistoryErrorMessage = "Account value history could not be loaded right now.";
+        }
+        catch
+        {
+            _valueHistory = null;
+            _valueHistoryErrorMessage = "Account value history could not be loaded right now.";
+        }
+        finally
+        {
+            _isLoadingValueHistory = false;
+        }
+    }
+
+    private async Task HandleValueHistoryRangeChangedAsync(string rangeKey)
+    {
+        _selectedValueHistoryRange = rangeKey;
+        await LoadValueHistoryAsync();
+    }
+
+    private async Task SyncHistoricalPricesAsync()
+    {
+        _isSyncingHistoricalPrices = true;
+        _historicalPriceSyncMessage = null;
+
+        try
+        {
+            var result = await PriceHistoryService.SyncHistoricalPricesAsync();
+            if (result is null)
+            {
+                _historicalPriceSyncIntent = MessageIntent.Error;
+                _historicalPriceSyncMessage = "Historical price sync failed.";
+                return;
+            }
+
+            _historicalPriceSyncIntent = MessageIntent.Success;
+            _historicalPriceSyncMessage = $"Historical price sync complete. Inserted {result.QuotesInserted} quotes and skipped {result.QuotesSkipped}.";
+            await Task.WhenAll(LoadValueHistoryAsync(), LoadPerformanceAsync());
+        }
+        finally
+        {
+            _isSyncingHistoricalPrices = false;
+        }
+    }
+
+    private (DateOnly? FromDate, DateOnly ToDate) ResolveValueHistoryRange()
+    {
+        var toDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        return _selectedValueHistoryRange switch
+        {
+            "90d" => (toDate.AddDays(-89), toDate),
+            "1y" => (toDate.AddYears(-1), toDate),
+            "all" => (_account?.OpeningDate, toDate),
+            _ => (toDate.AddYears(-1), toDate),
+        };
     }
 
     private async Task HandleFilterSubmitAsync()

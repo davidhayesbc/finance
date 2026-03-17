@@ -6,6 +6,7 @@ using Privestio.Application.Commands.CreateAccount;
 using Privestio.Application.Commands.UpdateAccount;
 using Privestio.Application.Queries.GetAccountById;
 using Privestio.Application.Queries.GetAccounts;
+using Privestio.Application.Queries.GetAccountValueHistory;
 using Privestio.Contracts.Requests;
 
 namespace Privestio.Api.Endpoints;
@@ -25,6 +26,11 @@ public static class AccountEndpoints
             .MapGet("/{id:guid}", GetAccountByIdAsync)
             .WithName("GetAccountById")
             .WithSummary("Get a specific account by ID");
+
+        group
+            .MapGet("/{id:guid}/history", GetAccountValueHistoryAsync)
+            .WithName("GetAccountValueHistory")
+            .WithSummary("Get historical balance or market value data for an account");
 
         group
             .MapPost("/", CreateAccountAsync)
@@ -68,6 +74,35 @@ public static class AccountEndpoints
             new GetAccountByIdQuery(id, userId.Value),
             cancellationToken
         );
+        return result is null ? Results.NotFound() : Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetAccountValueHistoryAsync(
+        Guid id,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var effectiveTo = toDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveFrom = fromDate ?? effectiveTo.AddYears(-1);
+
+        if (effectiveFrom > effectiveTo)
+            return Results.BadRequest(
+                new { message = "fromDate must be less than or equal to toDate." }
+            );
+
+        var result = await mediator.Send(
+            new GetAccountValueHistoryQuery(id, userId.Value, effectiveFrom, effectiveTo),
+            cancellationToken
+        );
+
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
 

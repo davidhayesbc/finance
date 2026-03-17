@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Privestio.Application.Queries.GetCashFlowSummary;
 using Privestio.Application.Queries.GetDebtOverview;
+using Privestio.Application.Queries.GetNetWorthHistory;
 using Privestio.Application.Queries.GetNetWorthSummary;
 using Privestio.Application.Queries.GetSpendingAnalysis;
 
@@ -18,6 +19,11 @@ public static class AnalyticsEndpoints
             .MapGet("/net-worth", GetNetWorthSummaryAsync)
             .WithName("GetNetWorthSummary")
             .WithSummary("Get net worth summary for the current user");
+
+        group
+            .MapGet("/net-worth/history", GetNetWorthHistoryAsync)
+            .WithName("GetNetWorthHistory")
+            .WithSummary("Get net worth history for the current user");
 
         group
             .MapGet("/spending", GetSpendingAnalysisAsync)
@@ -51,6 +57,34 @@ public static class AnalyticsEndpoints
             new GetNetWorthSummaryQuery(userId.Value),
             cancellationToken
         );
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetNetWorthHistoryAsync(
+        IMediator mediator,
+        ClaimsPrincipal user,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var effectiveTo = toDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveFrom = fromDate ?? effectiveTo.AddYears(-1);
+
+        if (effectiveFrom > effectiveTo)
+            return Results.BadRequest(
+                new { message = "fromDate must be less than or equal to toDate." }
+            );
+
+        var result = await mediator.Send(
+            new GetNetWorthHistoryQuery(userId.Value, effectiveFrom, effectiveTo),
+            cancellationToken
+        );
+
         return Results.Ok(result);
     }
 

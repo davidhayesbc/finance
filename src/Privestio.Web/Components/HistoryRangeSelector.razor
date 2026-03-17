@@ -1,0 +1,27 @@
+<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+    @foreach (var option in _options)
+    {
+        var appearance = string.Equals(CurrentKey, option.Key, StringComparison.OrdinalIgnoreCase)
+        ? Appearance.Accent
+        : Appearance.Outline;
+
+        <FluentButton Appearance="@appearance" Disabled="@Disabled" @onclick="@(() => OnChange.InvokeAsync(option.Key))">
+            @option.Label
+        </FluentButton>
+    }
+</div>
+
+@code {
+    [Parameter] public string CurrentKey { get; set; } = "1y";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<string> OnChange { get; set; }
+
+    private static readonly IReadOnlyList<RangeOption> _options =
+    [
+    new("90d", "90D"),
+new("1y", "1Y"),
+new("all", "All")
+    ];
+
+    private sealed record RangeOption(string Key, string Label);
+}

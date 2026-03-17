@@ -8,6 +8,11 @@ public interface IAccountService
 {
     Task<IReadOnlyList<AccountResponse>> GetAccountsAsync();
     Task<AccountResponse?> GetAccountByIdAsync(Guid id);
+    Task<AccountValueHistoryResponse?> GetAccountValueHistoryAsync(
+        Guid id,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null
+    );
     Task<AccountResponse?> CreateAccountAsync(CreateAccountRequest request);
 }
 
@@ -40,6 +45,31 @@ public class AccountService : IAccountService
         try
         {
             return await _httpClient.GetFromJsonAsync<AccountResponse>($"/api/v1/accounts/{id}");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<AccountValueHistoryResponse?> GetAccountValueHistoryAsync(
+        Guid id,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null
+    )
+    {
+        try
+        {
+            var parameters = new List<string>();
+            if (fromDate.HasValue)
+                parameters.Add($"fromDate={fromDate:yyyy-MM-dd}");
+            if (toDate.HasValue)
+                parameters.Add($"toDate={toDate:yyyy-MM-dd}");
+
+            var query = parameters.Count == 0 ? string.Empty : $"?{string.Join("&", parameters)}";
+            return await _httpClient.GetFromJsonAsync<AccountValueHistoryResponse>(
+                $"/api/v1/accounts/{id}/history{query}"
+            );
         }
         catch
         {

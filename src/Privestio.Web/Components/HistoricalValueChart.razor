@@ -1,0 +1,42 @@
+@if (_displayPoints.Count == 0)
+{
+    <div class="empty-inline">
+        <strong>@EmptyTitle</strong>
+        <span>@EmptyMessage</span>
+    </div>
+}
+else
+{
+    <ApexChart TItem="ValueHistoryPointResponse" Title="" Height="@Height">
+        <ApexPointSeries TItem="ValueHistoryPointResponse" Items="_displayPoints" SeriesType="SeriesType.Line"
+                         Name="@SeriesName" XValue="@GetXAxisLabel" YAggregate="@(items => items.Sum(i => i.Value))" />
+    </ApexChart>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ValueHistoryPointResponse> Points { get; set; } = [];
+    [Parameter] public string SeriesName { get; set; } = "Value";
+    [Parameter] public string EmptyTitle { get; set; } = "No history available.";
+    [Parameter] public string EmptyMessage { get; set; } = "Add historical data to populate this chart.";
+    [Parameter] public string Height { get; set; } = "320";
+
+    private IReadOnlyList<ValueHistoryPointResponse> _displayPoints = [];
+    private bool _groupedMonthly;
+
+    protected override void OnParametersSet()
+    {
+        var ordered = Points.OrderBy(point => point.Date).ToList();
+        _groupedMonthly = ordered.Count > 180;
+
+        _displayPoints = _groupedMonthly
+        ? ordered
+        .GroupBy(point => new { point.Date.Year, point.Date.Month })
+        .Select(group => group.OrderBy(point => point.Date).Last())
+        .ToList()
+        .AsReadOnly()
+        : ordered.AsReadOnly();
+    }
+
+    private string GetXAxisLabel(ValueHistoryPointResponse point) =>
+    _groupedMonthly ? point.Date.ToString("MMM yyyy") : point.Date.ToString("MMM d");
+}

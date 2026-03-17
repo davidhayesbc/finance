@@ -31,13 +31,22 @@
             </FluentCard>
         </div>
 
+        @if (_history is not null)
+        {
+            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0;">Net Worth Growth</h3>
+                <HistoricalValueChart Points="_history.Points" SeriesName="Net Worth" EmptyTitle="No net worth history yet."
+                                      EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+            </FluentCard>
+        }
+
         @if (_summary.AssetAllocation.Count > 0)
         {
             <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0 0 1rem 0;">Asset Allocation</h3>
-                <ApexChart TItem="AssetAllocationItem"  Title=""             Height="350">
-                    <ApexPointSeries TItem="AssetAllocationItem"             Items="_summary.AssetAllocation.ToList()"
-                                     SeriesType="SeriesType.Donut"          Name="Allocation"                XValue="@(item => item.AccountType)"
+                <ApexChart TItem="AssetAllocationItem" Title="" Height="350">
+                    <ApexPointSeries TItem="AssetAllocationItem" Items="_summary.AssetAllocation.ToList()"
+                                     SeriesType="SeriesType.Donut" Name="Allocation" XValue="@(item => item.AccountType)"
                                      YAggregate="@(items => items.Sum(i => i.Amount))" />
                 </ApexChart>
             </FluentCard>
@@ -64,11 +73,17 @@
 
 @code {
     private NetWorthSummaryResponse? _summary;
+    private NetWorthHistoryResponse? _history;
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        _summary = await AnalyticsService.GetNetWorthSummaryAsync();
+        var summaryTask = AnalyticsService.GetNetWorthSummaryAsync();
+        var historyTask = AnalyticsService.GetNetWorthHistoryAsync();
+
+        await Task.WhenAll(summaryTask, historyTask);
+        _summary = await summaryTask;
+        _history = await historyTask;
         _isLoading = false;
     }
 }

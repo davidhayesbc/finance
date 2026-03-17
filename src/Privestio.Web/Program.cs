@@ -30,6 +30,7 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IForecastScenarioService, ForecastScenarioService>();
 builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
 builder.Services.AddScoped<IValuationService, ValuationService>();
+builder.Services.AddScoped<IPriceHistoryService, PriceHistoryService>();
 builder.Services.AddScoped<IHoldingService, HoldingService>();
 builder.Services.AddScoped<ILotService, LotService>();
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
