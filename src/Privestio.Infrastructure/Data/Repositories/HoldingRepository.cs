@@ -18,7 +18,8 @@ public class HoldingRepository : IHoldingRepository
         CancellationToken cancellationToken = default
     ) =>
         await _context
-            .Holdings.Include(h => h.Lots)
+            .Holdings.Include(h => h.Security)
+            .Include(h => h.Lots)
             .FirstOrDefaultAsync(h => h.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<Holding>> GetByAccountIdAsync(
@@ -27,19 +28,22 @@ public class HoldingRepository : IHoldingRepository
     ) =>
         await _context
             .Holdings.Where(h => h.AccountId == accountId)
+            .Include(h => h.Security)
             .Include(h => h.Lots)
             .OrderBy(h => h.Symbol)
             .ToListAsync(cancellationToken);
 
-    public async Task<Holding?> GetByAccountIdAndSymbolAsync(
+    public async Task<Holding?> GetByAccountIdAndSecurityIdAsync(
         Guid accountId,
-        string symbol,
+        Guid securityId,
         CancellationToken cancellationToken = default
     ) =>
-        await _context.Holdings.FirstOrDefaultAsync(
-            h => h.AccountId == accountId && h.Symbol == symbol.ToUpperInvariant().Trim(),
-            cancellationToken
-        );
+        await _context
+            .Holdings.Include(h => h.Security)
+            .FirstOrDefaultAsync(
+                h => h.AccountId == accountId && h.SecurityId == securityId,
+                cancellationToken
+            );
 
     public async Task<Holding> AddAsync(
         Holding holding,

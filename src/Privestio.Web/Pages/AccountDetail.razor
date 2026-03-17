@@ -7,6 +7,7 @@
 @inject ILotService LotService
 @inject IPortfolioService PortfolioService
 @inject NavigationManager Navigation
+@using Privestio.Contracts.Requests
 
 <PageTitle>@(_account?.Name ?? "Account") — Privestio</PageTitle>
 
@@ -543,6 +544,12 @@ else
                                 @foreach (var holding in _holdings)
                                 {
                                     var lots = _lotsByHoldingId.GetValueOrDefault(holding.Id) ?? [];
+                                    var aliases = _aliasesByHoldingId.GetValueOrDefault(holding.Id) ?? [];
+                                    var newAliasSymbol = _aliasSymbolByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
+                                    var newAliasSource = _aliasSourceByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
+                                    var isPrimaryAlias = _aliasPrimaryByHoldingId.GetValueOrDefault(holding.Id);
+                                    var aliasMessage = _aliasMessageByHoldingId.GetValueOrDefault(holding.Id);
+                                    var isAliasBusy = _aliasBusyHoldingIds.Contains(holding.Id);
                                     <tr class="txn-row" @key="holding.Id">
                                         <td class="txn-cell--desc">
                                             <span class="txn-desc-primary">@holding.SecurityName</span>
@@ -550,6 +557,62 @@ else
                                             {
                                                 <span class="txn-desc-sub">@holding.Notes</span>
                                             }
+
+                                            <div style="margin-top:0.5rem; display:grid; gap:0.4rem;">
+                                                <div style="display:flex; flex-wrap:wrap; gap:0.3rem; align-items:center;">
+                                                    @if (aliases.Count == 0)
+                                                    {
+                                                        <span class="txn-no-value">No aliases configured.</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        @foreach (var alias in aliases)
+                                                        {
+                                                            <span class="txn-category" style="display:inline-flex; gap:0.3rem; align-items:center;">
+                                                                @alias.Symbol
+                                                                @if (!string.IsNullOrWhiteSpace(alias.Source))
+                                                                {
+                                                                    <span class="txn-no-value">(@alias.Source)</span>
+                                                                }
+                                                                @if (alias.IsPrimary)
+                                                                {
+                                                                    <strong style="font-size:0.72rem;">primary</strong>
+                                                                }
+                                                                <button type="button" class="app-button app-button--secondary"
+                                                                        style="padding:0.1rem 0.45rem; font-size:0.72rem;"
+                                                                        disabled="@isAliasBusy"
+                                                                        @onclick="() => DeleteAliasAsync(holding.Id, alias.Id)">
+                                                                    Remove
+                                                                </button>
+                                                            </span>
+                                                        }
+                                                    }
+                                                </div>
+
+                                                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+                                                    <input class="filter-input" style="max-width:9rem;" placeholder="Alias symbol"
+                                                           value="@newAliasSymbol"
+                                                           @oninput="e => _aliasSymbolByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
+                                                    <input class="filter-input" style="max-width:9rem;" placeholder="Source (optional)"
+                                                           value="@newAliasSource"
+                                                           @oninput="e => _aliasSourceByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
+                                                    <label style="display:inline-flex; gap:0.3rem; align-items:center; font-size:0.8rem;">
+                                                        <input type="checkbox" checked="@isPrimaryAlias"
+                                                               @onchange="e => _aliasPrimaryByHoldingId[holding.Id] = e.Value as bool? == true" />
+                                                        Primary
+                                                    </label>
+                                                    <button type="button" class="app-button app-button--secondary"
+                                                            disabled="@isAliasBusy"
+                                                            @onclick="() => AddAliasAsync(holding.Id)">
+                                                        Add alias
+                                                    </button>
+                                                </div>
+
+                                                @if (!string.IsNullOrWhiteSpace(aliasMessage))
+                                                {
+                                                    <span class="txn-desc-sub">@aliasMessage</span>
+                                                }
+                                            </div>
                                         </td>
                                         <td class="txn-cell--cat"><span class="txn-category">@holding.Symbol</span></td>
                                         <td class="txn-cell--amount txn-cell--right">@holding.Quantity</td>
@@ -839,6 +902,13 @@ else
     private readonly List<AccountResponse> _mortgageAccounts = new();
     private readonly List<HoldingResponse> _holdings = new();
     private readonly Dictionary<Guid, IReadOnlyList<LotResponse>> _lotsByHoldingId = [];
+    private readonly Dictionary<Guid, IReadOnlyList<SecurityAliasResponse>> _aliasesByHoldingId =
+        [];
+    private readonly Dictionary<Guid, string> _aliasSymbolByHoldingId = [];
+    private readonly Dictionary<Guid, string> _aliasSourceByHoldingId = [];
+    private readonly Dictionary<Guid, bool> _aliasPrimaryByHoldingId = [];
+    private readonly Dictionary<Guid, string> _aliasMessageByHoldingId = [];
+    private readonly HashSet<Guid> _aliasBusyHoldingIds = [];
     private PortfolioPerformanceResponse? _performance;
     private bool _isLoadingPerformance = true;
     private string? _performanceErrorMessage;
@@ -1260,21 +1330,97 @@ else
             _holdings.AddRange(holdings.OrderBy(h => h.Symbol, StringComparer.OrdinalIgnoreCase));
 
             _lotsByHoldingId.Clear();
+            _aliasesByHoldingId.Clear();
             foreach (var holding in _holdings)
             {
                 var lots = await LotService.GetLotsAsync(holding.Id);
                 _lotsByHoldingId[holding.Id] = lots;
+
+                var aliases = await HoldingService.GetAliasesAsync(holding.Id);
+                _aliasesByHoldingId[holding.Id] = aliases;
             }
         }
         catch
         {
             _holdings.Clear();
             _lotsByHoldingId.Clear();
+            _aliasesByHoldingId.Clear();
             _holdingErrorMessage = "Holdings could not be loaded right now.";
         }
         finally
         {
             _isLoadingHoldings = false;
+        }
+    }
+
+    private async Task AddAliasAsync(Guid holdingId)
+    {
+        var symbol = (_aliasSymbolByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(symbol))
+        {
+            _aliasMessageByHoldingId[holdingId] = "Enter an alias symbol before saving.";
+            return;
+        }
+
+        _aliasBusyHoldingIds.Add(holdingId);
+        _aliasMessageByHoldingId[holdingId] = string.Empty;
+
+        try
+        {
+            var source = (_aliasSourceByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
+            var created = await HoldingService.AddAliasAsync(
+                holdingId,
+                new AddSecurityAliasRequest
+                {
+                    Symbol = symbol,
+                    Source = string.IsNullOrWhiteSpace(source) ? null : source,
+                    IsPrimary = _aliasPrimaryByHoldingId.GetValueOrDefault(holdingId),
+                }
+            );
+
+            if (created is null)
+            {
+                _aliasMessageByHoldingId[holdingId] = "Alias could not be saved.";
+                return;
+            }
+
+            _aliasSymbolByHoldingId[holdingId] = string.Empty;
+            _aliasSourceByHoldingId[holdingId] = string.Empty;
+            _aliasPrimaryByHoldingId[holdingId] = false;
+            _aliasesByHoldingId[holdingId] = await HoldingService.GetAliasesAsync(holdingId);
+            _aliasMessageByHoldingId[holdingId] = "Alias saved.";
+            await LoadPerformanceAsync();
+            await LoadHoldingsAsync();
+        }
+        finally
+        {
+            _aliasBusyHoldingIds.Remove(holdingId);
+        }
+    }
+
+    private async Task DeleteAliasAsync(Guid holdingId, Guid aliasId)
+    {
+        _aliasBusyHoldingIds.Add(holdingId);
+        _aliasMessageByHoldingId[holdingId] = string.Empty;
+
+        try
+        {
+            var deleted = await HoldingService.DeleteAliasAsync(holdingId, aliasId);
+            if (!deleted)
+            {
+                _aliasMessageByHoldingId[holdingId] =
+                    "Alias could not be removed. Promote another display alias first if needed.";
+                return;
+            }
+
+            _aliasesByHoldingId[holdingId] = await HoldingService.GetAliasesAsync(holdingId);
+            _aliasMessageByHoldingId[holdingId] = "Alias removed.";
+            await LoadPerformanceAsync();
+            await LoadHoldingsAsync();
+        }
+        finally
+        {
+            _aliasBusyHoldingIds.Remove(holdingId);
         }
     }
 

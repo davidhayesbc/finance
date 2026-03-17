@@ -25,6 +25,7 @@ public interface IUnitOfWork
     ISyncConflictRepository SyncConflicts { get; }
     IIdempotencyRecordRepository IdempotencyRecords { get; }
     IValuationRepository Valuations { get; }
+    ISecurityRepository Securities { get; }
     IPriceHistoryRepository PriceHistories { get; }
     IHoldingRepository Holdings { get; }
     ILotRepository Lots { get; }

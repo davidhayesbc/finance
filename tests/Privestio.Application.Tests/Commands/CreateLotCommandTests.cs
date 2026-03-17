@@ -1,6 +1,7 @@
 using Moq;
 using Privestio.Application.Commands.CreateLot;
 using Privestio.Application.Interfaces;
+using Privestio.Application.Tests;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.ValueObjects;
@@ -22,11 +23,14 @@ public class CreateLotCommandTests
             new DateOnly(2025, 1, 1),
             userId
         );
-
-        var holding = new Holding(
-            account.Id,
+        var security = SecurityTestHelper.CreateSecurity(
             "XEQT.TO",
-            "iShares Core Equity ETF Portfolio",
+            "iShares Core Equity ETF Portfolio"
+        );
+
+        var holding = SecurityTestHelper.CreateHolding(
+            account.Id,
+            security,
             5m,
             new Money(40.25m, "CAD")
         );

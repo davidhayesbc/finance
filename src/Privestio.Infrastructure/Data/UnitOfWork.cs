@@ -33,6 +33,7 @@ public class UnitOfWork : IUnitOfWork
         SyncConflicts = new SyncConflictRepository(context);
         IdempotencyRecords = new IdempotencyRecordRepository(context);
         Valuations = new ValuationRepository(context);
+        Securities = new SecurityRepository(context);
         PriceHistories = new PriceHistoryRepository(context);
         Holdings = new HoldingRepository(context);
         Lots = new LotRepository(context);
@@ -61,6 +62,7 @@ public class UnitOfWork : IUnitOfWork
     public ISyncConflictRepository SyncConflicts { get; }
     public IIdempotencyRecordRepository IdempotencyRecords { get; }
     public IValuationRepository Valuations { get; }
+    public ISecurityRepository Securities { get; }
     public IPriceHistoryRepository PriceHistories { get; }
     public IHoldingRepository Holdings { get; }
     public ILotRepository Lots { get; }

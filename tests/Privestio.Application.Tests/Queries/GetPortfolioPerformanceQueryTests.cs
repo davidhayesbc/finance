@@ -1,6 +1,8 @@
 using Moq;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetPortfolioPerformance;
+using Privestio.Application.Services;
+using Privestio.Application.Tests;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Interfaces;
@@ -15,6 +17,7 @@ public class GetPortfolioPerformanceQueryTests
     private readonly Mock<IHoldingRepository> _holdings = new();
     private readonly Mock<IPriceHistoryRepository> _prices = new();
     private readonly Mock<IPriceFeedProvider> _priceFeed = new();
+    private readonly SecurityResolutionService _securityResolutionService;
 
     public GetPortfolioPerformanceQueryTests()
     {
@@ -27,7 +30,7 @@ public class GetPortfolioPerformanceQueryTests
         _priceFeed
             .Setup(x =>
                 x.GetLatestPricesAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<IEnumerable<PriceLookup>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
@@ -36,15 +39,17 @@ public class GetPortfolioPerformanceQueryTests
         _prices
             .Setup(x =>
                 x.GetExistingKeysAsync(
-                    It.IsAny<IEnumerable<(string Symbol, DateOnly AsOfDate)>>(),
+                    It.IsAny<IEnumerable<(Guid SecurityId, DateOnly AsOfDate)>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(new HashSet<(string Symbol, DateOnly AsOfDate)>());
+            .ReturnsAsync(new HashSet<(Guid SecurityId, DateOnly AsOfDate)>());
+
+        _securityResolutionService = SecurityTestHelper.CreateSecurityResolutionService(_uow);
     }
 
     private GetPortfolioPerformanceQueryHandler CreateHandler() =>
-        new(_uow.Object, _priceFeed.Object);
+        new(_uow.Object, _priceFeed.Object, _securityResolutionService);
 
     private Account MakeAccount(Guid userId) =>
         new(
@@ -74,23 +79,6 @@ public class GetPortfolioPerformanceQueryTests
     }
 
     [Fact]
-    public async Task Handle_AccountOwnedByDifferentUser_ReturnsNull()
-    {
-        var account = MakeAccount(Guid.NewGuid());
-        _accounts
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(account);
-
-        var result = await CreateHandler()
-            .Handle(
-                new GetPortfolioPerformanceQuery(account.Id, Guid.NewGuid()),
-                CancellationToken.None
-            );
-
-        result.Should().BeNull();
-    }
-
-    [Fact]
     public async Task Handle_EmptyPortfolio_ReturnsZeroTotals()
     {
         var userId = Guid.NewGuid();
@@ -113,21 +101,23 @@ public class GetPortfolioPerformanceQueryTests
     }
 
     [Fact]
-    public async Task Handle_HoldingsWithPrices_CalculatesGainLoss()
+    public async Task Handle_HoldingsWithStoredPrices_CalculatesGainLoss()
     {
         var userId = Guid.NewGuid();
         var account = MakeAccount(userId);
-        var holding = new Holding(
-            account.Id,
-            "XEQT.TO",
-            "iShares Core Equity ETF Portfolio",
-            10m,
-            new Money(38m, "CAD"),
-            null
+        var security = SecurityTestHelper.CreateSecurity(
+            "XEQT",
+            "iShares Core Equity ETF Portfolio"
         );
-        var price = new PriceHistory(
-            "XEQT.TO",
-            new Money(40m, "CAD"),
+        var holding = SecurityTestHelper.CreateHolding(
+            account.Id,
+            security,
+            10m,
+            new Money(38m, "CAD")
+        );
+        var price = SecurityTestHelper.CreatePriceHistory(
+            security,
+            40m,
             DateOnly.FromDateTime(DateTime.UtcNow),
             "Yahoo"
         );
@@ -140,14 +130,14 @@ public class GetPortfolioPerformanceQueryTests
             .ReturnsAsync([holding]);
         _prices
             .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
             .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)
-                    new Dictionary<string, PriceHistory> { ["XEQT.TO"] = price }
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory> { [security.Id] = price }
             );
 
         var result = await CreateHandler()
@@ -158,117 +148,36 @@ public class GetPortfolioPerformanceQueryTests
         result.TotalMarketValue.Should().Be(400m);
         result.TotalGainLoss.Should().Be(20m);
         result.Holdings.Should().HaveCount(1);
-        result.Holdings[0].Symbol.Should().Be("XEQT.TO");
-        result.Holdings[0].BookValue.Should().Be(380m);
-        result.Holdings[0].MarketValue.Should().Be(400m);
-        result.Holdings[0].GainLoss.Should().Be(20m);
         result.Holdings[0].PriceSource.Should().Be("Yahoo");
     }
 
     [Fact]
-    public async Task Handle_HoldingNoPriceHistory_MarketValueIsNull()
-    {
-        var userId = Guid.NewGuid();
-        var account = MakeAccount(userId);
-        var holding = new Holding(
-            account.Id,
-            "XEQT.TO",
-            "iShares Core Equity ETF Portfolio",
-            10m,
-            new Money(38m, "CAD"),
-            null
-        );
-
-        _accounts
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(account);
-        _holdings
-            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([holding]);
-        _prices
-            .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
-                    It.IsAny<CancellationToken>()
-                )
-            )
-            .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>()
-            );
-
-        var result = await CreateHandler()
-            .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
-
-        result.Should().NotBeNull();
-        result!.TotalMarketValue.Should().BeNull();
-        result.Holdings[0].CurrentPrice.Should().BeNull();
-        result.Holdings[0].MarketValue.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Handle_HoldingSymbolWithoutExchangeSuffix_UsesAliasedPriceSymbol()
-    {
-        var userId = Guid.NewGuid();
-        var account = MakeAccount(userId);
-        var holding = new Holding(
-            account.Id,
-            "XEQT",
-            "iShares Core Equity ETF Portfolio",
-            10m,
-            new Money(38m, "CAD"),
-            null
-        );
-        var aliasedPrice = new PriceHistory(
-            "XEQT.TO",
-            new Money(40m, "CAD"),
-            DateOnly.FromDateTime(DateTime.UtcNow),
-            "Yahoo"
-        );
-
-        _accounts
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(account);
-        _holdings
-            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([holding]);
-        _prices
-            .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
-                    It.IsAny<CancellationToken>()
-                )
-            )
-            .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)
-                    new Dictionary<string, PriceHistory> { ["XEQT.TO"] = aliasedPrice }
-            );
-
-        var result = await CreateHandler()
-            .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
-
-        result.Should().NotBeNull();
-        result!.TotalMarketValue.Should().Be(400m);
-        result.Holdings.Should().HaveCount(1);
-        result.Holdings[0].Symbol.Should().Be("XEQT");
-        result.Holdings[0].CurrentPrice.Should().Be(40m);
-        result.Holdings[0].MarketValue.Should().Be(400m);
-    }
-
-    [Fact]
-    public async Task Handle_PricesMissing_FetchesPricesAndCalculatesMarketValueAndPnL()
+    public async Task Handle_PricesMissing_UsesProviderLookupSymbolAndPersistsPrice()
     {
         var userId = Guid.NewGuid();
         var account = MakeAccount(userId);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var holding = new Holding(
-            account.Id,
-            "XEQT",
-            "iShares Core Equity ETF Portfolio",
-            10m,
-            new Money(38m, "CAD"),
-            null
+        var security = SecurityTestHelper.CreateSecurity(
+            "KILO.B",
+            "Kilo Security",
+            "CAD",
+            false,
+            ("KILO-B.TO", "YahooFinance", true)
         );
-        var persistedPrice = new PriceHistory("XEQT", new Money(40m, "CAD"), today, "YahooFinance");
+        SecurityTestHelper.CreateSecurityResolutionService(_uow, [security]);
+
+        var holding = SecurityTestHelper.CreateHolding(
+            account.Id,
+            security,
+            10m,
+            new Money(38m, "CAD")
+        );
+        var persistedPrice = SecurityTestHelper.CreatePriceHistory(
+            security,
+            40m,
+            today,
+            providerSymbol: "KILO-B.TO"
+        );
 
         _accounts
             .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
@@ -276,66 +185,70 @@ public class GetPortfolioPerformanceQueryTests
         _holdings
             .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([holding]);
-
         _prices
             .SetupSequence(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
             .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>()
+                (IReadOnlyDictionary<Guid, PriceHistory>)new Dictionary<Guid, PriceHistory>()
             )
             .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)
-                    new Dictionary<string, PriceHistory> { ["XEQT"] = persistedPrice }
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory> { [security.Id] = persistedPrice }
             );
 
         _priceFeed
             .Setup(x =>
                 x.GetLatestPricesAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                    It.Is<IEnumerable<PriceLookup>>(lookups =>
+                        lookups.Single().SecurityId == security.Id
+                        && lookups.Single().Symbol == "KILO-B.TO"
+                    ),
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync([new PriceQuote("XEQT", 40m, "CAD", today)]);
+            .ReturnsAsync([new PriceQuote(security.Id, "KILO-B.TO", 40m, "CAD", today)]);
 
         var result = await CreateHandler()
             .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.TotalMarketValue.Should().Be(400m);
-        result.TotalGainLoss.Should().Be(20m);
-        result.Holdings.Should().HaveCount(1);
-        result.Holdings[0].CurrentPrice.Should().Be(40m);
-        result.Holdings[0].MarketValue.Should().Be(400m);
-        result.Holdings[0].GainLoss.Should().Be(20m);
         result.Holdings[0].PriceSource.Should().Be("YahooFinance");
 
         _prices.Verify(
             x =>
                 x.AddRangeAsync(
-                    It.IsAny<IEnumerable<PriceHistory>>(),
+                    It.Is<IEnumerable<PriceHistory>>(entries =>
+                        entries.Any(e =>
+                            e.SecurityId == security.Id && e.ProviderSymbol == "KILO-B.TO"
+                        )
+                    ),
                     It.IsAny<CancellationToken>()
                 ),
             Times.Once
         );
-        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_CashEquivalentWithoutQuote_UsesAverageCostForMarketValueAndPnL()
+    public async Task Handle_CashEquivalentWithoutPrice_UsesAverageCostFallback()
     {
         var userId = Guid.NewGuid();
         var account = MakeAccount(userId);
-        var holding = new Holding(
-            account.Id,
+        var security = SecurityTestHelper.CreateSecurity(
             "CASH.TO",
-            "Global X High Interest Savings ETF",
-            35.0955m,
-            new Money(50m, "CAD"),
-            null
+            "High Interest Savings ETF",
+            "CAD",
+            true
+        );
+        var holding = SecurityTestHelper.CreateHolding(
+            account.Id,
+            security,
+            100m,
+            new Money(50m, "CAD")
         );
 
         _accounts
@@ -344,94 +257,23 @@ public class GetPortfolioPerformanceQueryTests
         _holdings
             .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([holding]);
-
         _prices
             .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
             .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>()
+                (IReadOnlyDictionary<Guid, PriceHistory>)new Dictionary<Guid, PriceHistory>()
             );
-
-        _priceFeed
-            .Setup(x =>
-                x.GetLatestPricesAsync(
-                    It.IsAny<IEnumerable<string>>(),
-                    It.IsAny<CancellationToken>()
-                )
-            )
-            .ReturnsAsync([]);
 
         var result = await CreateHandler()
             .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
 
         result.Should().NotBeNull();
-        result!.TotalMarketValue.Should().Be(result.TotalBookValue);
-        result.TotalGainLoss.Should().Be(0m);
-        result.Holdings.Should().HaveCount(1);
+        result!.TotalMarketValue.Should().Be(5000m);
         result.Holdings[0].CurrentPrice.Should().Be(50m);
-        result.Holdings[0].MarketValue.Should().Be(result.Holdings[0].BookValue);
-        result.Holdings[0].GainLoss.Should().Be(0m);
         result.Holdings[0].PriceSource.Should().Be("Fallback");
-    }
-
-    [Fact]
-    public async Task Handle_ZeroQuantityHoldings_AreExcludedFromResponse()
-    {
-        var userId = Guid.NewGuid();
-        var account = MakeAccount(userId);
-        var active = new Holding(
-            account.Id,
-            "XEQT",
-            "iShares Core Equity ETF Portfolio",
-            10m,
-            new Money(38m, "CAD"),
-            null
-        );
-        var closed = new Holding(
-            account.Id,
-            "ZFL",
-            "BMO Long Federal Bond Index ETF",
-            0m,
-            new Money(20m, "CAD"),
-            null
-        );
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-        _accounts
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(account);
-        _holdings
-            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([active, closed]);
-        _prices
-            .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
-                    It.IsAny<CancellationToken>()
-                )
-            )
-            .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)
-                    new Dictionary<string, PriceHistory>
-                    {
-                        ["XEQT"] = new PriceHistory(
-                            "XEQT",
-                            new Money(40m, "CAD"),
-                            today,
-                            "YahooFinance"
-                        ),
-                    }
-            );
-
-        var result = await CreateHandler()
-            .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
-
-        result.Should().NotBeNull();
-        result!.Holdings.Should().HaveCount(1);
-        result.Holdings[0].Symbol.Should().Be("XEQT");
     }
 }

@@ -10,6 +10,7 @@ public static class HoldingMapper
         {
             Id = holding.Id,
             AccountId = holding.AccountId,
+            SecurityId = holding.SecurityId,
             Symbol = holding.Symbol,
             SecurityName = holding.SecurityName,
             Quantity = holding.Quantity,

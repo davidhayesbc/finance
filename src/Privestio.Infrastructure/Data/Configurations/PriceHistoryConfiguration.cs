@@ -11,8 +11,15 @@ public class PriceHistoryConfiguration : IEntityTypeConfiguration<PriceHistory>
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.Symbol).IsRequired().HasMaxLength(20);
+        builder.Property(p => p.ProviderSymbol).IsRequired().HasMaxLength(40);
 
         builder.Property(p => p.Source).IsRequired().HasMaxLength(100);
+
+        builder
+            .HasOne(p => p.Security)
+            .WithMany()
+            .HasForeignKey(p => p.SecurityId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.ComplexProperty(
             p => p.Price,
@@ -26,7 +33,7 @@ public class PriceHistoryConfiguration : IEntityTypeConfiguration<PriceHistory>
             }
         );
 
-        builder.HasIndex(p => new { p.Symbol, p.AsOfDate }).IsUnique();
+        builder.HasIndex(p => new { p.SecurityId, p.AsOfDate }).IsUnique();
 
         builder.HasIndex(p => p.AsOfDate);
     }

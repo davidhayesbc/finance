@@ -13,6 +13,7 @@ public class Holding : BaseEntity
 
     public Holding(
         Guid accountId,
+        Guid securityId,
         string symbol,
         string securityName,
         decimal quantity,
@@ -26,6 +27,7 @@ public class Holding : BaseEntity
             throw new ArgumentOutOfRangeException(nameof(quantity));
 
         AccountId = accountId;
+        SecurityId = securityId;
         Symbol = symbol.ToUpperInvariant().Trim();
         SecurityName = securityName.Trim();
         Quantity = quantity;
@@ -35,6 +37,9 @@ public class Holding : BaseEntity
 
     public Guid AccountId { get; private set; }
     public Account? Account { get; set; }
+
+    public Guid SecurityId { get; private set; }
+    public Security? Security { get; set; }
 
     public string Symbol { get; private set; } = string.Empty;
     public string SecurityName { get; private set; } = string.Empty;
@@ -59,6 +64,17 @@ public class Holding : BaseEntity
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(securityName);
         SecurityName = securityName.Trim();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RebindSecurity(Security security)
+    {
+        ArgumentNullException.ThrowIfNull(security);
+
+        SecurityId = security.Id;
+        Security = security;
+        Symbol = security.DisplaySymbol;
+        SecurityName = security.Name;
         UpdatedAt = DateTime.UtcNow;
     }
 }

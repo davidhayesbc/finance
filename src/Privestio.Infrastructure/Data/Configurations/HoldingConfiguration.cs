@@ -37,12 +37,18 @@ public class HoldingConfiguration : IEntityTypeConfiguration<Holding>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder
+            .HasOne(h => h.Security)
+            .WithMany()
+            .HasForeignKey(h => h.SecurityId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder
             .HasMany(h => h.Lots)
             .WithOne(l => l.Holding)
             .HasForeignKey(l => l.HoldingId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(h => new { h.AccountId, h.Symbol }).IsUnique();
+        builder.HasIndex(h => new { h.AccountId, h.SecurityId }).IsUnique();
         builder.HasIndex(h => h.AccountId);
     }
 }

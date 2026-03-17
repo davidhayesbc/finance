@@ -2,7 +2,6 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Privestio.Domain.Interfaces;
-using Privestio.Domain.Services;
 
 namespace Privestio.Infrastructure.PriceFeeds;
 
@@ -27,14 +26,14 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
     }
 
     public async Task<IReadOnlyList<PriceQuote>> GetLatestPricesAsync(
-        IEnumerable<string> symbols,
+        IEnumerable<PriceLookup> lookups,
         CancellationToken cancellationToken = default
     )
     {
         var results = new List<PriceQuote>();
-        foreach (var symbol in symbols)
+        foreach (var lookup in lookups)
         {
-            var quote = await FetchLatestWithAliasesAsync(symbol, cancellationToken);
+            var quote = await FetchLatestAsync(lookup, cancellationToken);
             if (quote is not null)
                 results.Add(quote);
         }
@@ -42,13 +41,12 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
     }
 
     public async Task<IReadOnlyList<PriceQuote>> GetHistoricalPricesAsync(
-        string symbol,
+        PriceLookup lookup,
         DateOnly fromDate,
         DateOnly toDate,
         CancellationToken cancellationToken = default
     )
     {
-        var requestedSymbol = SecuritySymbolMatcher.Normalize(symbol);
         var period1 = new DateTimeOffset(
             fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
         ).ToUnixTimeSeconds();
@@ -56,58 +54,35 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
             toDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc)
         ).ToUnixTimeSeconds();
 
-        foreach (var candidate in SecuritySymbolMatcher.GetLookupCandidates(symbol))
+        var url =
+            $"v8/finance/chart/{Uri.EscapeDataString(lookup.Symbol)}?interval=1d&period1={period1}&period2={period2}";
+
+        try
         {
-            var url =
-                $"v8/finance/chart/{Uri.EscapeDataString(candidate)}?interval=1d&period1={period1}&period2={period2}";
-
-            try
-            {
-                var response = await _httpClient.GetFromJsonAsync<YahooChartResponse>(
-                    url,
-                    cancellationToken
-                );
-                var parsed = ParseHistoricalPrices(requestedSymbol, response);
-                if (parsed.Count > 0)
-                    return parsed;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(
-                    ex,
-                    "Failed to fetch historical prices for {RequestedSymbol} using {LookupSymbol}",
-                    requestedSymbol,
-                    candidate
-                );
-            }
+            var response = await _httpClient.GetFromJsonAsync<YahooChartResponse>(
+                url,
+                cancellationToken
+            );
+            return ParseHistoricalPrices(lookup, response);
         }
-
-        return [];
-    }
-
-    private async Task<PriceQuote?> FetchLatestWithAliasesAsync(
-        string symbol,
-        CancellationToken cancellationToken
-    )
-    {
-        var requestedSymbol = SecuritySymbolMatcher.Normalize(symbol);
-        foreach (var candidate in SecuritySymbolMatcher.GetLookupCandidates(symbol))
+        catch (Exception ex)
         {
-            var quote = await FetchLatestAsync(requestedSymbol, candidate, cancellationToken);
-            if (quote is not null)
-                return quote;
+            _logger.LogWarning(
+                ex,
+                "Failed to fetch historical prices for security {SecurityId} using {LookupSymbol}",
+                lookup.SecurityId,
+                lookup.Symbol
+            );
+            return [];
         }
-
-        return null;
     }
 
     private async Task<PriceQuote?> FetchLatestAsync(
-        string requestedSymbol,
-        string lookupSymbol,
+        PriceLookup lookup,
         CancellationToken cancellationToken
     )
     {
-        var url = $"v8/finance/chart/{Uri.EscapeDataString(lookupSymbol)}?interval=1d&range=1d";
+        var url = $"v8/finance/chart/{Uri.EscapeDataString(lookup.Symbol)}?interval=1d&range=1d";
         try
         {
             var response = await _httpClient.GetFromJsonAsync<YahooChartResponse>(
@@ -119,7 +94,8 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
                 return null;
 
             return new PriceQuote(
-                requestedSymbol,
+                lookup.SecurityId,
+                lookup.Symbol,
                 Math.Round((decimal)meta.RegularMarketPrice, 6, MidpointRounding.ToEven),
                 (meta.Currency ?? "USD").ToUpperInvariant(),
                 DateOnly.FromDateTime(DateTime.UtcNow)
@@ -129,16 +105,16 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
         {
             _logger.LogWarning(
                 ex,
-                "Failed to fetch latest price for {RequestedSymbol} using {LookupSymbol}",
-                requestedSymbol,
-                lookupSymbol
+                "Failed to fetch latest price for security {SecurityId} using {LookupSymbol}",
+                lookup.SecurityId,
+                lookup.Symbol
             );
             return null;
         }
     }
 
     private static IReadOnlyList<PriceQuote> ParseHistoricalPrices(
-        string symbol,
+        PriceLookup lookup,
         YahooChartResponse? response
     )
     {
@@ -161,7 +137,8 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
             );
             prices.Add(
                 new PriceQuote(
-                    symbol.ToUpperInvariant().Trim(),
+                    lookup.SecurityId,
+                    lookup.Symbol,
                     Math.Round((decimal)closePrice, 6, MidpointRounding.ToEven),
                     currency,
                     date

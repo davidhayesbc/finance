@@ -2,21 +2,21 @@ using MediatR;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Mapping;
 using Privestio.Contracts.Responses;
-using Privestio.Domain.ValueObjects;
 
-namespace Privestio.Application.Commands.UpdateHolding;
+namespace Privestio.Application.Commands.AddHoldingAlias;
 
-public class UpdateHoldingCommandHandler : IRequestHandler<UpdateHoldingCommand, HoldingResponse>
+public class AddHoldingAliasCommandHandler
+    : IRequestHandler<AddHoldingAliasCommand, SecurityAliasResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateHoldingCommandHandler(IUnitOfWork unitOfWork)
+    public AddHoldingAliasCommandHandler(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<HoldingResponse> Handle(
-        UpdateHoldingCommand request,
+    public async Task<SecurityAliasResponse> Handle(
+        AddHoldingAliasCommand request,
         CancellationToken cancellationToken
     )
     {
@@ -35,20 +35,25 @@ public class UpdateHoldingCommandHandler : IRequestHandler<UpdateHoldingCommand,
         if (security is null)
             throw new InvalidOperationException("Security not found.");
 
-        security.Rename(request.SecurityName);
+        var alias =
+            request.IsPrimary && string.IsNullOrWhiteSpace(request.Source)
+                ? CreateOrPromoteDisplayAlias(security, request.Symbol)
+                : security.AddOrUpdateAlias(request.Symbol, request.Source, request.IsPrimary);
+
         await _unitOfWork.Securities.UpdateAsync(security, cancellationToken);
-
-        holding.RenameSecurity(request.SecurityName);
         holding.RebindSecurity(security);
-        holding.Update(
-            request.Quantity,
-            new Money(request.AverageCostPerUnit, request.Currency),
-            request.Notes
-        );
-
         await _unitOfWork.Holdings.UpdateAsync(holding, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return HoldingMapper.ToResponse(holding);
+        return SecurityAliasMapper.ToResponse(alias);
+    }
+
+    private static Domain.Entities.SecurityAlias CreateOrPromoteDisplayAlias(
+        Domain.Entities.Security security,
+        string symbol
+    )
+    {
+        security.UpdateDisplaySymbol(symbol);
+        return security.Aliases.First(a => a.Source is null && a.Symbol == security.DisplaySymbol);
     }
 }

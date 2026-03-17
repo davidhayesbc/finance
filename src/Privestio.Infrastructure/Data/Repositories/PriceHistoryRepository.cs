@@ -16,17 +16,21 @@ public class PriceHistoryRepository : IPriceHistoryRepository
     public async Task<PriceHistory?> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default
-    ) => await _context.PriceHistories.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+    ) =>
+        await _context
+            .PriceHistories.Include(p => p.Security)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<PriceHistory>> GetBySymbolAsync(
-        string symbol,
+    public async Task<IReadOnlyList<PriceHistory>> GetBySecurityIdAsync(
+        Guid securityId,
         DateOnly? fromDate = null,
         DateOnly? toDate = null,
         CancellationToken cancellationToken = default
     )
     {
-        var normalizedSymbol = symbol.ToUpperInvariant().Trim();
-        var query = _context.PriceHistories.Where(p => p.Symbol == normalizedSymbol);
+        var query = _context
+            .PriceHistories.Include(p => p.Security)
+            .Where(p => p.SecurityId == securityId);
 
         if (fromDate.HasValue)
             query = query.Where(p => p.AsOfDate >= fromDate.Value);
@@ -54,48 +58,50 @@ public class PriceHistoryRepository : IPriceHistoryRepository
         await _context.PriceHistories.AddRangeAsync(priceHistories, cancellationToken);
     }
 
-    public async Task<bool> ExistsBySymbolAndDateAsync(
-        string symbol,
+    public async Task<bool> ExistsBySecurityIdAndDateAsync(
+        Guid securityId,
         DateOnly asOfDate,
         CancellationToken cancellationToken = default
     )
     {
-        var normalizedSymbol = symbol.ToUpperInvariant().Trim();
         return await _context.PriceHistories.AnyAsync(
-            p => p.Symbol == normalizedSymbol && p.AsOfDate == asOfDate,
+            p => p.SecurityId == securityId && p.AsOfDate == asOfDate,
             cancellationToken
         );
     }
 
-    public async Task<IReadOnlySet<(string Symbol, DateOnly AsOfDate)>> GetExistingKeysAsync(
-        IEnumerable<(string Symbol, DateOnly AsOfDate)> keys,
+    public async Task<IReadOnlySet<(Guid SecurityId, DateOnly AsOfDate)>> GetExistingKeysAsync(
+        IEnumerable<(Guid SecurityId, DateOnly AsOfDate)> keys,
         CancellationToken cancellationToken = default
     )
     {
         var keyList = keys.ToList();
-        var symbols = keyList.Select(k => k.Symbol).Distinct().ToList();
+        var securityIds = keyList.Select(k => k.SecurityId).Distinct().ToList();
         var dates = keyList.Select(k => k.AsOfDate).Distinct().ToList();
 
         var existing = await _context
-            .PriceHistories.Where(p => symbols.Contains(p.Symbol) && dates.Contains(p.AsOfDate))
-            .Select(p => new { p.Symbol, p.AsOfDate })
+            .PriceHistories.Where(p =>
+                securityIds.Contains(p.SecurityId) && dates.Contains(p.AsOfDate)
+            )
+            .Select(p => new { p.SecurityId, p.AsOfDate })
             .ToListAsync(cancellationToken);
 
-        return existing.Select(e => (e.Symbol, e.AsOfDate)).ToHashSet();
+        return existing.Select(e => (e.SecurityId, e.AsOfDate)).ToHashSet();
     }
 
-    public async Task<IReadOnlyDictionary<string, PriceHistory>> GetLatestBySymbolsAsync(
-        IEnumerable<string> symbols,
+    public async Task<IReadOnlyDictionary<Guid, PriceHistory>> GetLatestBySecurityIdsAsync(
+        IEnumerable<Guid> securityIds,
         CancellationToken cancellationToken = default
     )
     {
-        var normalized = symbols.Select(s => s.ToUpperInvariant().Trim()).Distinct().ToList();
+        var ids = securityIds.Distinct().ToList();
 
         var all = await _context
-            .PriceHistories.Where(p => normalized.Contains(p.Symbol))
+            .PriceHistories.Include(p => p.Security)
+            .Where(p => ids.Contains(p.SecurityId))
             .OrderByDescending(p => p.AsOfDate)
             .ToListAsync(cancellationToken);
 
-        return all.GroupBy(p => p.Symbol).ToDictionary(g => g.Key, g => g.First());
+        return all.GroupBy(p => p.SecurityId).ToDictionary(g => g.Key, g => g.First());
     }
 }

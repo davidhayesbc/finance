@@ -9,9 +9,9 @@ public interface IHoldingRepository
         Guid accountId,
         CancellationToken cancellationToken = default
     );
-    Task<Holding?> GetByAccountIdAndSymbolAsync(
+    Task<Holding?> GetByAccountIdAndSecurityIdAsync(
         Guid accountId,
-        string symbol,
+        Guid securityId,
         CancellationToken cancellationToken = default
     );
     Task<Holding> AddAsync(Holding holding, CancellationToken cancellationToken = default);

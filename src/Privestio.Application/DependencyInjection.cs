@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddScoped<NotificationService>();
+        services.AddScoped<SecurityResolutionService>();
         services.AddScoped<NetWorthForecastingService>();
         services.AddScoped<AmortizationScheduleService>();
         services.AddScoped<ResourcePermissionService>();

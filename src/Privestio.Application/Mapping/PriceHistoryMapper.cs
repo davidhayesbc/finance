@@ -9,7 +9,9 @@ public static class PriceHistoryMapper
         new()
         {
             Id = priceHistory.Id,
+            SecurityId = priceHistory.SecurityId,
             Symbol = priceHistory.Symbol,
+            ProviderSymbol = priceHistory.ProviderSymbol,
             Price = priceHistory.Price.Amount,
             Currency = priceHistory.Price.CurrencyCode,
             AsOfDate = priceHistory.AsOfDate,

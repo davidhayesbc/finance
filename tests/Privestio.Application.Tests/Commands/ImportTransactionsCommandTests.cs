@@ -3,6 +3,7 @@ using Moq;
 using Privestio.Application.Commands.ImportTransactions;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
+using Privestio.Application.Tests;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Interfaces;
@@ -96,7 +97,8 @@ public class ImportTransactionsCommandTests
         _handler = new ImportTransactionsCommandHandler(
             _unitOfWork.Object,
             [_csvImporter.Object],
-            _fingerprintService
+            _fingerprintService,
+            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork)
         );
     }
 
@@ -661,13 +663,14 @@ public class ImportTransactionsCommandTests
             .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(investmentAccount);
 
-        var existingHolding = new Holding(
+        var existingSecurity = SecurityTestHelper.CreateSecurity("VFV", "Vanguard S&P 500");
+        var existingHolding = SecurityTestHelper.CreateHolding(
             _accountId,
-            "VFV",
-            "Vanguard S&P 500",
+            existingSecurity,
             5m,
             new Domain.ValueObjects.Money(100m)
         );
+        SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork, [existingSecurity]);
         _holdingRepo
             .Setup(r => r.GetByAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([existingHolding]);
@@ -721,13 +724,17 @@ public class ImportTransactionsCommandTests
             .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(investmentAccount);
 
-        var existingHolding = new Holding(
-            _accountId,
+        var existingSecurity = SecurityTestHelper.CreateSecurity(
             "ZFL",
-            "BMO Long Federal Bond Index ETF",
+            "BMO Long Federal Bond Index ETF"
+        );
+        var existingHolding = SecurityTestHelper.CreateHolding(
+            _accountId,
+            existingSecurity,
             1205.6384m,
             new Domain.ValueObjects.Money(12.30m)
         );
+        SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork, [existingSecurity]);
         _holdingRepo
             .Setup(r => r.GetByAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([existingHolding]);

@@ -1,11 +1,11 @@
 using MediatR;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Mapping;
+using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Interfaces;
-using Privestio.Domain.Services;
 
 namespace Privestio.Application.Queries.GetAccounts;
 
@@ -14,11 +14,17 @@ public class GetAccountsQueryHandler
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPriceFeedProvider _priceFeedProvider;
+    private readonly SecurityResolutionService _securityResolutionService;
 
-    public GetAccountsQueryHandler(IUnitOfWork unitOfWork, IPriceFeedProvider priceFeedProvider)
+    public GetAccountsQueryHandler(
+        IUnitOfWork unitOfWork,
+        IPriceFeedProvider priceFeedProvider,
+        SecurityResolutionService securityResolutionService
+    )
     {
         _unitOfWork = unitOfWork;
         _priceFeedProvider = priceFeedProvider;
+        _securityResolutionService = securityResolutionService;
     }
 
     public async Task<IReadOnlyList<AccountResponse>> Handle(
@@ -85,41 +91,48 @@ public class GetAccountsQueryHandler
         if (holdings.Count == 0)
             return account.CurrentBalance.Amount;
 
-        var symbols = holdings
-            .Select(h => h.Symbol)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var latestPrices = await _unitOfWork.PriceHistories.GetLatestBySymbolsAsync(
+        var symbols = holdings.Select(h => h.SecurityId).Distinct().ToList();
+        var latestPrices = await _unitOfWork.PriceHistories.GetLatestBySecurityIdsAsync(
             symbols,
             cancellationToken
         );
 
-        var missingSymbols = holdings
-            .Where(h => ResolvePrice(latestPrices, h.Symbol) is null)
-            .Select(h => h.Symbol)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        var missingHoldings = holdings
+            .Where(h => !latestPrices.ContainsKey(h.SecurityId) && h.Security is not null)
             .ToList();
 
-        var fetchedBySymbol = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        if (missingSymbols.Count > 0)
+        var fetchedBySecurityId = new Dictionary<Guid, decimal>();
+        if (missingHoldings.Count > 0)
         {
+            var lookups = missingHoldings
+                .Where(h => h.Security is not null)
+                .Select(h => new PriceLookup(
+                    h.SecurityId,
+                    _securityResolutionService.GetPreferredPriceLookupSymbol(
+                        h.Security!,
+                        _priceFeedProvider.ProviderName
+                    )
+                ))
+                .DistinctBy(l => l.SecurityId)
+                .ToList();
+
             var fetchedQuotes = await _priceFeedProvider.GetLatestPricesAsync(
-                missingSymbols,
+                lookups,
                 cancellationToken
             );
 
             foreach (var quote in fetchedQuotes.Where(q => q.Price > 0))
             {
-                fetchedBySymbol[SecuritySymbolMatcher.Normalize(quote.Symbol)] = quote.Price;
+                fetchedBySecurityId[quote.SecurityId] = quote.Price;
             }
         }
 
         var total = holdings.Sum(h =>
         {
-            var price = ResolvePrice(latestPrices, h.Symbol);
+            var price = latestPrices.GetValueOrDefault(h.SecurityId);
             var unitPrice =
                 price?.Price.Amount
-                ?? ResolveFetchedPrice(fetchedBySymbol, h.Symbol)
+                ?? ResolveFetchedPrice(fetchedBySecurityId, h.SecurityId)
                 ?? h.AverageCostPerUnit.Amount;
             return Math.Round(h.Quantity * unitPrice, 2, MidpointRounding.ToEven);
         });
@@ -127,31 +140,8 @@ public class GetAccountsQueryHandler
         return total;
     }
 
-    private static PriceHistory? ResolvePrice(
-        IReadOnlyDictionary<string, PriceHistory> latestPrices,
-        string holdingSymbol
-    )
-    {
-        foreach (var candidate in SecuritySymbolMatcher.GetLookupCandidates(holdingSymbol))
-        {
-            if (latestPrices.TryGetValue(candidate, out var price))
-                return price;
-        }
-
-        return null;
-    }
-
     private static decimal? ResolveFetchedPrice(
-        IReadOnlyDictionary<string, decimal> fetchedBySymbol,
-        string holdingSymbol
-    )
-    {
-        foreach (var candidate in SecuritySymbolMatcher.GetLookupCandidates(holdingSymbol))
-        {
-            if (fetchedBySymbol.TryGetValue(candidate, out var price))
-                return price;
-        }
-
-        return null;
-    }
+        IReadOnlyDictionary<Guid, decimal> fetchedBySecurityId,
+        Guid securityId
+    ) => fetchedBySecurityId.TryGetValue(securityId, out var price) ? price : null;
 }

@@ -11,19 +11,35 @@ public class PriceHistory : BaseEntity
 {
     private PriceHistory() { }
 
-    public PriceHistory(string symbol, Money price, DateOnly asOfDate, string source)
+    public PriceHistory(
+        Guid securityId,
+        string symbol,
+        string providerSymbol,
+        Money price,
+        DateOnly asOfDate,
+        string source
+    )
     {
+        if (securityId == Guid.Empty)
+            throw new ArgumentOutOfRangeException(nameof(securityId));
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerSymbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
 
+        SecurityId = securityId;
         Symbol = symbol.ToUpperInvariant().Trim();
+        ProviderSymbol = providerSymbol.ToUpperInvariant().Trim();
         Price = price;
         AsOfDate = asOfDate;
         RecordedAt = DateTime.UtcNow;
         Source = source;
     }
 
+    public Guid SecurityId { get; private set; }
+    public Security? Security { get; set; }
+
     public string Symbol { get; private set; } = string.Empty;
+    public string ProviderSymbol { get; private set; } = string.Empty;
     public Money Price { get; private set; }
 
     /// <summary>The market date this price applies to.</summary>

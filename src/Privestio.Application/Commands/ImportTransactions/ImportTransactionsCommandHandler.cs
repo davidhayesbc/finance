@@ -16,6 +16,7 @@ public class ImportTransactionsCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEnumerable<ITransactionImporter> _importers;
     private readonly TransactionFingerprintService _fingerprintService;
+    private readonly SecurityResolutionService _securityResolutionService;
 
     // Default keyword lists — match the original hardcoded values so existing imports
     // continue to work when no mapping-level overrides are configured.
@@ -29,12 +30,14 @@ public class ImportTransactionsCommandHandler
     public ImportTransactionsCommandHandler(
         IUnitOfWork unitOfWork,
         IEnumerable<ITransactionImporter> importers,
-        TransactionFingerprintService fingerprintService
+        TransactionFingerprintService fingerprintService,
+        SecurityResolutionService securityResolutionService
     )
     {
         _unitOfWork = unitOfWork;
         _importers = importers;
         _fingerprintService = fingerprintService;
+        _securityResolutionService = securityResolutionService;
     }
 
     public async Task<ImportResultResponse> Handle(
@@ -315,7 +318,7 @@ public class ImportTransactionsCommandHandler
     )
     {
         var holdings = await _unitOfWork.Holdings.GetByAccountIdAsync(accountId, cancellationToken);
-        var bySymbol = holdings.ToDictionary(h => h.Symbol, StringComparer.OrdinalIgnoreCase);
+        var bySecurityId = holdings.ToDictionary(h => h.SecurityId);
         var newHoldingIds = new HashSet<Guid>();
         var pendingLots = new List<Lot>();
         var pendingIncomeCredits = new List<(DateOnly Date, decimal Amount)>();
@@ -344,28 +347,38 @@ public class ImportTransactionsCommandHandler
                 continue;
 
             var currency = accountCurrency;
+            var security = await _securityResolutionService.ResolveOrCreateAsync(
+                symbol,
+                Truncate(
+                    string.IsNullOrWhiteSpace(row.SecurityName) ? symbol : row.SecurityName,
+                    200
+                ) ?? symbol,
+                currency,
+                isCashEquivalent: IsCashEquivalentSymbol(symbol, config),
+                cancellationToken: cancellationToken
+            );
 
-            if (!bySymbol.TryGetValue(symbol, out var holding))
+            if (!bySecurityId.TryGetValue(security.Id, out var holding))
             {
                 if (signedQuantityDelta <= 0)
                     continue;
 
                 holding = new Holding(
                     accountId,
-                    symbol,
-                    Truncate(
-                        string.IsNullOrWhiteSpace(row.SecurityName) ? symbol : row.SecurityName,
-                        200
-                    ) ?? symbol,
+                    security.Id,
+                    security.DisplaySymbol,
+                    security.Name,
                     signedQuantityDelta,
                     new Money(unitCost, currency)
                 );
+                holding.RebindSecurity(security);
                 await _unitOfWork.Holdings.AddAsync(holding, cancellationToken);
-                bySymbol[symbol] = holding;
+                bySecurityId[security.Id] = holding;
                 newHoldingIds.Add(holding.Id);
             }
             else
             {
+                holding.RebindSecurity(security);
                 var previousQuantity = holding.Quantity;
                 var nextQuantity = Math.Max(0m, previousQuantity + signedQuantityDelta);
 
@@ -396,7 +409,7 @@ public class ImportTransactionsCommandHandler
 
             if (signedQuantityDelta > 0)
             {
-                var lotSource = ResolveLotSource(row, symbol, pendingIncomeCredits, config);
+                var lotSource = ResolveLotSource(row, security, pendingIncomeCredits, config);
                 var lot = new Lot(
                     holding.Id,
                     row.SettlementDate ?? DateOnly.FromDateTime(row.Date),
@@ -424,13 +437,13 @@ public class ImportTransactionsCommandHandler
 
     private static string? ResolveLotSource(
         ImportedTransactionRow row,
-        string symbol,
+        Security security,
         List<(DateOnly Date, decimal Amount)> pendingIncomeCredits,
         ImportClassificationConfig config
     )
     {
         if (
-            IsCashEquivalentSymbol(symbol, config)
+            security.IsCashEquivalent
             && TryMatchIncomeReinvestment(row, pendingIncomeCredits, config)
         )
             return "ReinvestedIncome";

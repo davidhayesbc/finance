@@ -4,6 +4,7 @@ public record HoldingResponse
 {
     public Guid Id { get; init; }
     public Guid AccountId { get; init; }
+    public Guid SecurityId { get; init; }
     public string Symbol { get; init; } = string.Empty;
     public string SecurityName { get; init; } = string.Empty;
     public decimal Quantity { get; init; }

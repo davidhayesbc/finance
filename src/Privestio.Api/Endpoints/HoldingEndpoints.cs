@@ -1,9 +1,12 @@
 using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Privestio.Application.Commands.AddHoldingAlias;
 using Privestio.Application.Commands.CreateHolding;
 using Privestio.Application.Commands.DeleteHolding;
+using Privestio.Application.Commands.DeleteHoldingAlias;
 using Privestio.Application.Commands.UpdateHolding;
+using Privestio.Application.Queries.GetHoldingAliases;
 using Privestio.Application.Queries.GetHoldingById;
 using Privestio.Application.Queries.GetHoldings;
 using Privestio.Contracts.Requests;
@@ -40,6 +43,21 @@ public static class HoldingEndpoints
             .MapDelete("/holdings/{holdingId:guid}", DeleteHoldingAsync)
             .WithName("DeleteHolding")
             .WithSummary("Delete a holding");
+
+        group
+            .MapGet("/holdings/{holdingId:guid}/aliases", GetHoldingAliasesAsync)
+            .WithName("GetHoldingAliases")
+            .WithSummary("Get aliases for a holding's security");
+
+        group
+            .MapPost("/holdings/{holdingId:guid}/aliases", AddHoldingAliasAsync)
+            .WithName("AddHoldingAlias")
+            .WithSummary("Add or update a security alias for a holding");
+
+        group
+            .MapDelete("/holdings/{holdingId:guid}/aliases/{aliasId:guid}", DeleteHoldingAliasAsync)
+            .WithName("DeleteHoldingAlias")
+            .WithSummary("Delete a security alias for a holding");
 
         return app;
     }
@@ -167,5 +185,83 @@ public static class HoldingEndpoints
             cancellationToken
         );
         return deleted ? Results.NoContent() : Results.NotFound();
+    }
+
+    private static async Task<IResult> GetHoldingAliasesAsync(
+        Guid holdingId,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var result = await mediator.Send(
+            new GetHoldingAliasesQuery(holdingId, userId.Value),
+            cancellationToken
+        );
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> AddHoldingAliasAsync(
+        Guid holdingId,
+        [FromBody] AddSecurityAliasRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var result = await mediator.Send(
+                new AddHoldingAliasCommand(
+                    holdingId,
+                    request.Symbol,
+                    request.Source,
+                    request.IsPrimary,
+                    userId.Value
+                ),
+                cancellationToken
+            );
+
+            return Results.Created($"/api/v1/holdings/{holdingId}/aliases/{result.Id}", result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> DeleteHoldingAliasAsync(
+        Guid holdingId,
+        Guid aliasId,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var deleted = await mediator.Send(
+                new DeleteHoldingAliasCommand(holdingId, aliasId, userId.Value),
+                cancellationToken
+            );
+
+            return deleted ? Results.NoContent() : Results.NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
     }
 }

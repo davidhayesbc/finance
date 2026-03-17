@@ -4,7 +4,6 @@ using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Interfaces;
-using Privestio.Domain.Services;
 using Privestio.Domain.ValueObjects;
 
 namespace Privestio.Application.Queries.GetPortfolioPerformance;
@@ -14,14 +13,17 @@ public class GetPortfolioPerformanceQueryHandler
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPriceFeedProvider _priceFeedProvider;
+    private readonly SecurityResolutionService _securityResolutionService;
 
     public GetPortfolioPerformanceQueryHandler(
         IUnitOfWork unitOfWork,
-        IPriceFeedProvider priceFeedProvider
+        IPriceFeedProvider priceFeedProvider,
+        SecurityResolutionService securityResolutionService
     )
     {
         _unitOfWork = unitOfWork;
         _priceFeedProvider = priceFeedProvider;
+        _securityResolutionService = securityResolutionService;
     }
 
     public async Task<PortfolioPerformanceResponse?> Handle(
@@ -57,28 +59,26 @@ public class GetPortfolioPerformanceQueryHandler
             };
         }
 
-        var symbols = activeHoldings.Select(h => h.Symbol).ToList();
-        var latestPrices = await _unitOfWork.PriceHistories.GetLatestBySymbolsAsync(
-            symbols,
+        var securityIds = activeHoldings.Select(h => h.SecurityId).ToList();
+        var latestPrices = await _unitOfWork.PriceHistories.GetLatestBySecurityIdsAsync(
+            securityIds,
             cancellationToken
         );
 
-        var missingSymbols = activeHoldings
-            .Where(h => ResolvePrice(latestPrices, h.Symbol) is null)
-            .Select(h => h.Symbol)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        var missingHoldings = activeHoldings
+            .Where(h => !latestPrices.ContainsKey(h.SecurityId) && h.Security is not null)
             .ToList();
 
-        if (missingSymbols.Count > 0)
+        if (missingHoldings.Count > 0)
         {
             var fetchedAny = await FetchAndPersistMissingPricesAsync(
-                missingSymbols,
+                missingHoldings,
                 cancellationToken
             );
             if (fetchedAny)
             {
-                latestPrices = await _unitOfWork.PriceHistories.GetLatestBySymbolsAsync(
-                    symbols,
+                latestPrices = await _unitOfWork.PriceHistories.GetLatestBySecurityIdsAsync(
+                    securityIds,
                     cancellationToken
                 );
             }
@@ -87,16 +87,16 @@ public class GetPortfolioPerformanceQueryHandler
         var holdingContexts = activeHoldings
             .Select(h =>
             {
-                var price = ResolvePrice(latestPrices, h.Symbol);
+                var price = latestPrices.GetValueOrDefault(h.SecurityId);
                 var resolvedCurrentPrice =
                     price?.Price.Amount
                     ?? (
-                        IsCashEquivalentSymbol(h.Symbol)
+                        h.Security?.IsCashEquivalent == true
                             ? h.AverageCostPerUnit.Amount
                             : (decimal?)null
                     );
 
-                var source = ResolvePriceSource(price, h.Symbol);
+                var source = ResolvePriceSource(price, h);
 
                 var input = new PortfolioPerformanceCalculator.HoldingInput(
                     h.Id,
@@ -158,32 +158,12 @@ public class GetPortfolioPerformanceQueryHandler
         };
     }
 
-    private static PriceHistory? ResolvePrice(
-        IReadOnlyDictionary<string, PriceHistory> latestPrices,
-        string holdingSymbol
-    )
-    {
-        foreach (var candidate in SecuritySymbolMatcher.GetLookupCandidates(holdingSymbol))
-        {
-            if (latestPrices.TryGetValue(candidate, out var price))
-                return price;
-        }
-
-        return null;
-    }
-
-    private static bool IsCashEquivalentSymbol(string symbol)
-    {
-        var normalized = SecuritySymbolMatcher.Normalize(symbol);
-        return normalized.StartsWith("CASH", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string ResolvePriceSource(PriceHistory? price, string symbol)
+    private static string ResolvePriceSource(PriceHistory? price, Holding holding)
     {
         if (price is not null)
             return string.IsNullOrWhiteSpace(price.Source) ? "PriceHistory" : price.Source;
 
-        if (IsCashEquivalentSymbol(symbol))
+        if (holding.Security?.IsCashEquivalent == true)
             return "Fallback";
 
         return "Missing";
@@ -195,21 +175,27 @@ public class GetPortfolioPerformanceQueryHandler
     );
 
     private async Task<bool> FetchAndPersistMissingPricesAsync(
-        IReadOnlyList<string> missingSymbols,
+        IReadOnlyList<Holding> missingHoldings,
         CancellationToken cancellationToken
     )
     {
-        var quotes = await _priceFeedProvider.GetLatestPricesAsync(
-            missingSymbols,
-            cancellationToken
-        );
+        var lookups = missingHoldings
+            .Where(h => h.Security is not null)
+            .Select(h => new PriceLookup(
+                h.SecurityId,
+                _securityResolutionService.GetPreferredPriceLookupSymbol(
+                    h.Security!,
+                    _priceFeedProvider.ProviderName
+                )
+            ))
+            .DistinctBy(l => l.SecurityId)
+            .ToList();
+
+        var quotes = await _priceFeedProvider.GetLatestPricesAsync(lookups, cancellationToken);
         if (quotes.Count == 0)
             return false;
 
-        var keys = quotes
-            .Select(q => (SecuritySymbolMatcher.Normalize(q.Symbol), q.AsOfDate))
-            .Distinct()
-            .ToList();
+        var keys = quotes.Select(q => (q.SecurityId, q.AsOfDate)).Distinct().ToList();
 
         var existingKeys = await _unitOfWork.PriceHistories.GetExistingKeysAsync(
             keys,
@@ -218,15 +204,21 @@ public class GetPortfolioPerformanceQueryHandler
 
         var newEntries = quotes
             .Where(q => q.Price > 0)
-            .Where(q =>
-                !existingKeys.Contains((SecuritySymbolMatcher.Normalize(q.Symbol), q.AsOfDate))
+            .Where(q => !existingKeys.Contains((q.SecurityId, q.AsOfDate)))
+            .Join(
+                missingHoldings.Select(h => h.Security!).DistinctBy(s => s.Id),
+                quote => quote.SecurityId,
+                security => security.Id,
+                (q, security) =>
+                    new PriceHistory(
+                        q.SecurityId,
+                        security.DisplaySymbol,
+                        q.Symbol,
+                        new Money(q.Price, q.Currency),
+                        q.AsOfDate,
+                        _priceFeedProvider.ProviderName
+                    )
             )
-            .Select(q => new PriceHistory(
-                q.Symbol,
-                new Money(q.Price, q.Currency),
-                q.AsOfDate,
-                _priceFeedProvider.ProviderName
-            ))
             .ToList();
 
         if (newEntries.Count == 0)

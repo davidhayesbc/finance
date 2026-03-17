@@ -3,6 +3,7 @@ using Moq;
 using Privestio.Application.Commands.ImportTransactions;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
+using Privestio.Application.Tests;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Interfaces;
@@ -76,7 +77,8 @@ public class ImportPolicyTests
         _handler = new ImportTransactionsCommandHandler(
             _unitOfWork.Object,
             [_csvImporter.Object],
-            _fingerprintService
+            _fingerprintService,
+            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork)
         );
     }
 

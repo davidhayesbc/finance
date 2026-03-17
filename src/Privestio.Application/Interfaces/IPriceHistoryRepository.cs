@@ -5,8 +5,8 @@ namespace Privestio.Application.Interfaces;
 public interface IPriceHistoryRepository
 {
     Task<PriceHistory?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<PriceHistory>> GetBySymbolAsync(
-        string symbol,
+    Task<IReadOnlyList<PriceHistory>> GetBySecurityIdAsync(
+        Guid securityId,
         DateOnly? fromDate = null,
         DateOnly? toDate = null,
         CancellationToken cancellationToken = default
@@ -19,22 +19,22 @@ public interface IPriceHistoryRepository
         IEnumerable<PriceHistory> priceHistories,
         CancellationToken cancellationToken = default
     );
-    Task<bool> ExistsBySymbolAndDateAsync(
-        string symbol,
+    Task<bool> ExistsBySecurityIdAndDateAsync(
+        Guid securityId,
         DateOnly asOfDate,
         CancellationToken cancellationToken = default
     );
-    Task<IReadOnlySet<(string Symbol, DateOnly AsOfDate)>> GetExistingKeysAsync(
-        IEnumerable<(string Symbol, DateOnly AsOfDate)> keys,
+    Task<IReadOnlySet<(Guid SecurityId, DateOnly AsOfDate)>> GetExistingKeysAsync(
+        IEnumerable<(Guid SecurityId, DateOnly AsOfDate)> keys,
         CancellationToken cancellationToken = default
     );
 
     /// <summary>
-    /// Returns the most recent <see cref="PriceHistory"/> entry per symbol for the given set of
-    /// symbols. Symbols with no recorded price are omitted from the result.
+    /// Returns the most recent <see cref="PriceHistory"/> entry per security for the given set of
+    /// security ids. Securities with no recorded price are omitted from the result.
     /// </summary>
-    Task<IReadOnlyDictionary<string, PriceHistory>> GetLatestBySymbolsAsync(
-        IEnumerable<string> symbols,
+    Task<IReadOnlyDictionary<Guid, PriceHistory>> GetLatestBySecurityIdsAsync(
+        IEnumerable<Guid> securityIds,
         CancellationToken cancellationToken = default
     );
 }

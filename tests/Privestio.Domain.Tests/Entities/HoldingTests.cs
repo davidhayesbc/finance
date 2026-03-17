@@ -18,17 +18,21 @@ public class HoldingTests
             new DateOnly(2025, 1, 1),
             Guid.NewGuid()
         );
+        var security = new Security("XEQT", "XEQT", "iShares Core Equity ETF Portfolio", "CAD");
 
         var holding = new Holding(
             account.Id,
-            "xeqt.to",
-            "iShares Core Equity ETF Portfolio",
+            security.Id,
+            "xeqt",
+            security.Name,
             10.5m,
             new Money(35.12m, "CAD")
         );
+        holding.RebindSecurity(security);
 
         holding.AccountId.Should().Be(account.Id);
-        holding.Symbol.Should().Be("XEQT.TO");
+        holding.SecurityId.Should().Be(security.Id);
+        holding.Symbol.Should().Be("XEQT");
         holding.Quantity.Should().Be(10.5m);
         holding.AverageCostPerUnit.Amount.Should().Be(35.12m);
     }
@@ -36,9 +40,12 @@ public class HoldingTests
     [Fact]
     public void Constructor_WithNegativeQuantity_Throws()
     {
+        var securityId = Guid.NewGuid();
+
         var act = () =>
             new Holding(
                 Guid.NewGuid(),
+                securityId,
                 "XEQT.TO",
                 "iShares Core Equity ETF Portfolio",
                 -1m,

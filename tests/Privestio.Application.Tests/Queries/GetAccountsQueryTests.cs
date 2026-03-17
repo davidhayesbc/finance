@@ -1,6 +1,8 @@
 using Moq;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetAccounts;
+using Privestio.Application.Services;
+using Privestio.Application.Tests;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Interfaces;
@@ -16,6 +18,7 @@ public class GetAccountsQueryTests
     private readonly Mock<IHoldingRepository> _holdingRepositoryMock;
     private readonly Mock<IPriceHistoryRepository> _priceHistoryRepositoryMock;
     private readonly Mock<IPriceFeedProvider> _priceFeedProviderMock;
+    private readonly SecurityResolutionService _securityResolutionService;
 
     public GetAccountsQueryTests()
     {
@@ -30,11 +33,15 @@ public class GetAccountsQueryTests
         _unitOfWorkMock.SetupGet(x => x.Transactions).Returns(_transactionRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.Holdings).Returns(_holdingRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.PriceHistories).Returns(_priceHistoryRepositoryMock.Object);
+        _securityResolutionService = SecurityTestHelper.CreateSecurityResolutionService(
+            _unitOfWorkMock
+        );
+        _priceFeedProviderMock.SetupGet(x => x.ProviderName).Returns("YahooFinance");
 
         _priceFeedProviderMock
             .Setup(x =>
                 x.GetLatestPricesAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<IEnumerable<PriceLookup>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
@@ -46,15 +53,18 @@ public class GetAccountsQueryTests
 
         _priceHistoryRepositoryMock
             .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
             .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>()
+                (IReadOnlyDictionary<Guid, PriceHistory>)new Dictionary<Guid, PriceHistory>()
             );
     }
+
+    private GetAccountsQueryHandler CreateHandler() =>
+        new(_unitOfWorkMock.Object, _priceFeedProviderMock.Object, _securityResolutionService);
 
     [Fact]
     public async Task Handle_NoAccounts_ReturnsEmptyList()
@@ -74,13 +84,8 @@ public class GetAccountsQueryTests
             )
             .ReturnsAsync(new Dictionary<Guid, decimal>());
 
-        var handler = new GetAccountsQueryHandler(
-            _unitOfWorkMock.Object,
-            _priceFeedProviderMock.Object
-        );
-        var query = new GetAccountsQuery(ownerId);
-
-        var result = await handler.Handle(query, CancellationToken.None);
+        var result = await CreateHandler()
+            .Handle(new GetAccountsQuery(ownerId), CancellationToken.None);
 
         result.Should().BeEmpty();
     }
@@ -127,13 +132,8 @@ public class GetAccountsQueryTests
                 new Dictionary<Guid, decimal> { { banking.Id, 250m }, { credit.Id, -1200m } }
             );
 
-        var handler = new GetAccountsQueryHandler(
-            _unitOfWorkMock.Object,
-            _priceFeedProviderMock.Object
-        );
-        var query = new GetAccountsQuery(ownerId);
-
-        var result = await handler.Handle(query, CancellationToken.None);
+        var result = await CreateHandler()
+            .Handle(new GetAccountsQuery(ownerId), CancellationToken.None);
 
         result.Should().HaveCount(3);
 
@@ -172,13 +172,8 @@ public class GetAccountsQueryTests
             )
             .ReturnsAsync(new Dictionary<Guid, decimal>());
 
-        var handler = new GetAccountsQueryHandler(
-            _unitOfWorkMock.Object,
-            _priceFeedProviderMock.Object
-        );
-        var query = new GetAccountsQuery(ownerId);
-
-        var result = await handler.Handle(query, CancellationToken.None);
+        var result = await CreateHandler()
+            .Handle(new GetAccountsQuery(ownerId), CancellationToken.None);
 
         result.Should().HaveCount(1);
         result[0].CurrentBalance.Should().Be(770_000m);
@@ -204,11 +199,13 @@ public class GetAccountsQueryTests
             AccountSubType.TFSA,
             0.01m
         );
-
-        var holding = new Holding(
-            investment.Id,
+        var security = SecurityTestHelper.CreateSecurity(
             "XEQT",
-            "iShares Core Equity ETF Portfolio",
+            "iShares Core Equity ETF Portfolio"
+        );
+        var holding = SecurityTestHelper.CreateHolding(
+            investment.Id,
+            security,
             100m,
             new Money(35m, "CAD")
         );
@@ -232,31 +229,25 @@ public class GetAccountsQueryTests
 
         _priceHistoryRepositoryMock
             .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
             .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)
-                    new Dictionary<string, PriceHistory>
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory>
                     {
-                        ["XEQT"] = new PriceHistory(
-                            "XEQT",
-                            new Money(40m, "CAD"),
-                            DateOnly.FromDateTime(DateTime.UtcNow),
-                            "YahooFinance"
+                        [security.Id] = SecurityTestHelper.CreatePriceHistory(
+                            security,
+                            40m,
+                            DateOnly.FromDateTime(DateTime.UtcNow)
                         ),
                     }
             );
 
-        var handler = new GetAccountsQueryHandler(
-            _unitOfWorkMock.Object,
-            _priceFeedProviderMock.Object
-        );
-        var query = new GetAccountsQuery(ownerId);
-
-        var result = await handler.Handle(query, CancellationToken.None);
+        var result = await CreateHandler()
+            .Handle(new GetAccountsQuery(ownerId), CancellationToken.None);
 
         result.Should().HaveCount(1);
         result[0].CurrentBalance.Should().Be(4000m);
@@ -273,14 +264,19 @@ public class GetAccountsQueryTests
             AccountSubType.TFSA,
             0.01m
         );
-
-        var holding = new Holding(
-            investment.Id,
+        var security = SecurityTestHelper.CreateSecurity(
             "XEQT",
             "iShares Core Equity ETF Portfolio",
+            aliases: [("XEQT.TO", "YahooFinance", true)]
+        );
+        var holding = SecurityTestHelper.CreateHolding(
+            investment.Id,
+            security,
             100m,
             new Money(35m, "CAD")
         );
+
+        SecurityTestHelper.CreateSecurityResolutionService(_unitOfWorkMock, [security]);
 
         _accountRepositoryMock
             .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
@@ -301,33 +297,37 @@ public class GetAccountsQueryTests
 
         _priceHistoryRepositoryMock
             .Setup(x =>
-                x.GetLatestBySymbolsAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
             .ReturnsAsync(
-                (IReadOnlyDictionary<string, PriceHistory>)new Dictionary<string, PriceHistory>()
+                (IReadOnlyDictionary<Guid, PriceHistory>)new Dictionary<Guid, PriceHistory>()
             );
 
         _priceFeedProviderMock
             .Setup(x =>
                 x.GetLatestPricesAsync(
-                    It.IsAny<IEnumerable<string>>(),
+                    It.Is<IEnumerable<PriceLookup>>(lookups =>
+                        lookups.Single().SecurityId == security.Id
+                        && lookups.Single().Symbol == "XEQT.TO"
+                    ),
                     It.IsAny<CancellationToken>()
                 )
             )
             .ReturnsAsync([
-                new PriceQuote("XEQT", 40m, "CAD", DateOnly.FromDateTime(DateTime.UtcNow)),
+                new PriceQuote(
+                    security.Id,
+                    "XEQT.TO",
+                    40m,
+                    "CAD",
+                    DateOnly.FromDateTime(DateTime.UtcNow)
+                ),
             ]);
 
-        var handler = new GetAccountsQueryHandler(
-            _unitOfWorkMock.Object,
-            _priceFeedProviderMock.Object
-        );
-        var query = new GetAccountsQuery(ownerId);
-
-        var result = await handler.Handle(query, CancellationToken.None);
+        var result = await CreateHandler()
+            .Handle(new GetAccountsQuery(ownerId), CancellationToken.None);
 
         result.Should().HaveCount(1);
         result[0].CurrentBalance.Should().Be(4000m);
