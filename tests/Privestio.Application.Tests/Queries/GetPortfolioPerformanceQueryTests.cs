@@ -49,6 +49,17 @@ public class GetPortfolioPerformanceQueryTests
                 )
             )
             .ReturnsAsync([]);
+        _exchangeRateProvider
+            .Setup(x =>
+                x.GetHistoricalRatesAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<DateOnly>(),
+                    It.IsAny<DateOnly>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
 
         _exchangeRates
             .Setup(x =>
@@ -59,6 +70,15 @@ public class GetPortfolioPerformanceQueryTests
                 )
             )
             .ReturnsAsync((ExchangeRate?)null);
+        _exchangeRates
+            .Setup(x =>
+                x.GetAllAsync(
+                    It.IsAny<string?>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
 
         _prices
             .Setup(x =>
@@ -324,7 +344,13 @@ public class GetPortfolioPerformanceQueryTests
             DateOnly.FromDateTime(DateTime.UtcNow),
             "Yahoo"
         );
-        var fxRate = new ExchangeRate("USD", "CAD", 1.404m, DateOnly.FromDateTime(DateTime.UtcNow), "Manual");
+        var fxRate = new ExchangeRate(
+            "USD",
+            "CAD",
+            1.404m,
+            DateOnly.FromDateTime(DateTime.UtcNow),
+            "Manual"
+        );
 
         _accounts
             .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
@@ -344,8 +370,8 @@ public class GetPortfolioPerformanceQueryTests
                     new Dictionary<Guid, PriceHistory> { [security.Id] = price }
             );
         _exchangeRates
-            .Setup(x => x.GetLatestByPairAsync("USD", "CAD", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(fxRate);
+            .Setup(x => x.GetAllAsync("USD", "CAD", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([fxRate]);
 
         var result = await CreateHandler()
             .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
@@ -354,19 +380,21 @@ public class GetPortfolioPerformanceQueryTests
         result!.Currency.Should().Be("CAD");
         result.Holdings.Should().HaveCount(1);
         result.Holdings[0].Currency.Should().Be("CAD");
+        result.Holdings[0].QuoteCurrency.Should().Be("USD");
+        result.Holdings[0].IsFxConverted.Should().BeTrue();
+        result.Holdings[0].FxRateToAccountCurrency.Should().Be(1.404m);
         result.Holdings[0].CurrentPrice.Should().BeApproximately(92.0533m, 0.0001m);
         result.Holdings[0].MarketValue.Should().BeApproximately(4941.49m, 0.01m);
 
-        _exchangeRateProvider
-            .Verify(
-                x =>
-                    x.GetLatestRatesAsync(
-                        It.IsAny<string>(),
-                        It.IsAny<IEnumerable<string>>(),
-                        It.IsAny<CancellationToken>()
-                    ),
-                Times.Never
-            );
+        _exchangeRateProvider.Verify(
+            x =>
+                x.GetLatestRatesAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never
+        );
     }
 
     [Fact]
@@ -410,8 +438,82 @@ public class GetPortfolioPerformanceQueryTests
 
         result.Should().NotBeNull();
         result!.Holdings.Should().HaveCount(1);
+        result.Holdings[0].QuoteCurrency.Should().Be("USD");
+        result.Holdings[0].IsFxConverted.Should().BeTrue();
+        result.Holdings[0].FxRateToAccountCurrency.Should().BeNull();
         result.Holdings[0].CurrentPrice.Should().BeNull();
         result.Holdings[0].MarketValue.Should().BeNull();
         result.Holdings[0].PriceSource.Should().Contain("FX missing");
+    }
+
+    [Fact]
+    public async Task Handle_UsdQuoteWithMissingRateForAsOfDate_FetchesAndPersistsHistoricalFxRate()
+    {
+        var userId = Guid.NewGuid();
+        var account = MakeAccount(userId);
+        var asOfDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-3));
+        var security = SecurityTestHelper.CreateSecurity("EEMV", "Emerging Markets ETF", "USD");
+        var holding = SecurityTestHelper.CreateHolding(
+            account.Id,
+            security,
+            10m,
+            new Money(80m, "CAD")
+        );
+        var price = SecurityTestHelper.CreatePriceHistory(security, 60m, asOfDate, "Yahoo");
+
+        _accounts
+            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(account);
+        _holdings
+            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([holding]);
+        _prices
+            .Setup(x =>
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory> { [security.Id] = price }
+            );
+
+        _exchangeRateProvider
+            .Setup(x =>
+                x.GetHistoricalRatesAsync(
+                    "USD",
+                    It.Is<IEnumerable<string>>(targets => targets.SequenceEqual(new[] { "CAD" })),
+                    asOfDate,
+                    asOfDate,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([new ExchangeRateQuote("USD", "CAD", 1.35m, asOfDate)]);
+
+        var result = await CreateHandler()
+            .Handle(new GetPortfolioPerformanceQuery(account.Id, userId), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Holdings.Should().HaveCount(1);
+        result.Holdings[0].CurrentPrice.Should().Be(81m);
+        result.Holdings[0].MarketValue.Should().Be(810m);
+        result.Holdings[0].IsFxConverted.Should().BeTrue();
+        result.Holdings[0].FxRateToAccountCurrency.Should().Be(1.35m);
+
+        _exchangeRates.Verify(
+            x =>
+                x.AddAsync(
+                    It.Is<ExchangeRate>(r =>
+                        r.FromCurrency == "USD"
+                        && r.ToCurrency == "CAD"
+                        && r.AsOfDate == asOfDate
+                        && r.Rate == 1.35m
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 }

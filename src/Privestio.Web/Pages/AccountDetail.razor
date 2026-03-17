@@ -436,6 +436,10 @@ else
                                             @if (hp.CurrentPrice.HasValue)
                                             {
                                                 @($"{hp.CurrentPrice.Value.ToString("C")} {hp.Currency}")
+                                                @if (hp.IsFxConverted && hp.FxRateToAccountCurrency.HasValue)
+                                                {
+                                                    <span class="txn-desc-sub">FX @hp.QuoteCurrency->@hp.Currency @@ @hp.FxRateToAccountCurrency.Value.ToString("F6")</span>
+                                                }
                                                 @if (hp.PriceAsOfDate.HasValue)
                                                 {
                                                     <span class="txn-desc-sub">@hp.PriceAsOfDate.Value.ToString("MMM d")</span>

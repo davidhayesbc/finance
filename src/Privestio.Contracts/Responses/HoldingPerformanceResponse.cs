@@ -8,6 +8,9 @@ public record HoldingPerformanceResponse
     public decimal Quantity { get; init; }
     public decimal? CurrentPrice { get; init; }
     public string Currency { get; init; } = string.Empty;
+    public string QuoteCurrency { get; init; } = string.Empty;
+    public bool IsFxConverted { get; init; }
+    public decimal? FxRateToAccountCurrency { get; init; }
     public decimal? MarketValue { get; init; }
     public decimal BookValue { get; init; }
     public decimal? GainLoss { get; init; }
