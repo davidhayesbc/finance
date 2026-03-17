@@ -23,10 +23,19 @@ public class LoaderOrchestrator
     private readonly Dictionary<string, Guid> _mappingNameToId = new(
         StringComparer.OrdinalIgnoreCase
     );
+    private readonly List<SummaryRow> _summaryRows = [];
 
     private int _created;
     private int _skipped;
     private int _failed;
+
+    private readonly record struct SummaryRow(
+        string Step,
+        string Status,
+        int Created,
+        int Skipped,
+        int Failed
+    );
 
     public LoaderOrchestrator(
         ApiClient api,
@@ -52,20 +61,40 @@ public class LoaderOrchestrator
         _logger.LogInformation("Starting data load{DryRun}...", _dryRun ? " (DRY RUN)" : "");
 
         if (!await AuthenticateAsync())
+        {
+            AddSummaryRow("Authenticate", "failed", 0, 0, 0);
+            PrintSummaryTable();
             return 1;
+        }
+
+        AddSummaryRow("Authenticate", "done", 0, 0, 0);
 
         if (!await ClearExistingDataIfRequestedAsync())
+        {
+            AddSummaryRow("Clear Existing Data", "failed", 0, 0, 0);
+            PrintSummaryTable();
             return 1;
+        }
 
-        await LoadCategoriesAsync();
-        await LoadPayeesAsync();
-        await LoadTagsAsync();
-        await LoadImportMappingsAsync();
-        await LoadAccountsAsync();
-        await LoadImportsAsync();
-        await LoadValuationsAsync();
-        await LoadPriceHistoryAsync();
-        await ApplyAdjustmentsAsync();
+        AddSummaryRow(
+            "Clear Existing Data",
+            !_clearExistingData || _dryRun ? "skipped" : "done",
+            0,
+            0,
+            0
+        );
+
+        await RunStepWithSummaryAsync("Categories", LoadCategoriesAsync);
+        await RunStepWithSummaryAsync("Payees", LoadPayeesAsync);
+        await RunStepWithSummaryAsync("Tags", LoadTagsAsync);
+        await RunStepWithSummaryAsync("Import Mappings", LoadImportMappingsAsync);
+        await RunStepWithSummaryAsync("Accounts", LoadAccountsAsync);
+        await RunStepWithSummaryAsync("File Imports", LoadImportsAsync);
+        await RunStepWithSummaryAsync("Valuations", LoadValuationsAsync);
+        await RunStepWithSummaryAsync("Price History", LoadPriceHistoryAsync);
+        await RunStepWithSummaryAsync("Account Adjustments", ApplyAdjustmentsAsync);
+
+        PrintSummaryTable();
 
         _logger.LogInformation(
             "Data load complete. Created: {Created}, Skipped: {Skipped}, Failed: {Failed}",
@@ -75,6 +104,60 @@ public class LoaderOrchestrator
         );
 
         return _failed > 0 ? 1 : 0;
+    }
+
+    private async Task RunStepWithSummaryAsync(string stepName, Func<Task> step)
+    {
+        var beforeCreated = _created;
+        var beforeSkipped = _skipped;
+        var beforeFailed = _failed;
+
+        await step();
+
+        AddSummaryRow(
+            stepName,
+            "done",
+            _created - beforeCreated,
+            _skipped - beforeSkipped,
+            _failed - beforeFailed
+        );
+    }
+
+    private void AddSummaryRow(string step, string status, int created, int skipped, int failed)
+    {
+        _summaryRows.Add(new SummaryRow(step, status, created, skipped, failed));
+    }
+
+    private void PrintSummaryTable()
+    {
+        var totalStatus = _failed > 0 ? "failed" : "done";
+        var rows = _summaryRows
+            .Append(new SummaryRow("TOTAL", totalStatus, _created, _skipped, _failed))
+            .ToList();
+
+        var stepWidth = Math.Max("Step".Length, rows.Max(r => r.Step.Length));
+        var statusWidth = Math.Max("Status".Length, rows.Max(r => r.Status.Length));
+
+        var separator =
+            $"+-{new string('-', stepWidth)}-+-{new string('-', statusWidth)}-+-{new string('-', 7)}-+-{new string('-', 7)}-+-{new string('-', 6)}-+";
+
+        Console.WriteLine();
+        Console.WriteLine("Data Loader Summary");
+        Console.WriteLine(separator);
+        Console.WriteLine(
+            $"| {"Step".PadRight(stepWidth)} | {"Status".PadRight(statusWidth)} | {"Created".PadLeft(7)} | {"Skipped".PadLeft(7)} | {"Failed".PadLeft(6)} |"
+        );
+        Console.WriteLine(separator);
+
+        foreach (var row in rows)
+        {
+            Console.WriteLine(
+                $"| {row.Step.PadRight(stepWidth)} | {row.Status.PadRight(statusWidth)} | {row.Created.ToString().PadLeft(7)} | {row.Skipped.ToString().PadLeft(7)} | {row.Failed.ToString().PadLeft(6)} |"
+            );
+        }
+
+        Console.WriteLine(separator);
+        Console.WriteLine();
     }
 
     private async Task<bool> AuthenticateAsync()
