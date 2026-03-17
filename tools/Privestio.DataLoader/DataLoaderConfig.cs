@@ -51,6 +51,13 @@ public class ImportMappingConfig
     public bool HasHeaderRow { get; set; } = true;
     public string? AmountDebitColumn { get; set; }
     public string? AmountCreditColumn { get; set; }
+    public List<string>? BuyKeywords { get; set; }
+    public List<string>? SellKeywords { get; set; }
+    public List<string>? IncomeKeywords { get; set; }
+    public List<string>? CashEquivalentSymbols { get; set; }
+    public List<string>? IgnoreRowPatterns { get; set; }
+    public bool AmountSignFlipped { get; set; }
+    public string? DefaultDate { get; set; }
 }
 
 public class AccountConfig

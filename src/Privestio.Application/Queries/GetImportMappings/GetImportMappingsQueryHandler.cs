@@ -39,6 +39,7 @@ public class GetImportMappingsQueryHandler
                 CashEquivalentSymbols = m.CashEquivalentSymbols,
                 IgnoreRowPatterns = m.IgnoreRowPatterns,
                 AmountSignFlipped = m.AmountSignFlipped,
+                DefaultDate = m.DefaultDate,
             })
             .ToList();
     }

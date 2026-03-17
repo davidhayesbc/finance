@@ -367,13 +367,100 @@ public class CsvTransactionImporterTests
         result.Rows[1].Amount.Should().Be(2500.00m);
     }
 
+    [Fact]
+    public async Task ParseAsync_NoDateColumn_WithDefaultDate_UsesDefaultDate()
+    {
+        var csv = """
+            Symbol,Security,Quantity,Price,Book Value
+            MMF3433,Manulife Fund,21701.910,12.87,254019.32
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "Symbol", "Symbol" },
+                { "Security", "SecurityName" },
+                { "Quantity", "Quantity" },
+                { "Price", "UnitPrice" },
+                { "Book Value", "Amount" },
+            },
+            defaultDate: new DateOnly(2026, 3, 15)
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        result.Errors.Should().BeEmpty();
+        result.Rows.Should().HaveCount(1);
+
+        var row = result.Rows[0];
+        row.Date.Should().Be(new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc));
+        row.Amount.Should().Be(254019.32m);
+        row.Symbol.Should().Be("MMF3433");
+        row.SecurityName.Should().Be("Manulife Fund");
+        row.Quantity.Should().Be(21701.910m);
+        row.UnitPrice.Should().Be(12.87m);
+    }
+
+    [Fact]
+    public async Task ParseAsync_NoDateColumn_NoDefaultDate_ReportsError()
+    {
+        var csv = """
+            Symbol,Security,Quantity,Price,Book Value
+            MMF3433,Manulife Fund,21701.910,12.87,254019.32
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "Symbol", "Symbol" },
+                { "Security", "SecurityName" },
+                { "Quantity", "Quantity" },
+                { "Price", "UnitPrice" },
+                { "Book Value", "Amount" },
+            }
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        result.Rows.Should().BeEmpty();
+        result.Errors.Should().HaveCount(1);
+        result.Errors[0].RowNumber.Should().Be(2);
+        result.Errors[0].ErrorMessage.Should().Contain("Date");
+    }
+
+    [Fact]
+    public async Task ParseAsync_NoDescriptionColumn_FallsBackToSecurityName()
+    {
+        var csv = """
+            Date,Amount,Symbol,SecurityName
+            2025-06-01,-100.00,XEQT,iShares Core Equity ETF Portfolio
+            """;
+
+        var mapping = CreateMapping(
+            new()
+            {
+                { "Date", "Date" },
+                { "Amount", "Amount" },
+                { "Symbol", "Symbol" },
+                { "SecurityName", "SecurityName" },
+            }
+        );
+
+        var result = await ParseCsv(csv, mapping);
+
+        result.Errors.Should().BeEmpty();
+        result.Rows.Should().HaveCount(1);
+        result.Rows[0].Description.Should().Be("iShares Core Equity ETF Portfolio");
+    }
+
     private static ImportMapping CreateMapping(
         Dictionary<string, string> columnMappings,
         string? dateFormat = null,
         string? amountDebitColumn = null,
         string? amountCreditColumn = null,
         List<string>? ignoreRowPatterns = null,
-        bool amountSignFlipped = false
+        bool amountSignFlipped = false,
+        DateOnly? defaultDate = null
     )
     {
         var mapping = new ImportMapping("Test", "CSV", Guid.NewGuid(), columnMappings);
@@ -383,6 +470,7 @@ public class CsvTransactionImporterTests
         if (ignoreRowPatterns is not null)
             mapping.IgnoreRowPatterns = ignoreRowPatterns;
         mapping.AmountSignFlipped = amountSignFlipped;
+        mapping.DefaultDate = defaultDate;
         return mapping;
     }
 

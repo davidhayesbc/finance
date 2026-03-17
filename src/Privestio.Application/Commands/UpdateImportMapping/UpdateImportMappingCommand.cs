@@ -17,5 +17,6 @@ public record UpdateImportMappingCommand(
     List<string>? IncomeKeywords = null,
     List<string>? CashEquivalentSymbols = null,
     List<string>? IgnoreRowPatterns = null,
-    bool AmountSignFlipped = false
+    bool AmountSignFlipped = false,
+    DateOnly? DefaultDate = null
 ) : IRequest<ImportMappingResponse?>;

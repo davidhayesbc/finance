@@ -30,6 +30,7 @@ public class CreateImportMappingCommandHandler
             AmountDebitColumn = request.AmountDebitColumn,
             AmountCreditColumn = request.AmountCreditColumn,
             AmountSignFlipped = request.AmountSignFlipped,
+            DefaultDate = request.DefaultDate,
         };
 
         if (request.BuyKeywords is not null)
@@ -63,6 +64,7 @@ public class CreateImportMappingCommandHandler
             CashEquivalentSymbols = mapping.CashEquivalentSymbols,
             IgnoreRowPatterns = mapping.IgnoreRowPatterns,
             AmountSignFlipped = mapping.AmountSignFlipped,
+            DefaultDate = mapping.DefaultDate,
         };
     }
 }

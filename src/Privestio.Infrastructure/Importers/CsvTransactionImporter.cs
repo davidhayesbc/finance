@@ -48,6 +48,7 @@ public class CsvTransactionImporter : ITransactionImporter
         var creditColumn = mapping?.AmountCreditColumn;
         var ignoreRowPatterns = mapping?.IgnoreRowPatterns ?? [];
         var amountSignFlipped = mapping?.AmountSignFlipped ?? false;
+        var defaultDate = mapping?.DefaultDate;
 
         var rowNumber = 1;
         while (await csv.ReadAsync())
@@ -68,7 +69,8 @@ public class CsvTransactionImporter : ITransactionImporter
                     dateFormat,
                     debitColumn,
                     creditColumn,
-                    amountSignFlipped
+                    amountSignFlipped,
+                    defaultDate
                 );
                 rows.Add(row);
             }
@@ -106,14 +108,27 @@ public class CsvTransactionImporter : ITransactionImporter
         string? dateFormat,
         string? debitColumn,
         string? creditColumn,
-        bool amountSignFlipped
+        bool amountSignFlipped,
+        DateOnly? defaultDate
     )
     {
-        var dateStr =
-            GetMappedField(csv, columnMap, "Date")
-            ?? throw new FormatException("Date field is missing");
-
-        var date = ParseDate(dateStr, dateFormat);
+        var dateStr = GetMappedField(csv, columnMap, "Date");
+        DateTime date;
+        if (dateStr is not null)
+        {
+            date = ParseDate(dateStr, dateFormat);
+        }
+        else if (defaultDate.HasValue)
+        {
+            date = DateTime.SpecifyKind(
+                defaultDate.Value.ToDateTime(TimeOnly.MinValue),
+                DateTimeKind.Utc
+            );
+        }
+        else
+        {
+            throw new FormatException("Date field is missing");
+        }
         var amount = ParseAmount(csv, columnMap, debitColumn, creditColumn);
 
         if (amountSignFlipped)
@@ -121,6 +136,8 @@ public class CsvTransactionImporter : ITransactionImporter
 
         var description =
             GetMappedField(csv, columnMap, "Description")
+            ?? GetMappedField(csv, columnMap, "SecurityName")
+            ?? GetMappedField(csv, columnMap, "Symbol")
             ?? throw new FormatException("Description field is missing");
 
         var externalId = GetMappedField(csv, columnMap, "ExternalId");

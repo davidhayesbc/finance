@@ -77,6 +77,12 @@ public class ImportMapping : BaseEntity
     /// </summary>
     public bool AmountSignFlipped { get; set; }
 
+    /// <summary>
+    /// Fallback date used when the CSV has no Date column (e.g. holdings snapshots).
+    /// When set and no Date column is mapped, all rows use this date.
+    /// </summary>
+    public DateOnly? DefaultDate { get; set; }
+
     public void UpdateMappings(Dictionary<string, string> columnMappings)
     {
         ArgumentNullException.ThrowIfNull(columnMappings);

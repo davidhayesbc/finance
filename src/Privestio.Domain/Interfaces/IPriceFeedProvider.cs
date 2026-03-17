@@ -13,7 +13,8 @@ public record PriceQuote(
     string Symbol,
     decimal Price,
     string Currency,
-    DateOnly AsOfDate
+    DateOnly AsOfDate,
+    string? Source = null
 );
 
 /// <summary>

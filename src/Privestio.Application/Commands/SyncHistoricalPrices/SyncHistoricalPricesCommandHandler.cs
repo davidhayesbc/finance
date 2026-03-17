@@ -146,7 +146,7 @@ public class SyncHistoricalPricesCommandHandler
                     q.Symbol,
                     new Money(q.Price, q.Currency),
                     q.AsOfDate,
-                    _priceFeedProvider.ProviderName
+                    q.Source ?? _priceFeedProvider.ProviderName
                 );
             })
             .ToList();

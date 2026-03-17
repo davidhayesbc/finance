@@ -89,7 +89,8 @@ public static class ImportMappingEndpoints
             request.IncomeKeywords,
             request.CashEquivalentSymbols,
             request.IgnoreRowPatterns,
-            request.AmountSignFlipped
+            request.AmountSignFlipped,
+            request.DefaultDate
         );
 
         var result = await mediator.Send(command, cancellationToken);
@@ -122,7 +123,8 @@ public static class ImportMappingEndpoints
             request.IncomeKeywords,
             request.CashEquivalentSymbols,
             request.IgnoreRowPatterns,
-            request.AmountSignFlipped
+            request.AmountSignFlipped,
+            request.DefaultDate
         );
 
         var result = await mediator.Send(command, cancellationToken);

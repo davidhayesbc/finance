@@ -103,7 +103,8 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
                     lookup.Symbol,
                     Math.Round((decimal)meta.RegularMarketPrice, 6, MidpointRounding.ToEven),
                     (meta.Currency ?? "USD").ToUpperInvariant(),
-                    DateOnly.FromDateTime(DateTime.UtcNow)
+                    DateOnly.FromDateTime(DateTime.UtcNow),
+                    Source: "YahooFinance"
                 );
             }
             catch (Exception ex)
@@ -165,7 +166,8 @@ public class YahooFinancePriceFeedProvider : IPriceFeedProvider
                     lookup.Symbol,
                     Math.Round((decimal)closePrice, 6, MidpointRounding.ToEven),
                     currency,
-                    date
+                    date,
+                    Source: "YahooFinance"
                 )
             );
         }

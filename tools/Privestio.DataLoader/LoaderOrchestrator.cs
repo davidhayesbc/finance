@@ -404,6 +404,15 @@ public class LoaderOrchestrator
                     HasHeaderRow = mapping.HasHeaderRow,
                     AmountDebitColumn = mapping.AmountDebitColumn,
                     AmountCreditColumn = mapping.AmountCreditColumn,
+                    BuyKeywords = mapping.BuyKeywords,
+                    SellKeywords = mapping.SellKeywords,
+                    IncomeKeywords = mapping.IncomeKeywords,
+                    CashEquivalentSymbols = mapping.CashEquivalentSymbols,
+                    IgnoreRowPatterns = mapping.IgnoreRowPatterns,
+                    AmountSignFlipped = mapping.AmountSignFlipped,
+                    DefaultDate = string.IsNullOrEmpty(mapping.DefaultDate)
+                        ? null
+                        : DateOnly.Parse(mapping.DefaultDate),
                 }
             );
             if (result is not null)

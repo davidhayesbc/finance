@@ -14,4 +14,5 @@ public record UpdateImportMappingRequest
     public List<string>? CashEquivalentSymbols { get; init; }
     public List<string>? IgnoreRowPatterns { get; init; }
     public bool AmountSignFlipped { get; init; }
+    public DateOnly? DefaultDate { get; init; }
 }
