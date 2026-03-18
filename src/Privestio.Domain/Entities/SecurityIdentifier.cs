@@ -9,7 +9,12 @@ public class SecurityIdentifier : BaseEntity
 {
     private SecurityIdentifier() { }
 
-    internal SecurityIdentifier(Guid securityId, SecurityIdentifierType identifierType, string value, bool isPrimary)
+    internal SecurityIdentifier(
+        Guid securityId,
+        SecurityIdentifierType identifierType,
+        string value,
+        bool isPrimary
+    )
     {
         if (securityId == Guid.Empty)
             throw new ArgumentOutOfRangeException(nameof(securityId));

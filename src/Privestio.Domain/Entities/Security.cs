@@ -1,5 +1,5 @@
-using Privestio.Domain.Services;
 using Privestio.Domain.Enums;
+using Privestio.Domain.Services;
 
 namespace Privestio.Domain.Entities;
 

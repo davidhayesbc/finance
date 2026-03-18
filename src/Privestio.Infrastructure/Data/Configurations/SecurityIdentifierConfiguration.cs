@@ -14,6 +14,13 @@ public class SecurityIdentifierConfiguration : IEntityTypeConfiguration<Security
         builder.Property(i => i.Value).IsRequired().HasMaxLength(32);
 
         builder.HasIndex(i => new { i.IdentifierType, i.Value }).IsUnique();
-        builder.HasIndex(i => new { i.SecurityId, i.IdentifierType, i.Value }).IsUnique();
+        builder
+            .HasIndex(i => new
+            {
+                i.SecurityId,
+                i.IdentifierType,
+                i.Value,
+            })
+            .IsUnique();
     }
 }

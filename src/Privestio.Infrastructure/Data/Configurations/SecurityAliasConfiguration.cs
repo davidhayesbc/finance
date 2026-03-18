@@ -24,6 +24,11 @@ public class SecurityAliasConfiguration : IEntityTypeConfiguration<SecurityAlias
             })
             .IsUnique();
         builder.HasIndex(a => a.Symbol);
-        builder.HasIndex(a => new { a.Symbol, a.Source, a.Exchange });
+        builder.HasIndex(a => new
+        {
+            a.Symbol,
+            a.Source,
+            a.Exchange,
+        });
     }
 }

@@ -200,7 +200,8 @@ public class SecurityResolutionService
     )
     {
         _resolvedSecurityCache[BuildCacheKey(normalizedSymbol, source, exchange)] = security;
-        _resolvedSecurityCache[BuildCacheKey(security.CanonicalSymbol, source, exchange)] = security;
+        _resolvedSecurityCache[BuildCacheKey(security.CanonicalSymbol, source, exchange)] =
+            security;
         _resolvedSecurityCache[BuildCacheKey(security.DisplaySymbol, source, exchange)] = security;
 
         foreach (var alias in security.Aliases)
@@ -213,8 +214,9 @@ public class SecurityResolutionService
         {
             foreach (var identifier in identifiers.Where(i => !string.IsNullOrWhiteSpace(i.Value)))
             {
-                _resolvedSecurityCache[$"ID|{identifier.Key}|{identifier.Value.Trim().ToUpperInvariant()}"] =
-                    security;
+                _resolvedSecurityCache[
+                    $"ID|{identifier.Key}|{identifier.Value.Trim().ToUpperInvariant()}"
+                ] = security;
             }
         }
     }

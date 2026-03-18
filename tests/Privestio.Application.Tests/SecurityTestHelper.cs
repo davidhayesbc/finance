@@ -100,13 +100,12 @@ internal static class SecurityTestHelper
             );
 
         repository
-            .Setup(
-                r =>
-                    r.GetByIdentifierAsync(
-                        It.IsAny<SecurityIdentifierType>(),
-                        It.IsAny<string>(),
-                        It.IsAny<CancellationToken>()
-                    )
+            .Setup(r =>
+                r.GetByIdentifierAsync(
+                    It.IsAny<SecurityIdentifierType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()
+                )
             )
             .ReturnsAsync(
                 (SecurityIdentifierType identifierType, string value, CancellationToken _) =>
@@ -122,27 +121,19 @@ internal static class SecurityTestHelper
             );
 
         repository
-            .Setup(
-                r =>
-                    r.GetByAliasContextAsync(
-                        It.IsAny<string>(),
-                        It.IsAny<string?>(),
-                        It.IsAny<string?>(),
-                        It.IsAny<CancellationToken>()
-                    )
+            .Setup(r =>
+                r.GetByAliasContextAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()
+                )
             )
             .ReturnsAsync(
-                (
-                    string symbol,
-                    string? source,
-                    string? exchange,
-                    CancellationToken _
-                ) =>
+                (string symbol, string? source, string? exchange, CancellationToken _) =>
                 {
                     var normalized = SecuritySymbolMatcher.Normalize(symbol);
-                    var normalizedSource = string.IsNullOrWhiteSpace(source)
-                        ? null
-                        : source.Trim();
+                    var normalizedSource = string.IsNullOrWhiteSpace(source) ? null : source.Trim();
                     var normalizedExchange = string.IsNullOrWhiteSpace(exchange)
                         ? null
                         : exchange.Trim().ToUpperInvariant();

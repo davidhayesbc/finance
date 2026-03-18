@@ -71,7 +71,10 @@ public class SecurityResolutionServiceTests
     [Fact]
     public async Task ResolveOrCreateAsync_WithMatchingCusip_ResolvesExistingSecurity()
     {
-        var existing = SecurityTestHelper.CreateSecurity("XEQT", "iShares Core Equity ETF Portfolio");
+        var existing = SecurityTestHelper.CreateSecurity(
+            "XEQT",
+            "iShares Core Equity ETF Portfolio"
+        );
         existing.AddOrUpdateIdentifier(SecurityIdentifierType.Cusip, "46436D108", true);
 
         var unitOfWork = new Mock<IUnitOfWork>();

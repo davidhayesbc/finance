@@ -55,7 +55,10 @@ public class SecurityRepository : ISecurityRepository
             .Securities.Include(s => s.Aliases)
             .Include(s => s.Identifiers)
             .FirstOrDefaultAsync(
-                s => s.Identifiers.Any(i => i.IdentifierType == identifierType && i.Value == normalized),
+                s =>
+                    s.Identifiers.Any(i =>
+                        i.IdentifierType == identifierType && i.Value == normalized
+                    ),
                 cancellationToken
             );
     }
