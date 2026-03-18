@@ -104,4 +104,15 @@ public class PriceHistoryRepository : IPriceHistoryRepository
 
         return all.GroupBy(p => p.SecurityId).ToDictionary(g => g.Key, g => g.First());
     }
+
+    public async Task DeleteExternalPricesForSecuritiesAsync(
+        IEnumerable<Guid> securityIds,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var ids = securityIds.ToList();
+        await _context
+            .PriceHistories.Where(p => ids.Contains(p.SecurityId) && p.Source != "PDFStatement")
+            .ExecuteDeleteAsync(cancellationToken);
+    }
 }

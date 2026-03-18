@@ -16,6 +16,7 @@ public class ImportHoldingsCommandHandlerTests
     private readonly Mock<IAccountRepository> _accountRepo;
     private readonly Mock<IHoldingRepository> _holdingRepo;
     private readonly Mock<IImportBatchRepository> _importBatchRepo;
+    private readonly Mock<IPriceHistoryRepository> _priceHistoryRepo;
     private readonly Mock<IHoldingsImporter> _pdfImporter;
     private readonly ImportHoldingsCommandHandler _handler;
 
@@ -27,11 +28,13 @@ public class ImportHoldingsCommandHandlerTests
         _accountRepo = new Mock<IAccountRepository>();
         _holdingRepo = new Mock<IHoldingRepository>();
         _importBatchRepo = new Mock<IImportBatchRepository>();
+        _priceHistoryRepo = new Mock<IPriceHistoryRepository>();
         _unitOfWork = new Mock<IUnitOfWork>();
 
         _unitOfWork.Setup(u => u.Accounts).Returns(_accountRepo.Object);
         _unitOfWork.Setup(u => u.Holdings).Returns(_holdingRepo.Object);
         _unitOfWork.Setup(u => u.ImportBatches).Returns(_importBatchRepo.Object);
+        _unitOfWork.Setup(u => u.PriceHistories).Returns(_priceHistoryRepo.Object);
         _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var account = new Account(
@@ -54,10 +57,35 @@ public class ImportHoldingsCommandHandlerTests
         _holdingRepo
             .Setup(r => r.UpdateAsync(It.IsAny<Holding>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Holding h, CancellationToken _) => h);
+        _holdingRepo
+            .Setup(r =>
+                r.GetByAccountIdAsync(_accountId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(new List<Holding>());
 
         _importBatchRepo
             .Setup(r => r.AddAsync(It.IsAny<ImportBatch>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ImportBatch b, CancellationToken _) => b);
+
+        _priceHistoryRepo
+            .Setup(r =>
+                r.GetExistingKeysAsync(
+                    It.IsAny<IEnumerable<(Guid, DateOnly)>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                new HashSet<(Guid, DateOnly)>() as IReadOnlySet<(Guid SecurityId, DateOnly AsOfDate)>
+            );
+
+        _priceHistoryRepo
+            .Setup(r =>
+                r.DeleteExternalPricesForSecuritiesAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(Task.CompletedTask);
 
         _pdfImporter = new Mock<IHoldingsImporter>();
         _pdfImporter.Setup(i => i.CanHandle("statement.pdf")).Returns(true);
@@ -249,6 +277,88 @@ public class ImportHoldingsCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.StatementDate.Should().Be(overrideDate);
+    }
+
+    [Fact]
+    public async Task Handle_StaleHoldings_RemovedAfterImport()
+    {
+        // Current import only has one fund
+        var holdings = new List<ImportedHoldingRow>
+        {
+            new("Sun Life Growth Fund", 150.000m, 16.00m, 2400.00m, Symbol: "SLGF"),
+        };
+        SetupParseResult(holdings);
+
+        var currentSecurity = SecurityTestHelper.CreateSecurity("SLGF", "Sun Life Growth Fund");
+        var staleSecurity = SecurityTestHelper.CreateSecurity("SLBF", "Sun Life Bond Fund");
+
+        _unitOfWork.Setup(u => u.Securities).Returns(SetupSecurityRepo(currentSecurity, staleSecurity));
+
+        // Current fund exists
+        _holdingRepo
+            .Setup(r =>
+                r.GetByAccountIdAndSecurityIdAsync(
+                    _accountId,
+                    currentSecurity.Id,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                new Holding(
+                    _accountId,
+                    currentSecurity.Id,
+                    "SLGF",
+                    "Sun Life Growth Fund",
+                    100.000m,
+                    new Money(15.50m)
+                )
+            );
+
+        // Stale holding that is no longer in the statement
+        var staleHolding = new Holding(
+            _accountId,
+            staleSecurity.Id,
+            "SLBF",
+            "Sun Life Bond Fund",
+            200.000m,
+            new Money(10.00m)
+        );
+
+        // GetByAccountIdAsync returns both existing holdings (one current, one stale)
+        _holdingRepo
+            .Setup(r =>
+                r.GetByAccountIdAsync(_accountId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(
+                new List<Holding>
+                {
+                    new(
+                        _accountId,
+                        currentSecurity.Id,
+                        "SLGF",
+                        "Sun Life Growth Fund",
+                        100.000m,
+                        new Money(15.50m)
+                    ),
+                    staleHolding,
+                }
+            );
+
+        var handler = new ImportHoldingsCommandHandler(
+            _unitOfWork.Object,
+            [_pdfImporter.Object],
+            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork, [currentSecurity])
+        );
+
+        var command = CreateCommand("statement.pdf");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.UpdatedCount.Should().Be(1);
+        result.RemovedCount.Should().Be(1);
+        _holdingRepo.Verify(
+            r => r.DeleteAsync(staleHolding.Id, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
     }
 
     private void SetupParseResult(

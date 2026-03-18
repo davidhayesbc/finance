@@ -58,6 +58,8 @@ public class ImportHoldingsCommandHandler
 
         var createdCount = 0;
         var updatedCount = 0;
+        var importedSecurityIds = new HashSet<Guid>();
+        var importedPrices = new List<(Security Security, ImportedHoldingRow Row)>();
         var errors = parseResult
             .Errors.Select(e => new ImportErrorDetail
             {
@@ -75,6 +77,9 @@ public class ImportHoldingsCommandHandler
                 parseResult.Currency,
                 cancellationToken: cancellationToken
             );
+
+            importedSecurityIds.Add(security.Id);
+            importedPrices.Add((security, row));
 
             var existingHolding = await _unitOfWork.Holdings.GetByAccountIdAndSecurityIdAsync(
                 request.AccountId,
@@ -103,6 +108,53 @@ public class ImportHoldingsCommandHandler
             }
         }
 
+        // Remove holdings that no longer appear in the latest statement (fund sold/consolidated)
+        var existingHoldings = await _unitOfWork.Holdings.GetByAccountIdAsync(
+            request.AccountId,
+            cancellationToken
+        );
+        var removedCount = 0;
+        foreach (var stale in existingHoldings)
+        {
+            if (!importedSecurityIds.Contains(stale.SecurityId))
+            {
+                await _unitOfWork.Holdings.DeleteAsync(stale.Id, cancellationToken);
+                removedCount++;
+            }
+        }
+
+        // Record unit prices from the statement as PriceHistory so the valuation service
+        // uses statement prices instead of attempting Yahoo/MSN lookups for private fund symbols.
+        if (statementDate != default)
+        {
+            // Remove any externally-fetched prices (Yahoo/MSN) for these securities so
+            // PDFStatement prices are never overridden by a stale external quote.
+            await _unitOfWork.PriceHistories.DeleteExternalPricesForSecuritiesAsync(
+                importedSecurityIds,
+                cancellationToken
+            );
+
+            var existingPriceKeys = await _unitOfWork.PriceHistories.GetExistingKeysAsync(
+                importedPrices.Select(p => (p.Security.Id, statementDate)),
+                cancellationToken
+            );
+
+            var newPrices = importedPrices
+                .Where(p => !existingPriceKeys.Contains((p.Security.Id, statementDate)))
+                .Select(p => new PriceHistory(
+                    p.Security.Id,
+                    p.Security.DisplaySymbol,
+                    p.Security.DisplaySymbol,
+                    new Money(p.Row.UnitPrice, parseResult.Currency),
+                    statementDate,
+                    "PDFStatement"
+                ))
+                .ToList();
+
+            if (newPrices.Count > 0)
+                await _unitOfWork.PriceHistories.AddRangeAsync(newPrices, cancellationToken);
+        }
+
         batch.Complete(
             parseResult.Holdings.Count + parseResult.Errors.Count,
             createdCount + updatedCount,
@@ -119,6 +171,7 @@ public class ImportHoldingsCommandHandler
             TotalHoldings = parseResult.Holdings.Count,
             CreatedCount = createdCount,
             UpdatedCount = updatedCount,
+            RemovedCount = removedCount,
             ErrorCount = parseResult.Errors.Count,
             Status = batch.Status.ToString(),
             Errors = errors,

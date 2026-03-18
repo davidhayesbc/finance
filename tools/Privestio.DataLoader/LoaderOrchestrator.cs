@@ -601,11 +601,12 @@ public class LoaderOrchestrator
         if (result is not null)
         {
             _logger.LogInformation(
-                "  Imported holdings from {File} into '{Account}': {Created} created, {Updated} updated, {Errors} errors",
+                "  Imported holdings from {File} into '{Account}': {Created} created, {Updated} updated, {Removed} removed, {Errors} errors",
                 import.File,
                 accountName,
                 result.CreatedCount,
                 result.UpdatedCount,
+                result.RemovedCount,
                 result.ErrorCount
             );
             _created += result.CreatedCount + result.UpdatedCount;

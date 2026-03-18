@@ -37,4 +37,14 @@ public interface IPriceHistoryRepository
         IEnumerable<Guid> securityIds,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Removes all price history entries for the given securities that were NOT sourced from a
+    /// PDF statement (i.e. externally fetched entries from Yahoo Finance, MSN Finance, etc.).
+    /// Call this before persisting PDF statement prices so external prices cannot override them.
+    /// </summary>
+    Task DeleteExternalPricesForSecuritiesAsync(
+        IEnumerable<Guid> securityIds,
+        CancellationToken cancellationToken = default
+    );
 }
