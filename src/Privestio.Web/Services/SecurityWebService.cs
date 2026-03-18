@@ -13,7 +13,10 @@ public interface ISecurityWebService
         AddSecurityIdentifierRequest request
     );
     Task<bool> DeleteHoldingIdentifierAsync(Guid holdingId, Guid identifierId);
-    Task<HoldingResponse?> CorrectHoldingSecurityAsync(Guid holdingId, CorrectHoldingSecurityRequest request);
+    Task<HoldingResponse?> CorrectHoldingSecurityAsync(
+        Guid holdingId,
+        CorrectHoldingSecurityRequest request
+    );
 }
 
 public class SecurityWebService : ISecurityWebService
@@ -37,7 +40,9 @@ public class SecurityWebService : ISecurityWebService
         }
     }
 
-    public async Task<IReadOnlyList<SecurityIdentifierResponse>> GetHoldingIdentifiersAsync(Guid holdingId)
+    public async Task<IReadOnlyList<SecurityIdentifierResponse>> GetHoldingIdentifiersAsync(
+        Guid holdingId
+    )
     {
         try
         {

@@ -150,10 +150,7 @@ internal static class SecurityTestHelper
 
         repository
             .Setup(r =>
-                r.GetCandidatesBySymbolAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<CancellationToken>()
-                )
+                r.GetCandidatesBySymbolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())
             )
             .ReturnsAsync(
                 (string symbol, CancellationToken _) =>
@@ -186,6 +183,9 @@ internal static class SecurityTestHelper
 
         unitOfWork.Setup(x => x.Securities).Returns(repository.Object);
 
-        return new SecurityResolutionService(unitOfWork.Object, Mock.Of<Microsoft.Extensions.Logging.ILogger<SecurityResolutionService>>());
+        return new SecurityResolutionService(
+            unitOfWork.Object,
+            Mock.Of<Microsoft.Extensions.Logging.ILogger<SecurityResolutionService>>()
+        );
     }
 }

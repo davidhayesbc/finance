@@ -28,7 +28,10 @@ public class GetHoldingSecurityIdentifiersQueryHandler
         if (account is null || account.OwnerId != request.UserId)
             return [];
 
-        var security = await _unitOfWork.Securities.GetByIdAsync(holding.SecurityId, cancellationToken);
+        var security = await _unitOfWork.Securities.GetByIdAsync(
+            holding.SecurityId,
+            cancellationToken
+        );
         if (security is null)
             return [];
 

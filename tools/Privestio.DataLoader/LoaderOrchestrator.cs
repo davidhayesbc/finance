@@ -593,11 +593,7 @@ public class LoaderOrchestrator
         string filePath
     )
     {
-        var result = await _api.ImportHoldingsFileAsync(
-            accountId,
-            filePath,
-            import.StatementDate
-        );
+        var result = await _api.ImportHoldingsFileAsync(accountId, filePath, import.StatementDate);
         if (result is not null)
         {
             _logger.LogInformation(

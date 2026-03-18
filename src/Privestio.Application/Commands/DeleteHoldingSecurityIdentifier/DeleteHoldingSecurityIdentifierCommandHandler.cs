@@ -26,7 +26,10 @@ public class DeleteHoldingSecurityIdentifierCommandHandler
         if (account is null || account.OwnerId != request.UserId)
             return false;
 
-        var security = await _unitOfWork.Securities.GetByIdAsync(holding.SecurityId, cancellationToken);
+        var security = await _unitOfWork.Securities.GetByIdAsync(
+            holding.SecurityId,
+            cancellationToken
+        );
         if (security is null)
             return false;
 

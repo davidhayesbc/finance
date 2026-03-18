@@ -1,8 +1,8 @@
+using Microsoft.Extensions.Logging;
 using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Services;
-using Microsoft.Extensions.Logging;
 
 namespace Privestio.Application.Services;
 

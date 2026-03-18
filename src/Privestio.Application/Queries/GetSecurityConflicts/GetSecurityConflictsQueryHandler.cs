@@ -20,7 +20,10 @@ public class GetSecurityConflictsQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var accounts = await _unitOfWork.Accounts.GetByOwnerIdAsync(request.UserId, cancellationToken);
+        var accounts = await _unitOfWork.Accounts.GetByOwnerIdAsync(
+            request.UserId,
+            cancellationToken
+        );
         if (accounts.Count == 0)
             return [];
 
@@ -28,7 +31,10 @@ public class GetSecurityConflictsQueryHandler
 
         foreach (var account in accounts)
         {
-            var holdings = await _unitOfWork.Holdings.GetByAccountIdAsync(account.Id, cancellationToken);
+            var holdings = await _unitOfWork.Holdings.GetByAccountIdAsync(
+                account.Id,
+                cancellationToken
+            );
             foreach (var holding in holdings)
             {
                 var normalized = SecuritySymbolMatcher.Normalize(holding.Symbol);

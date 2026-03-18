@@ -579,10 +579,10 @@ public class ImportTransactionsCommandHandler
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
-    private static IReadOnlyDictionary<Domain.Enums.SecurityIdentifierType, string>? BuildSecurityIdentifiers(
-        string? cusip,
-        string? isin
-    )
+    private static IReadOnlyDictionary<
+        Domain.Enums.SecurityIdentifierType,
+        string
+    >? BuildSecurityIdentifiers(string? cusip, string? isin)
     {
         Dictionary<Domain.Enums.SecurityIdentifierType, string>? identifiers = null;
 

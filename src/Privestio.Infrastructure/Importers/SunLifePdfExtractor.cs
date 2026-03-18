@@ -92,7 +92,11 @@ internal sealed partial class SunLifePdfExtractor
                 )
                 {
                     // Rows with no numeric data are category separators (e.g. "Balanced", "Fixed income") — skip silently.
-                    if (string.IsNullOrEmpty(unitsText) && string.IsNullOrEmpty(priceText) && string.IsNullOrEmpty(valueText))
+                    if (
+                        string.IsNullOrEmpty(unitsText)
+                        && string.IsNullOrEmpty(priceText)
+                        && string.IsNullOrEmpty(valueText)
+                    )
                         continue;
 
                     errors.Add(
@@ -328,7 +332,12 @@ internal sealed partial class SunLifePdfExtractor
         return new InstrumentMetadata(symbol, exchange, cusip, isin);
     }
 
-    private sealed record InstrumentMetadata(string? Symbol, string? Exchange, string? Cusip, string? Isin);
+    private sealed record InstrumentMetadata(
+        string? Symbol,
+        string? Exchange,
+        string? Cusip,
+        string? Isin
+    );
 
     [GeneratedRegex(@"Statement\s+as\s+of\s+(\w+\s+\d{1,2},?\s+\d{4})", RegexOptions.IgnoreCase)]
     private static partial Regex StatementDateAsOfRegex();

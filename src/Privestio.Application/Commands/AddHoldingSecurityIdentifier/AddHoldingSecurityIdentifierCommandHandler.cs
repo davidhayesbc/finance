@@ -29,14 +29,27 @@ public class AddHoldingSecurityIdentifierCommandHandler
         if (account is null || account.OwnerId != request.UserId)
             throw new InvalidOperationException("Holding not found.");
 
-        var security = await _unitOfWork.Securities.GetByIdAsync(holding.SecurityId, cancellationToken);
+        var security = await _unitOfWork.Securities.GetByIdAsync(
+            holding.SecurityId,
+            cancellationToken
+        );
         if (security is null)
             throw new InvalidOperationException("Security not found.");
 
-        if (!Enum.TryParse<SecurityIdentifierType>(request.IdentifierType, true, out var identifierType))
+        if (
+            !Enum.TryParse<SecurityIdentifierType>(
+                request.IdentifierType,
+                true,
+                out var identifierType
+            )
+        )
             throw new InvalidOperationException("Invalid identifier type.");
 
-        var identifier = security.AddOrUpdateIdentifier(identifierType, request.Value, request.IsPrimary);
+        var identifier = security.AddOrUpdateIdentifier(
+            identifierType,
+            request.Value,
+            request.IsPrimary
+        );
 
         await _unitOfWork.Securities.UpdateAsync(security, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

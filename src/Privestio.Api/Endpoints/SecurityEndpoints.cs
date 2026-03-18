@@ -14,7 +14,9 @@ public static class SecurityEndpoints
 {
     public static IEndpointRouteBuilder MapSecurityEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/securities").WithTags("Securities").RequireAuthorization();
+        var group = app.MapGroup("/api/v1/securities")
+            .WithTags("Securities")
+            .RequireAuthorization();
 
         group
             .MapGet("/conflicts", GetConflictsAsync)
@@ -32,14 +34,19 @@ public static class SecurityEndpoints
             .WithSummary("Add or update a security identifier for a holding's linked security");
 
         group
-            .MapDelete("/holdings/{holdingId:guid}/identifiers/{identifierId:guid}", DeleteHoldingIdentifierAsync)
+            .MapDelete(
+                "/holdings/{holdingId:guid}/identifiers/{identifierId:guid}",
+                DeleteHoldingIdentifierAsync
+            )
             .WithName("DeleteHoldingSecurityIdentifier")
             .WithSummary("Delete an identifier from a holding's linked security");
 
         group
             .MapPost("/holdings/{holdingId:guid}/correct", CorrectHoldingSecurityAsync)
             .WithName("CorrectHoldingSecurity")
-            .WithSummary("Correct a holding's linked security using symbol/source/exchange/identifier context");
+            .WithSummary(
+                "Correct a holding's linked security using symbol/source/exchange/identifier context"
+            );
 
         return app;
     }
@@ -54,7 +61,10 @@ public static class SecurityEndpoints
         if (userId is null)
             return Results.Unauthorized();
 
-        var result = await mediator.Send(new GetSecurityConflictsQuery(userId.Value), cancellationToken);
+        var result = await mediator.Send(
+            new GetSecurityConflictsQuery(userId.Value),
+            cancellationToken
+        );
         return Results.Ok(result);
     }
 
