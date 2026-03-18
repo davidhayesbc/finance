@@ -214,6 +214,7 @@ try
     app.MapPayeeEndpoints();
     app.MapTagEndpoints();
     app.MapImportEndpoints();
+    app.MapImportHoldingsEndpoints();
     app.MapImportMappingEndpoints();
     app.MapRuleEndpoints();
     app.MapBudgetEndpoints();

@@ -80,6 +80,7 @@ public class ImportConfig
 {
     public string File { get; set; } = string.Empty;
     public string? MappingName { get; set; }
+    public string? StatementDate { get; set; }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ImportPolicyConfig Policy { get; set; } = ImportPolicyConfig.SkipInvalid;

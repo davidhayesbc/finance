@@ -229,6 +229,36 @@ public class ApiClient : IDisposable
         return await response.Content.ReadFromJsonAsync<ImportResultResponse>(JsonOptions);
     }
 
+    public async Task<ImportHoldingsResultResponse?> ImportHoldingsFileAsync(
+        Guid accountId,
+        string filePath,
+        string? statementDate = null
+    )
+    {
+        using var stream = File.OpenRead(filePath);
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        content.Add(fileContent, "file", Path.GetFileName(filePath));
+
+        var url = $"/api/v1/import/holdings/{accountId}";
+        if (!string.IsNullOrEmpty(statementDate))
+            url += $"?statementDate={statementDate}";
+
+        var response = await _http.PostAsync(url, content);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            _logger.LogError(
+                "Import holdings file failed ({Status}): {Body}",
+                response.StatusCode,
+                body
+            );
+            return null;
+        }
+        return await response.Content.ReadFromJsonAsync<ImportHoldingsResultResponse>(JsonOptions);
+    }
+
     public async Task<IReadOnlyList<ValuationResponse>> GetValuationsAsync(Guid accountId) =>
         await _http.GetFromJsonAsync<IReadOnlyList<ValuationResponse>>(
             $"/api/v1/accounts/{accountId}/valuations",

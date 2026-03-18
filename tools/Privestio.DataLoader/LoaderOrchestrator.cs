@@ -526,73 +526,139 @@ public class LoaderOrchestrator
                     continue;
                 }
 
-                Guid? mappingId = null;
-                if (
-                    !string.IsNullOrEmpty(import.MappingName)
-                    && _mappingNameToId.TryGetValue(import.MappingName, out var mid)
-                )
+                var isPdf = import.File.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+                if (isPdf)
                 {
-                    mappingId = mid;
-                }
-
-                var policy = import.Policy.ToString();
-                var result = await _api.ImportFileAsync(accountId, filePath, mappingId, policy);
-                if (result is not null)
-                {
-                    _logger.LogInformation(
-                        "  Imported {File} into '{Account}': {Imported} imported, {Duplicates} duplicates, {Errors} errors",
-                        import.File,
-                        account.Name,
-                        result.ImportedCount,
-                        result.DuplicateCount,
-                        result.ErrorCount
-                    );
-                    _created += result.ImportedCount;
-                    _skipped += result.DuplicateCount;
-                    if (result.ErrorCount > 0)
-                    {
-                        if (_verboseImportErrors)
-                        {
-                            foreach (var err in result.Errors)
-                            {
-                                _logger.LogWarning(
-                                    "    Import row error in {File} row {Row}: {Message}. Raw: {RawData}",
-                                    import.File,
-                                    err.RowNumber,
-                                    err.Message,
-                                    string.IsNullOrWhiteSpace(err.RawData) ? "<none>" : err.RawData
-                                );
-                            }
-
-                            if (result.Errors.Count == 0)
-                            {
-                                _logger.LogWarning(
-                                    "    Import reported {ErrorCount} errors but did not include row details.",
-                                    result.ErrorCount
-                                );
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning(
-                                "    Import had {ErrorCount} row error(s). Re-run with --verbose-import-errors to print row details.",
-                                result.ErrorCount
-                            );
-                        }
-
-                        _failed += result.ErrorCount;
-                    }
+                    await ImportHoldingsFileAsync(accountId, account.Name, import, filePath);
                 }
                 else
                 {
-                    _logger.LogWarning(
-                        "  Failed to import {File} into '{Account}'",
-                        import.File,
-                        account.Name
-                    );
-                    _failed++;
+                    await ImportTransactionFileAsync(accountId, account.Name, import, filePath);
                 }
             }
+        }
+    }
+
+    private async Task ImportTransactionFileAsync(
+        Guid accountId,
+        string accountName,
+        ImportConfig import,
+        string filePath
+    )
+    {
+        Guid? mappingId = null;
+        if (
+            !string.IsNullOrEmpty(import.MappingName)
+            && _mappingNameToId.TryGetValue(import.MappingName, out var mid)
+        )
+        {
+            mappingId = mid;
+        }
+
+        var policy = import.Policy.ToString();
+        var result = await _api.ImportFileAsync(accountId, filePath, mappingId, policy);
+        if (result is not null)
+        {
+            _logger.LogInformation(
+                "  Imported {File} into '{Account}': {Imported} imported, {Duplicates} duplicates, {Errors} errors",
+                import.File,
+                accountName,
+                result.ImportedCount,
+                result.DuplicateCount,
+                result.ErrorCount
+            );
+            _created += result.ImportedCount;
+            _skipped += result.DuplicateCount;
+            if (result.ErrorCount > 0)
+            {
+                LogImportErrors(import.File, result.Errors, result.ErrorCount);
+                _failed += result.ErrorCount;
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "  Failed to import {File} into '{Account}'",
+                import.File,
+                accountName
+            );
+            _failed++;
+        }
+    }
+
+    private async Task ImportHoldingsFileAsync(
+        Guid accountId,
+        string accountName,
+        ImportConfig import,
+        string filePath
+    )
+    {
+        var result = await _api.ImportHoldingsFileAsync(
+            accountId,
+            filePath,
+            import.StatementDate
+        );
+        if (result is not null)
+        {
+            _logger.LogInformation(
+                "  Imported holdings from {File} into '{Account}': {Created} created, {Updated} updated, {Errors} errors",
+                import.File,
+                accountName,
+                result.CreatedCount,
+                result.UpdatedCount,
+                result.ErrorCount
+            );
+            _created += result.CreatedCount + result.UpdatedCount;
+            if (result.ErrorCount > 0)
+            {
+                LogImportErrors(import.File, result.Errors, result.ErrorCount);
+                _failed += result.ErrorCount;
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "  Failed to import holdings from {File} into '{Account}'",
+                import.File,
+                accountName
+            );
+            _failed++;
+        }
+    }
+
+    private void LogImportErrors(
+        string fileName,
+        IReadOnlyList<ImportErrorDetail> errors,
+        int errorCount
+    )
+    {
+        if (_verboseImportErrors)
+        {
+            foreach (var err in errors)
+            {
+                _logger.LogWarning(
+                    "    Import row error in {File} row {Row}: {Message}. Raw: {RawData}",
+                    fileName,
+                    err.RowNumber,
+                    err.Message,
+                    string.IsNullOrWhiteSpace(err.RawData) ? "<none>" : err.RawData
+                );
+            }
+
+            if (errors.Count == 0)
+            {
+                _logger.LogWarning(
+                    "    Import reported {ErrorCount} errors but did not include row details.",
+                    errorCount
+                );
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "    Import had {ErrorCount} row error(s). Re-run with --verbose-import-errors to print row details.",
+                errorCount
+            );
         }
     }
 

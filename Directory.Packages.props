@@ -54,6 +54,10 @@
       Version="10.0.3"
     />
   </ItemGroup>
+  <!-- PDF -->
+  <ItemGroup>
+    <PackageVersion Include="PdfPig" Version="0.1.13" />
+  </ItemGroup>
   <!-- CQRS -->
   <ItemGroup>
     <PackageVersion Include="MediatR" Version="14.1.0" />
