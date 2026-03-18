@@ -90,6 +90,25 @@ public class SecurityRepository : ISecurityRepository
             );
     }
 
+    public async Task<IReadOnlyList<Security>> GetCandidatesBySymbolAsync(
+        string symbol,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var normalized = SecuritySymbolMatcher.Normalize(symbol);
+
+        return await _context
+            .Securities.Include(s => s.Aliases)
+            .Include(s => s.Identifiers)
+            .Where(s =>
+                s.CanonicalSymbol == normalized
+                || s.DisplaySymbol == normalized
+                || s.Aliases.Any(a => a.Symbol == normalized)
+            )
+            .OrderBy(s => s.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Security> AddAsync(
         Security security,
         CancellationToken cancellationToken = default

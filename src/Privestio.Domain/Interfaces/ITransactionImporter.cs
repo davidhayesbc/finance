@@ -20,7 +20,10 @@ public record ImportedTransactionRow(
     string? Symbol = null,
     string? SecurityName = null,
     decimal? Quantity = null,
-    decimal? UnitPrice = null
+    decimal? UnitPrice = null,
+    string? Exchange = null,
+    string? Cusip = null,
+    string? Isin = null
 );
 
 /// <summary>

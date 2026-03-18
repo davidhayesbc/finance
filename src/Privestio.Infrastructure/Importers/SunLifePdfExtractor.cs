@@ -63,6 +63,8 @@ internal sealed partial class SunLifePdfExtractor
                     .OrderBy(w => w.BoundingBox.Left);
                 var name = string.Join(" ", nameWords.Select(w => w.Text)).Trim();
 
+                var metadata = ExtractInstrumentMetadata(name);
+
                 if (string.IsNullOrWhiteSpace(name))
                     continue;
 
@@ -116,7 +118,18 @@ internal sealed partial class SunLifePdfExtractor
                     continue;
                 }
 
-                holdings.Add(new ImportedHoldingRow(name, units, unitPrice, totalValue));
+                holdings.Add(
+                    new ImportedHoldingRow(
+                        name,
+                        units,
+                        unitPrice,
+                        totalValue,
+                        Symbol: metadata.Symbol,
+                        Exchange: metadata.Exchange,
+                        Cusip: metadata.Cusip,
+                        Isin: metadata.Isin
+                    )
+                );
             }
         }
 
@@ -274,6 +287,49 @@ internal sealed partial class SunLifePdfExtractor
         return TryParseDecimal(text, out var value) ? value : null;
     }
 
+    private static InstrumentMetadata ExtractInstrumentMetadata(string investmentName)
+    {
+        if (string.IsNullOrWhiteSpace(investmentName))
+            return new InstrumentMetadata(null, null, null, null);
+
+        var cusip = ExtractCusipRegex().Match(investmentName).Groups[1].Value;
+        if (string.IsNullOrWhiteSpace(cusip))
+            cusip = null;
+
+        var isin = ExtractIsinRegex().Match(investmentName).Groups[1].Value;
+        if (string.IsNullOrWhiteSpace(isin))
+            isin = null;
+
+        string? symbol = null;
+        var tickerMatch = ExtractTickerRegex().Match(investmentName);
+        if (tickerMatch.Success)
+        {
+            var candidate = tickerMatch.Groups[1].Value.Trim().ToUpperInvariant();
+            if (candidate.Contains('.'))
+                symbol = candidate;
+        }
+
+        string? exchange = null;
+        if (!string.IsNullOrWhiteSpace(symbol))
+        {
+            var dot = symbol.LastIndexOf('.');
+            if (dot > 0 && dot < symbol.Length - 1)
+            {
+                var suffix = symbol[(dot + 1)..];
+                exchange = suffix switch
+                {
+                    "TO" => "XTSE",
+                    "V" => "XTSX",
+                    _ => null,
+                };
+            }
+        }
+
+        return new InstrumentMetadata(symbol, exchange, cusip, isin);
+    }
+
+    private sealed record InstrumentMetadata(string? Symbol, string? Exchange, string? Cusip, string? Isin);
+
     [GeneratedRegex(@"Statement\s+as\s+of\s+(\w+\s+\d{1,2},?\s+\d{4})", RegexOptions.IgnoreCase)]
     private static partial Regex StatementDateAsOfRegex();
 
@@ -282,4 +338,13 @@ internal sealed partial class SunLifePdfExtractor
         RegexOptions.IgnoreCase | RegexOptions.Singleline
     )]
     private static partial Regex StatementDatePeriodRegex();
+
+    [GeneratedRegex(@"\bCUSIP\s*[:#-]?\s*([0-9A-Z]{9})\b", RegexOptions.IgnoreCase)]
+    private static partial Regex ExtractCusipRegex();
+
+    [GeneratedRegex(@"\bISIN\s*[:#-]?\s*([A-Z]{2}[0-9A-Z]{10})\b", RegexOptions.IgnoreCase)]
+    private static partial Regex ExtractIsinRegex();
+
+    [GeneratedRegex(@"\b([A-Z]{1,6}(?:\.[A-Z]{1,4})?)\b")]
+    private static partial Regex ExtractTickerRegex();
 }

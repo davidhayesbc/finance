@@ -149,6 +149,28 @@ internal static class SecurityTestHelper
             );
 
         repository
+            .Setup(r =>
+                r.GetCandidatesBySymbolAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (string symbol, CancellationToken _) =>
+                {
+                    var normalized = SecuritySymbolMatcher.Normalize(symbol);
+                    return securities
+                        .Where(s =>
+                            s.CanonicalSymbol == normalized
+                            || s.DisplaySymbol == normalized
+                            || s.Aliases.Any(a => a.Symbol == normalized)
+                        )
+                        .OrderBy(s => s.Name)
+                        .ToList();
+                }
+            );
+
+        repository
             .Setup(r => r.AddAsync(It.IsAny<Security>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 (Security security, CancellationToken _) =>
@@ -164,6 +186,6 @@ internal static class SecurityTestHelper
 
         unitOfWork.Setup(x => x.Securities).Returns(repository.Object);
 
-        return new SecurityResolutionService(unitOfWork.Object);
+        return new SecurityResolutionService(unitOfWork.Object, Mock.Of<Microsoft.Extensions.Logging.ILogger<SecurityResolutionService>>());
     }
 }

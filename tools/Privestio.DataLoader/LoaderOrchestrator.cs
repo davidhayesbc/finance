@@ -779,6 +779,9 @@ public class LoaderOrchestrator
                         Currency = group.Currency,
                         AsOfDate = DateOnly.Parse(p.Date),
                         Source = group.Source,
+                        Exchange = group.Exchange,
+                        Cusip = group.Cusip,
+                        Isin = group.Isin,
                     })
                     .ToList(),
             };

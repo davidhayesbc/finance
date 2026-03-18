@@ -131,6 +131,8 @@
     {
       "symbol": "VFV.TO",
       "currency": "CAD",
+      "exchange": "XTSE",
+      "cusip": "92206C409",
       "source": "Yahoo Finance",
       "prices": [
         { "date": "2024-01-02", "price": 105.23 },

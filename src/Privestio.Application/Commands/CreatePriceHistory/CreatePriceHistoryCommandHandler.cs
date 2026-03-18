@@ -4,6 +4,7 @@ using Privestio.Application.Mapping;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 using Privestio.Domain.ValueObjects;
 
 namespace Privestio.Application.Commands.CreatePriceHistory;
@@ -31,12 +32,15 @@ public class CreatePriceHistoryCommandHandler
         var resolvedEntries = new List<(PriceHistoryEntry Entry, Security Security)>();
         foreach (var entry in request.Entries)
         {
+            var identifiers = BuildSecurityIdentifiers(entry.Cusip, entry.Isin);
             var security = await _securityResolutionService.ResolveOrCreateAsync(
                 entry.Symbol,
                 null,
                 entry.Currency,
                 preferSymbolAsDisplay: false,
                 source: entry.Source,
+                exchange: entry.Exchange,
+                identifiers: identifiers,
                 cancellationToken: cancellationToken
             );
             resolvedEntries.Add((entry, security));
@@ -68,5 +72,27 @@ public class CreatePriceHistoryCommandHandler
         }
 
         return newEntries.Select(PriceHistoryMapper.ToResponse).ToList().AsReadOnly();
+    }
+
+    private static IReadOnlyDictionary<SecurityIdentifierType, string>? BuildSecurityIdentifiers(
+        string? cusip,
+        string? isin
+    )
+    {
+        Dictionary<SecurityIdentifierType, string>? identifiers = null;
+
+        if (!string.IsNullOrWhiteSpace(cusip))
+        {
+            identifiers ??= [];
+            identifiers[SecurityIdentifierType.Cusip] = cusip.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(isin))
+        {
+            identifiers ??= [];
+            identifiers[SecurityIdentifierType.Isin] = isin.Trim();
+        }
+
+        return identifiers;
     }
 }

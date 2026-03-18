@@ -51,6 +51,7 @@
                         var aliases = _aliasesByHoldingId.GetValueOrDefault(holding.Id) ?? [];
                         var newAliasSymbol = _aliasSymbolByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
                         var newAliasSource = _aliasSourceByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
+                        var newAliasExchange = _aliasExchangeByHoldingId.GetValueOrDefault(holding.Id) ?? string.Empty;
                         var isPrimaryAlias = _aliasPrimaryByHoldingId.GetValueOrDefault(holding.Id);
                         var aliasMessage = _aliasMessageByHoldingId.GetValueOrDefault(holding.Id);
                         var isAliasBusy = _aliasBusyHoldingIds.Contains(holding.Id);
@@ -78,6 +79,10 @@
                                                     {
                                                         <span class="txn-no-value">(@alias.Source)</span>
                                                     }
+                                                    @if (!string.IsNullOrWhiteSpace(alias.Exchange))
+                                                    {
+                                                        <span class="txn-no-value">[@alias.Exchange]</span>
+                                                    }
                                                     @if (alias.IsPrimary)
                                                     {
                                                         <strong style="font-size:0.72rem;">primary</strong>
@@ -99,6 +104,9 @@
                                         <input class="filter-input" style="max-width:9rem;" placeholder="Source (optional)"
                                                value="@newAliasSource"
                                                @oninput="e => _aliasSourceByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
+                                             <input class="filter-input" style="max-width:9rem;" placeholder="Exchange"
+                                                 value="@newAliasExchange"
+                                                 @oninput="e => _aliasExchangeByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
                                         <label style="display:inline-flex; gap:0.3rem; align-items:center; font-size:0.8rem;">
                                             <input type="checkbox" checked="@isPrimaryAlias"
                                                    @onchange="e => _aliasPrimaryByHoldingId[holding.Id] = e.Value as bool? == true" />
@@ -183,6 +191,7 @@
     private readonly Dictionary<Guid, IReadOnlyList<SecurityAliasResponse>> _aliasesByHoldingId = [];
     private readonly Dictionary<Guid, string> _aliasSymbolByHoldingId = [];
     private readonly Dictionary<Guid, string> _aliasSourceByHoldingId = [];
+    private readonly Dictionary<Guid, string> _aliasExchangeByHoldingId = [];
     private readonly Dictionary<Guid, bool> _aliasPrimaryByHoldingId = [];
     private readonly Dictionary<Guid, string> _aliasMessageByHoldingId = [];
     private readonly HashSet<Guid> _aliasBusyHoldingIds = [];
@@ -244,12 +253,14 @@
         try
         {
             var source = (_aliasSourceByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
+            var exchange = (_aliasExchangeByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
             var created = await HoldingService.AddAliasAsync(
                 holdingId,
                 new AddSecurityAliasRequest
                 {
                     Symbol = symbol,
                     Source = string.IsNullOrWhiteSpace(source) ? null : source,
+                    Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange,
                     IsPrimary = _aliasPrimaryByHoldingId.GetValueOrDefault(holdingId),
                 }
             );
@@ -262,6 +273,7 @@
 
             _aliasSymbolByHoldingId[holdingId] = string.Empty;
             _aliasSourceByHoldingId[holdingId] = string.Empty;
+            _aliasExchangeByHoldingId[holdingId] = string.Empty;
             _aliasPrimaryByHoldingId[holdingId] = false;
             _aliasesByHoldingId[holdingId] = await HoldingService.GetAliasesAsync(holdingId);
             _aliasMessageByHoldingId[holdingId] = "Alias saved.";

@@ -23,7 +23,10 @@ public class SecurityResolutionServiceTests
         var unitOfWork = new Mock<IUnitOfWork>();
         unitOfWork.Setup(u => u.Securities).Returns(repository.Object);
 
-        var service = new SecurityResolutionService(unitOfWork.Object);
+        var service = new SecurityResolutionService(
+            unitOfWork.Object,
+            Mock.Of<Microsoft.Extensions.Logging.ILogger<SecurityResolutionService>>()
+        );
 
         var first = await service.ResolveOrCreateAsync("XEQT.TO", "XEQT", "CAD");
         var second = await service.ResolveOrCreateAsync("XEQT.TO", "XEQT", "CAD");
@@ -125,6 +128,9 @@ public class SecurityResolutionServiceTests
     {
         var unitOfWork = new Mock<IUnitOfWork>();
         SecurityTestHelper.CreateSecurityResolutionService(unitOfWork);
-        return new SecurityResolutionService(unitOfWork.Object);
+        return new SecurityResolutionService(
+            unitOfWork.Object,
+            Mock.Of<Microsoft.Extensions.Logging.ILogger<SecurityResolutionService>>()
+        );
     }
 }

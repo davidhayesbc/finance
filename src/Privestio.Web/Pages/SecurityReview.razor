@@ -1,0 +1,368 @@
+@page "/securities/review"
+@inject ISecurityWebService SecurityService
+
+<PageTitle>Security Review - Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Data quality"
+                Title="Security Review"
+                Description="Review ambiguous symbol matches, correct linked securities, and maintain identifier metadata." />
+
+    @if (!string.IsNullOrWhiteSpace(_statusMessage))
+    {
+        <FluentMessageBar Intent="@(_statusIsError ? MessageIntent.Error : MessageIntent.Success)">
+            @_statusMessage
+        </FluentMessageBar>
+    }
+
+    @if (_isLoading)
+    {
+        <LoadingSpinner AriaLabel="Loading security conflicts" />
+    }
+    else if (_conflicts.Count == 0)
+    {
+        <EmptyStateCard Message="No ambiguous security matches detected." />
+    }
+    else
+    {
+        @foreach (var conflict in _conflicts)
+        {
+            var correction = GetCorrection(conflict.HoldingId, conflict);
+            var identifiers = _identifiersByHoldingId.GetValueOrDefault(conflict.HoldingId) ?? [];
+            var isBusy = _busyHoldingIds.Contains(conflict.HoldingId);
+            var newIdType = _newIdentifierTypeByHoldingId.GetValueOrDefault(conflict.HoldingId) ?? "Cusip";
+            var newIdValue = _newIdentifierValueByHoldingId.GetValueOrDefault(conflict.HoldingId) ?? string.Empty;
+            var newIdPrimary = _newIdentifierPrimaryByHoldingId.GetValueOrDefault(conflict.HoldingId);
+
+            <FluentCard Class="surface-card" style="margin-bottom: 1rem;">
+                <div class="section-heading-row" style="margin-bottom: 0.75rem;">
+                    <div>
+                        <h3 class="section-heading" style="margin-bottom: 0.25rem;">@conflict.HoldingSymbol</h3>
+                        <p class="section-copy" style="margin: 0;">
+                            @conflict.AccountName · @conflict.HoldingSecurityName
+                        </p>
+                    </div>
+                    <FluentBadge Appearance="Appearance.Accent">@conflict.Candidates.Count candidate(s)</FluentBadge>
+                </div>
+
+                <div style="display:grid; gap: 0.65rem;">
+                    <div style="display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">
+                        @foreach (var candidate in conflict.Candidates)
+                        {
+                            <button type="button"
+                                    class="app-button app-button--secondary"
+                                    disabled="@isBusy"
+                                    @onclick="() => SelectCandidate(conflict.HoldingId, candidate)">
+                                @candidate.DisplaySymbol - @candidate.Name
+                                @if (!string.IsNullOrWhiteSpace(candidate.Exchange))
+                                {
+                                    <span> (@candidate.Exchange)</span>
+                                }
+                            </button>
+                        }
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.5rem;">
+                        <input class="filter-input" placeholder="Symbol"
+                               value="@correction.Symbol"
+                               @oninput="e => correction.Symbol = e.Value?.ToString() ?? string.Empty" />
+                        <input class="filter-input" placeholder="Security name"
+                               value="@correction.SecurityName"
+                               @oninput="e => correction.SecurityName = e.Value?.ToString()" />
+                        <input class="filter-input" placeholder="Source"
+                               value="@correction.Source"
+                               @oninput="e => correction.Source = e.Value?.ToString()" />
+                        <input class="filter-input" placeholder="Exchange"
+                               value="@correction.Exchange"
+                               @oninput="e => correction.Exchange = e.Value?.ToString()" />
+                        <input class="filter-input" placeholder="CUSIP"
+                               value="@correction.Cusip"
+                               @oninput="e => correction.Cusip = e.Value?.ToString()" />
+                        <input class="filter-input" placeholder="ISIN"
+                               value="@correction.Isin"
+                               @oninput="e => correction.Isin = e.Value?.ToString()" />
+                    </div>
+
+                    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                        <button type="button"
+                                class="app-button app-button--primary"
+                                disabled="@isBusy"
+                                @onclick="() => CorrectSecurityAsync(conflict.HoldingId)">
+                            Apply correction
+                        </button>
+                    </div>
+
+                    <div style="border-top:1px solid var(--neutral-stroke-layer-rest); padding-top:0.75rem;">
+                        <strong style="display:block; margin-bottom:0.4rem;">Security identifiers</strong>
+                        @if (identifiers.Count == 0)
+                        {
+                            <span class="txn-no-value">No identifiers saved.</span>
+                        }
+                        else
+                        {
+                            <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.55rem;">
+                                @foreach (var identifier in identifiers)
+                                {
+                                    <span class="txn-category" style="display:inline-flex; gap:0.35rem; align-items:center;">
+                                        @identifier.IdentifierType:@identifier.Value
+                                        @if (identifier.IsPrimary)
+                                        {
+                                            <strong style="font-size:0.72rem;">primary</strong>
+                                        }
+                                        <button type="button"
+                                                class="app-button app-button--secondary"
+                                                style="padding:0.1rem 0.45rem; font-size:0.72rem;"
+                                                disabled="@isBusy"
+                                                @onclick="() => DeleteIdentifierAsync(conflict.HoldingId, identifier.Id)">
+                                            Remove
+                                        </button>
+                                    </span>
+                                }
+                            </div>
+                        }
+
+                        <div style="display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center;">
+                            <select class="filter-input"
+                                    style="max-width:8rem;"
+                                    value="@newIdType"
+                                    @onchange="e => SetIdentifierType(conflict.HoldingId, e.Value?.ToString())">
+                                <option value="Cusip">CUSIP</option>
+                                <option value="Isin">ISIN</option>
+                                <option value="Figi">FIGI</option>
+                                <option value="Sedol">SEDOL</option>
+                            </select>
+                            <input class="filter-input"
+                                   style="max-width:14rem;"
+                                   placeholder="Identifier value"
+                                   value="@newIdValue"
+                                   @oninput="e => _newIdentifierValueByHoldingId[conflict.HoldingId] = e.Value?.ToString() ?? string.Empty" />
+                            <label style="display:inline-flex; gap:0.3rem; align-items:center; font-size:0.85rem;">
+                                <input type="checkbox"
+                                       checked="@newIdPrimary"
+                                       @onchange="e => _newIdentifierPrimaryByHoldingId[conflict.HoldingId] = e.Value as bool? == true" />
+                                Primary
+                            </label>
+                            <button type="button"
+                                    class="app-button app-button--secondary"
+                                    disabled="@isBusy"
+                                    @onclick="() => AddIdentifierAsync(conflict.HoldingId)">
+                                Add identifier
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </FluentCard>
+        }
+    }
+</section>
+
+@code {
+    private readonly List<SecurityConflictResponse> _conflicts = [];
+    private readonly Dictionary<Guid, CorrectionModel> _correctionsByHoldingId = [];
+    private readonly Dictionary<Guid, IReadOnlyList<SecurityIdentifierResponse>> _identifiersByHoldingId = [];
+    private readonly Dictionary<Guid, string> _newIdentifierTypeByHoldingId = [];
+    private readonly Dictionary<Guid, string> _newIdentifierValueByHoldingId = [];
+    private readonly Dictionary<Guid, bool> _newIdentifierPrimaryByHoldingId = [];
+    private readonly HashSet<Guid> _busyHoldingIds = [];
+
+    private bool _isLoading = true;
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _isLoading = true;
+        _statusMessage = null;
+
+        _conflicts.Clear();
+        var conflicts = await SecurityService.GetConflictsAsync();
+        _conflicts.AddRange(conflicts);
+
+        _correctionsByHoldingId.Clear();
+        _identifiersByHoldingId.Clear();
+
+        foreach (var conflict in _conflicts)
+        {
+            _correctionsByHoldingId[conflict.HoldingId] = new CorrectionModel
+            {
+                Symbol = conflict.HoldingSymbol,
+                SecurityName = string.IsNullOrWhiteSpace(conflict.HoldingSecurityName)
+                    ? null
+                    : conflict.HoldingSecurityName,
+            };
+
+            _identifiersByHoldingId[conflict.HoldingId] =
+                await SecurityService.GetHoldingIdentifiersAsync(conflict.HoldingId);
+        }
+
+        _isLoading = false;
+    }
+
+    private CorrectionModel GetCorrection(Guid holdingId, SecurityConflictResponse conflict)
+    {
+        if (_correctionsByHoldingId.TryGetValue(holdingId, out var model))
+            return model;
+
+        model = new CorrectionModel
+        {
+            Symbol = conflict.HoldingSymbol,
+            SecurityName = conflict.HoldingSecurityName,
+        };
+        _correctionsByHoldingId[holdingId] = model;
+        return model;
+    }
+
+    private void SelectCandidate(Guid holdingId, SecurityConflictCandidateResponse candidate)
+    {
+        var model = GetCorrection(
+            holdingId,
+            _conflicts.First(c => c.HoldingId == holdingId)
+        );
+
+        model.Symbol = candidate.DisplaySymbol;
+        model.SecurityName = candidate.Name;
+        model.Exchange = candidate.Exchange;
+    }
+
+    private async Task CorrectSecurityAsync(Guid holdingId)
+    {
+        if (!_correctionsByHoldingId.TryGetValue(holdingId, out var model))
+            return;
+
+        if (string.IsNullOrWhiteSpace(model.Symbol))
+        {
+            SetStatus("Symbol is required for correction.", isError: true);
+            return;
+        }
+
+        _busyHoldingIds.Add(holdingId);
+
+        try
+        {
+            var result = await SecurityService.CorrectHoldingSecurityAsync(
+                holdingId,
+                new CorrectHoldingSecurityRequest
+                {
+                    Symbol = model.Symbol.Trim(),
+                    SecurityName = EmptyToNull(model.SecurityName),
+                    Source = EmptyToNull(model.Source),
+                    Exchange = EmptyToNull(model.Exchange),
+                    Cusip = EmptyToNull(model.Cusip),
+                    Isin = EmptyToNull(model.Isin),
+                }
+            );
+
+            if (result is null)
+            {
+                SetStatus("Correction failed. Verify the inputs and retry.", isError: true);
+                return;
+            }
+
+            _conflicts.RemoveAll(c => c.HoldingId == holdingId);
+            _correctionsByHoldingId.Remove(holdingId);
+            _identifiersByHoldingId.Remove(holdingId);
+
+            SetStatus($"Updated holding to {result.Symbol}.", isError: false);
+        }
+        finally
+        {
+            _busyHoldingIds.Remove(holdingId);
+        }
+    }
+
+    private async Task AddIdentifierAsync(Guid holdingId)
+    {
+        var value = (_newIdentifierValueByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            SetStatus("Identifier value is required.", isError: true);
+            return;
+        }
+
+        var identifierType = _newIdentifierTypeByHoldingId.GetValueOrDefault(holdingId) ?? "Cusip";
+        var isPrimary = _newIdentifierPrimaryByHoldingId.GetValueOrDefault(holdingId);
+
+        _busyHoldingIds.Add(holdingId);
+
+        try
+        {
+            var result = await SecurityService.AddHoldingIdentifierAsync(
+                holdingId,
+                new AddSecurityIdentifierRequest
+                {
+                    IdentifierType = identifierType,
+                    Value = value,
+                    IsPrimary = isPrimary,
+                }
+            );
+
+            if (result is null)
+            {
+                SetStatus("Identifier could not be saved.", isError: true);
+                return;
+            }
+
+            _newIdentifierValueByHoldingId[holdingId] = string.Empty;
+            _newIdentifierPrimaryByHoldingId[holdingId] = false;
+            _identifiersByHoldingId[holdingId] = await SecurityService.GetHoldingIdentifiersAsync(holdingId);
+            SetStatus("Identifier saved.", isError: false);
+        }
+        finally
+        {
+            _busyHoldingIds.Remove(holdingId);
+        }
+    }
+
+    private async Task DeleteIdentifierAsync(Guid holdingId, Guid identifierId)
+    {
+        _busyHoldingIds.Add(holdingId);
+
+        try
+        {
+            var deleted = await SecurityService.DeleteHoldingIdentifierAsync(holdingId, identifierId);
+            if (!deleted)
+            {
+                SetStatus("Identifier could not be removed.", isError: true);
+                return;
+            }
+
+            _identifiersByHoldingId[holdingId] = await SecurityService.GetHoldingIdentifiersAsync(holdingId);
+            SetStatus("Identifier removed.", isError: false);
+        }
+        finally
+        {
+            _busyHoldingIds.Remove(holdingId);
+        }
+    }
+
+    private void SetStatus(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusIsError = isError;
+    }
+
+    private void SetIdentifierType(Guid holdingId, string? identifierType)
+    {
+        _newIdentifierTypeByHoldingId[holdingId] = string.IsNullOrWhiteSpace(identifierType)
+            ? "Cusip"
+            : identifierType;
+    }
+
+    private static string? EmptyToNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed class CorrectionModel
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public string? SecurityName { get; set; }
+        public string? Source { get; set; }
+        public string? Exchange { get; set; }
+        public string? Cusip { get; set; }
+        public string? Isin { get; set; }
+    }
+}

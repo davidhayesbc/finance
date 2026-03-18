@@ -96,6 +96,9 @@
                                     <FluentOption TOption="string" Value="SecurityName">Security name</FluentOption>
                                     <FluentOption TOption="string" Value="Quantity">Quantity</FluentOption>
                                     <FluentOption TOption="string" Value="UnitPrice">Unit price</FluentOption>
+                                    <FluentOption TOption="string" Value="Exchange">Exchange</FluentOption>
+                                    <FluentOption TOption="string" Value="Cusip">CUSIP</FluentOption>
+                                    <FluentOption TOption="string" Value="Isin">ISIN</FluentOption>
                                 </FluentSelect>
                             </div>
                         }
@@ -326,6 +329,12 @@
                 _columnMappings[col] = "Quantity";
             else if (lower.Contains("unit price") || lower.Contains("price") || lower.Contains("rate"))
                 _columnMappings[col] = "UnitPrice";
+            else if (lower.Contains("exchange") || lower == "exch" || lower == "market")
+                _columnMappings[col] = "Exchange";
+            else if (lower.Contains("cusip"))
+                _columnMappings[col] = "Cusip";
+            else if (lower.Contains("isin"))
+                _columnMappings[col] = "Isin";
         }
 
         _step = ImportStep.ColumnMapping;

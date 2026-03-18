@@ -80,7 +80,10 @@ public static class PriceHistoryEndpoints
                 request.Price,
                 request.Currency,
                 request.AsOfDate,
-                request.Source
+                request.Source,
+                request.Exchange,
+                request.Cusip,
+                request.Isin
             );
 
             var command = new CreatePriceHistoryCommand([entry]);
@@ -117,7 +120,10 @@ public static class PriceHistoryEndpoints
                     e.Price,
                     e.Currency,
                     e.AsOfDate,
-                    e.Source
+                    e.Source,
+                    e.Exchange,
+                    e.Cusip,
+                    e.Isin
                 ))
                 .ToList();
 

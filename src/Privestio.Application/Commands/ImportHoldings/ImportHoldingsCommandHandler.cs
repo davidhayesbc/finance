@@ -3,6 +3,7 @@ using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 using Privestio.Domain.Interfaces;
 using Privestio.Domain.ValueObjects;
 
@@ -71,11 +72,14 @@ public class ImportHoldingsCommandHandler
 
         foreach (var row in parseResult.Holdings)
         {
+            var identifiers = BuildSecurityIdentifiers(row.Cusip, row.Isin);
             var security = await _securityResolutionService.ResolveOrCreateAsync(
                 row.Symbol ?? SanitizeSymbol(row.InvestmentName),
                 row.InvestmentName,
                 parseResult.Currency,
                 source: importer.FileFormat,
+                exchange: row.Exchange,
+                identifiers: identifiers,
                 cancellationToken: cancellationToken
             );
 
@@ -188,5 +192,27 @@ public class ImportHoldingsCommandHandler
         return initials.Length >= 2
             ? initials
             : investmentName[..Math.Min(10, investmentName.Length)].Trim();
+    }
+
+    private static IReadOnlyDictionary<SecurityIdentifierType, string>? BuildSecurityIdentifiers(
+        string? cusip,
+        string? isin
+    )
+    {
+        Dictionary<SecurityIdentifierType, string>? identifiers = null;
+
+        if (!string.IsNullOrWhiteSpace(cusip))
+        {
+            identifiers ??= [];
+            identifiers[SecurityIdentifierType.Cusip] = cusip.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(isin))
+        {
+            identifiers ??= [];
+            identifiers[SecurityIdentifierType.Isin] = isin.Trim();
+        }
+
+        return identifiers;
     }
 }

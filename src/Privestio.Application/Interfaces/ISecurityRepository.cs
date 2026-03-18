@@ -21,6 +21,10 @@ public interface ISecurityRepository
         string? exchange,
         CancellationToken cancellationToken = default
     );
+    Task<IReadOnlyList<Security>> GetCandidatesBySymbolAsync(
+        string symbol,
+        CancellationToken cancellationToken = default
+    );
     Task<Security> AddAsync(Security security, CancellationToken cancellationToken = default);
     Task<Security> UpdateAsync(Security security, CancellationToken cancellationToken = default);
 }

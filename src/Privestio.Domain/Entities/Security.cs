@@ -234,6 +234,17 @@ public class Security : BaseEntity
         );
     }
 
+    public bool RemoveIdentifier(Guid identifierId)
+    {
+        var identifier = _identifiers.FirstOrDefault(i => i.Id == identifierId);
+        if (identifier is null)
+            return false;
+
+        _identifiers.Remove(identifier);
+        UpdatedAt = DateTime.UtcNow;
+        return true;
+    }
+
     private void ClearPrimary(string? source, string? exchange)
     {
         foreach (

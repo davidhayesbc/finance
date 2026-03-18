@@ -155,6 +155,9 @@ public class CsvTransactionImporter : ITransactionImporter
         var securityName = GetMappedField(csv, columnMap, "SecurityName");
         var quantity = ParseOptionalDecimal(GetMappedField(csv, columnMap, "Quantity"));
         var unitPrice = ParseOptionalDecimal(GetMappedField(csv, columnMap, "UnitPrice"));
+        var exchange = GetMappedField(csv, columnMap, "Exchange");
+        var cusip = GetMappedField(csv, columnMap, "Cusip");
+        var isin = GetMappedField(csv, columnMap, "Isin");
 
         return new ImportedTransactionRow(
             Date: date,
@@ -171,7 +174,10 @@ public class CsvTransactionImporter : ITransactionImporter
             Symbol: symbol,
             SecurityName: securityName,
             Quantity: quantity,
-            UnitPrice: unitPrice
+            UnitPrice: unitPrice,
+            Exchange: exchange,
+            Cusip: cusip,
+            Isin: isin
         );
     }
 

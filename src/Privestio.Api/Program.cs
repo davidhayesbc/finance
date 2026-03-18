@@ -232,6 +232,7 @@ try
     app.MapValuationEndpoints();
     app.MapPriceHistoryEndpoints();
     app.MapHoldingEndpoints();
+    app.MapSecurityEndpoints();
     app.MapLotEndpoints();
     app.MapPortfolioEndpoints();
 

@@ -347,6 +347,7 @@ public class ImportTransactionsCommandHandler
                 continue;
 
             var currency = accountCurrency;
+            var identifiers = BuildSecurityIdentifiers(row.Cusip, row.Isin);
             var security = await _securityResolutionService.ResolveOrCreateAsync(
                 symbol,
                 Truncate(
@@ -356,6 +357,8 @@ public class ImportTransactionsCommandHandler
                 currency,
                 isCashEquivalent: IsCashEquivalentSymbol(symbol, config),
                 source: "ImportTransactions",
+                exchange: row.Exchange,
+                identifiers: identifiers,
                 cancellationToken: cancellationToken
             );
 
@@ -574,6 +577,28 @@ public class ImportTransactionsCommandHandler
 
         var trimmed = value.Trim();
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static IReadOnlyDictionary<Domain.Enums.SecurityIdentifierType, string>? BuildSecurityIdentifiers(
+        string? cusip,
+        string? isin
+    )
+    {
+        Dictionary<Domain.Enums.SecurityIdentifierType, string>? identifiers = null;
+
+        if (!string.IsNullOrWhiteSpace(cusip))
+        {
+            identifiers ??= [];
+            identifiers[Domain.Enums.SecurityIdentifierType.Cusip] = cusip.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(isin))
+        {
+            identifiers ??= [];
+            identifiers[Domain.Enums.SecurityIdentifierType.Isin] = isin.Trim();
+        }
+
+        return identifiers;
     }
 
     private record ImportClassificationConfig(

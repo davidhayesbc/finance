@@ -42,6 +42,7 @@ builder.Services.AddScoped<IConnectivityService, ConnectivityService>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddScoped<IConflictResolutionWebService, ConflictResolutionWebService>();
+builder.Services.AddScoped<ISecurityWebService, SecurityWebService>();
 
 var host = builder.Build();
 

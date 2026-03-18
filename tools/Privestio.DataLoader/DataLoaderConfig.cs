@@ -114,6 +114,9 @@ public class PriceHistoryGroupConfig
     public string Symbol { get; set; } = string.Empty;
     public string Currency { get; set; } = "CAD";
     public string Source { get; set; } = string.Empty;
+    public string? Exchange { get; set; }
+    public string? Cusip { get; set; }
+    public string? Isin { get; set; }
     public List<PriceEntryConfig> Prices { get; set; } = [];
 }
 

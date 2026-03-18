@@ -2,6 +2,7 @@ using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Privestio.Application.Services;
 
@@ -24,13 +25,18 @@ public class SecurityResolutionService
     ];
 
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<SecurityResolutionService> _logger;
     private readonly Dictionary<string, Security> _resolvedSecurityCache = new(
         StringComparer.Ordinal
     );
 
-    public SecurityResolutionService(IUnitOfWork unitOfWork)
+    public SecurityResolutionService(
+        IUnitOfWork unitOfWork,
+        ILogger<SecurityResolutionService> logger
+    )
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Security?> ResolveAsync(
@@ -91,6 +97,40 @@ public class SecurityResolutionService
             );
             if (byExchange is not null)
                 return byExchange;
+        }
+
+        var hasContext = !string.IsNullOrWhiteSpace(source) || !string.IsNullOrWhiteSpace(exchange);
+        var hasIdentifiers = identifiers is not null && identifiers.Count > 0;
+
+        if (!hasContext && !hasIdentifiers)
+        {
+            var candidates =
+                await _unitOfWork.Securities.GetCandidatesBySymbolAsync(symbol, cancellationToken)
+                ?? [];
+
+            if (candidates.Count > 1)
+            {
+                _logger.LogWarning(
+                    "SecurityMatchAmbiguous: symbol-only lookup for {Symbol} matched {Count} candidates: {Candidates}",
+                    symbol,
+                    candidates.Count,
+                    string.Join(", ", candidates.Select(c => $"{c.Id}:{c.DisplaySymbol}:{c.Name}"))
+                );
+
+                return candidates[0];
+            }
+
+            if (candidates.Count == 1)
+            {
+                _logger.LogWarning(
+                    "SecurityMatchLowConfidence: symbol-only lookup for {Symbol} resolved to {SecurityId}:{DisplaySymbol}",
+                    symbol,
+                    candidates[0].Id,
+                    candidates[0].DisplaySymbol
+                );
+
+                return candidates[0];
+            }
         }
 
         return await ResolveAsync(symbol, cancellationToken);

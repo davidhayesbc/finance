@@ -8,7 +8,10 @@ public record ImportedHoldingRow(
     decimal Units,
     decimal UnitPrice,
     decimal TotalValue,
-    string? Symbol = null
+    string? Symbol = null,
+    string? Exchange = null,
+    string? Cusip = null,
+    string? Isin = null
 );
 
 /// <summary>

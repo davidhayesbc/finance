@@ -11,5 +11,8 @@ public record PriceHistoryEntry(
     decimal Price,
     string Currency,
     DateOnly AsOfDate,
-    string Source
+    string Source,
+    string? Exchange = null,
+    string? Cusip = null,
+    string? Isin = null
 );
