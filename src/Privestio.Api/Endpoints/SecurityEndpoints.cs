@@ -2,10 +2,15 @@ using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Privestio.Application.Commands.AddHoldingSecurityIdentifier;
+using Privestio.Application.Commands.AddSecurityAlias;
 using Privestio.Application.Commands.CorrectHoldingSecurity;
 using Privestio.Application.Commands.DeleteHoldingSecurityIdentifier;
+using Privestio.Application.Commands.DeleteSecurityAlias;
+using Privestio.Application.Commands.UpdateSecurityAlias;
+using Privestio.Application.Commands.UpdateSecurityDetails;
 using Privestio.Application.Queries.GetHoldingSecurityIdentifiers;
 using Privestio.Application.Queries.GetSecurityConflicts;
+using Privestio.Application.Queries.GetUserSecurities;
 using Privestio.Contracts.Requests;
 
 namespace Privestio.Api.Endpoints;
@@ -17,6 +22,31 @@ public static class SecurityEndpoints
         var group = app.MapGroup("/api/v1/securities")
             .WithTags("Securities")
             .RequireAuthorization();
+
+        group
+            .MapGet("/", GetSecuritiesAsync)
+            .WithName("GetSecurities")
+            .WithSummary("Get all securities linked to the current user");
+
+        group
+            .MapPut("/{securityId:guid}", UpdateSecurityAsync)
+            .WithName("UpdateSecurity")
+            .WithSummary("Update security details for a security linked to the current user");
+
+        group
+            .MapPost("/{securityId:guid}/aliases", AddSecurityAliasAsync)
+            .WithName("AddSecurityAlias")
+            .WithSummary("Add or update an alias for a security linked to the current user");
+
+        group
+            .MapPut("/{securityId:guid}/aliases/{aliasId:guid}", UpdateSecurityAliasAsync)
+            .WithName("UpdateSecurityAlias")
+            .WithSummary("Update an alias for a security linked to the current user");
+
+        group
+            .MapDelete("/{securityId:guid}/aliases/{aliasId:guid}", DeleteSecurityAliasAsync)
+            .WithName("DeleteSecurityAlias")
+            .WithSummary("Delete an alias for a security linked to the current user");
 
         group
             .MapGet("/conflicts", GetConflictsAsync)
@@ -49,6 +79,155 @@ public static class SecurityEndpoints
             );
 
         return app;
+    }
+
+    private static async Task<IResult> AddSecurityAliasAsync(
+        Guid securityId,
+        [FromBody] AddSecurityAliasRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var result = await mediator.Send(
+                new AddSecurityAliasCommand(
+                    securityId,
+                    request.Symbol,
+                    request.Source,
+                    request.Exchange,
+                    request.IsPrimary,
+                    userId.Value
+                ),
+                cancellationToken
+            );
+
+            return Results.Created($"/api/v1/securities/{securityId}/aliases/{result.Id}", result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> DeleteSecurityAliasAsync(
+        Guid securityId,
+        Guid aliasId,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var deleted = await mediator.Send(
+                new DeleteSecurityAliasCommand(securityId, aliasId, userId.Value),
+                cancellationToken
+            );
+
+            return deleted ? Results.NoContent() : Results.NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> UpdateSecurityAliasAsync(
+        Guid securityId,
+        Guid aliasId,
+        [FromBody] AddSecurityAliasRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var result = await mediator.Send(
+                new UpdateSecurityAliasCommand(
+                    securityId,
+                    aliasId,
+                    request.Symbol,
+                    request.Source,
+                    request.Exchange,
+                    request.IsPrimary,
+                    userId.Value
+                ),
+                cancellationToken
+            );
+
+            return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> GetSecuritiesAsync(
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var result = await mediator.Send(
+            new GetUserSecuritiesQuery(userId.Value),
+            cancellationToken
+        );
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateSecurityAsync(
+        Guid securityId,
+        [FromBody] UpdateSecurityDetailsRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var result = await mediator.Send(
+                new UpdateSecurityDetailsCommand(
+                    securityId,
+                    request.Name,
+                    request.DisplaySymbol,
+                    request.Currency,
+                    request.Exchange,
+                    request.IsCashEquivalent,
+                    userId.Value
+                ),
+                cancellationToken
+            );
+
+            return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
     }
 
     private static async Task<IResult> GetConflictsAsync(

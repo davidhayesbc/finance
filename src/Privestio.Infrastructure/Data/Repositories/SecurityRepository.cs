@@ -109,6 +109,22 @@ public class SecurityRepository : ISecurityRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Security>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> securityIds,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (securityIds.Count == 0)
+            return [];
+
+        return await _context
+            .Securities.Include(s => s.Aliases)
+            .Include(s => s.Identifiers)
+            .Where(s => securityIds.Contains(s.Id))
+            .OrderBy(s => s.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Security> AddAsync(
         Security security,
         CancellationToken cancellationToken = default

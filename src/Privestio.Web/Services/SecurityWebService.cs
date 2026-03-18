@@ -6,7 +6,22 @@ namespace Privestio.Web.Services;
 
 public interface ISecurityWebService
 {
+    Task<IReadOnlyList<SecurityCatalogItemResponse>> GetSecuritiesAsync();
+    Task<SecurityCatalogItemResponse?> UpdateSecurityAsync(
+        Guid securityId,
+        UpdateSecurityDetailsRequest request
+    );
     Task<IReadOnlyList<SecurityConflictResponse>> GetConflictsAsync();
+    Task<SecurityAliasResponse?> AddSecurityAliasAsync(
+        Guid securityId,
+        AddSecurityAliasRequest request
+    );
+    Task<SecurityAliasResponse?> UpdateSecurityAliasAsync(
+        Guid securityId,
+        Guid aliasId,
+        AddSecurityAliasRequest request
+    );
+    Task<bool> DeleteSecurityAliasAsync(Guid securityId, Guid aliasId);
     Task<IReadOnlyList<SecurityIdentifierResponse>> GetHoldingIdentifiersAsync(Guid holdingId);
     Task<SecurityIdentifierResponse?> AddHoldingIdentifierAsync(
         Guid holdingId,
@@ -25,6 +40,43 @@ public class SecurityWebService : ISecurityWebService
 
     public SecurityWebService(HttpClient httpClient) => _httpClient = httpClient;
 
+    public async Task<IReadOnlyList<SecurityCatalogItemResponse>> GetSecuritiesAsync()
+    {
+        try
+        {
+            var result = await _httpClient.GetFromJsonAsync<List<SecurityCatalogItemResponse>>(
+                "/api/v1/securities"
+            );
+            return result ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task<SecurityCatalogItemResponse?> UpdateSecurityAsync(
+        Guid securityId,
+        UpdateSecurityDetailsRequest request
+    )
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync(
+                $"/api/v1/securities/{securityId}",
+                request
+            );
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<SecurityCatalogItemResponse>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<IReadOnlyList<SecurityConflictResponse>> GetConflictsAsync()
     {
         try
@@ -37,6 +89,66 @@ public class SecurityWebService : ISecurityWebService
         catch
         {
             return [];
+        }
+    }
+
+    public async Task<SecurityAliasResponse?> AddSecurityAliasAsync(
+        Guid securityId,
+        AddSecurityAliasRequest request
+    )
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"/api/v1/securities/{securityId}/aliases",
+                request
+            );
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<SecurityAliasResponse>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<SecurityAliasResponse?> UpdateSecurityAliasAsync(
+        Guid securityId,
+        Guid aliasId,
+        AddSecurityAliasRequest request
+    )
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync(
+                $"/api/v1/securities/{securityId}/aliases/{aliasId}",
+                request
+            );
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<SecurityAliasResponse>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> DeleteSecurityAliasAsync(Guid securityId, Guid aliasId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync(
+                $"/api/v1/securities/{securityId}/aliases/{aliasId}"
+            );
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
         }
     }
 

@@ -62,6 +62,25 @@ public class Security : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateCurrency(string currency)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(currency);
+        Currency = currency.Trim().ToUpperInvariant();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateExchange(string? exchange)
+    {
+        Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange.Trim().ToUpperInvariant();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetCashEquivalent(bool isCashEquivalent)
+    {
+        IsCashEquivalent = isCashEquivalent;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void MarkCashEquivalent()
     {
         IsCashEquivalent = true;
@@ -184,6 +203,64 @@ public class Security : BaseEntity
         _aliases.Remove(alias);
         UpdatedAt = DateTime.UtcNow;
         return true;
+    }
+
+    public SecurityAlias UpdateAlias(
+        Guid aliasId,
+        string symbol,
+        string? source,
+        string? exchange,
+        bool isPrimary
+    )
+    {
+        var alias = _aliases.FirstOrDefault(a => a.Id == aliasId);
+        if (alias is null)
+            throw new InvalidOperationException("Alias not found.");
+
+        var normalizedSymbol = SecuritySymbolMatcher.Normalize(symbol);
+        var normalizedSource = NormalizeSource(source);
+        var normalizedExchange = NormalizeExchange(exchange);
+
+        var isDisplayAlias = alias.Source is null && alias.Symbol == DisplaySymbol;
+        if (
+            isDisplayAlias
+            && (
+                !string.Equals(normalizedSymbol, DisplaySymbol, StringComparison.Ordinal)
+                || normalizedSource is not null
+                || normalizedExchange is not null
+            )
+        )
+        {
+            throw new InvalidOperationException(
+                "Display alias details cannot be changed. Update display symbol from security details instead."
+            );
+        }
+
+        var duplicateExists = _aliases.Any(a =>
+            a.Id != aliasId
+            && a.Symbol == normalizedSymbol
+            && string.Equals(a.Source, normalizedSource, StringComparison.Ordinal)
+            && string.Equals(a.Exchange, normalizedExchange, StringComparison.Ordinal)
+        );
+        if (duplicateExists)
+            throw new InvalidOperationException(
+                "An alias with the same symbol/source/exchange already exists."
+            );
+
+        alias.UpdateDetails(normalizedSymbol, normalizedSource, normalizedExchange);
+
+        if (isPrimary)
+        {
+            ClearPrimary(normalizedSource, normalizedExchange);
+            alias.UpdatePrimary(true);
+        }
+        else
+        {
+            alias.UpdatePrimary(false);
+        }
+
+        UpdatedAt = DateTime.UtcNow;
+        return alias;
     }
 
     public SecurityIdentifier AddOrUpdateIdentifier(

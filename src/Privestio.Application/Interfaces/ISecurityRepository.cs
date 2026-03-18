@@ -25,6 +25,10 @@ public interface ISecurityRepository
         string symbol,
         CancellationToken cancellationToken = default
     );
+    Task<IReadOnlyList<Security>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> securityIds,
+        CancellationToken cancellationToken = default
+    );
     Task<Security> AddAsync(Security security, CancellationToken cancellationToken = default);
     Task<Security> UpdateAsync(Security security, CancellationToken cancellationToken = default);
 }

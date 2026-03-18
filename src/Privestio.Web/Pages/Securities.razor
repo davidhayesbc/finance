@@ -1,0 +1,552 @@
+@page "/securities"
+@inject ISecurityWebService SecurityService
+
+<PageTitle>Securities - Privestio</PageTitle>
+
+<section class="page-shell">
+    <PageHeader Eyebrow="Reference data"
+                Title="Securities"
+                Description="Inline edit security rows and manage one-to-many aliases by institution/site using immutable GUID IDs." />
+
+    @if (!string.IsNullOrWhiteSpace(_statusMessage))
+    {
+        <FluentMessageBar Intent="@(_statusIsError ? MessageIntent.Error : MessageIntent.Success)">
+            @_statusMessage
+        </FluentMessageBar>
+    }
+
+    @if (_isLoading)
+    {
+        <LoadingSpinner AriaLabel="Loading securities" />
+    }
+    else if (_securities.Count == 0)
+    {
+        <EmptyStateCard Message="No securities are linked to your accounts yet." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card">
+            <div class="txn-table-wrapper" role="region" aria-label="Securities inline editor">
+                <table class="txn-table" aria-label="Securities inline editor">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="txn-col--cat">Security ID (GUID)</th>
+                            <th scope="col" class="txn-col--cat">Canonical</th>
+                            <th scope="col" class="txn-col--cat">Display symbol</th>
+                            <th scope="col" class="txn-col--desc">Name</th>
+                            <th scope="col" class="txn-col--cat">Exchange</th>
+                            <th scope="col" class="txn-col--cat">Currency</th>
+                            <th scope="col" class="txn-col--cat">Cash</th>
+                            <th scope="col" class="txn-col--cat">Price source</th>
+                            <th scope="col" class="txn-col--amount txn-cell--right">Latest price</th>
+                            <th scope="col" class="txn-col--cat">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var security in _securities)
+                        {
+                            var row = GetEditRow(security);
+                            var aliasDraft = GetAliasDraft(security.Id);
+                            var isSaving = _savingSecurityIds.Contains(security.Id);
+
+                            <tr class="txn-row" @key="security.Id">
+                                <td class="txn-cell--cat"><span class="txn-no-value">@security.Id</span></td>
+                                <td class="txn-cell--cat"><span class="txn-category">@security.CanonicalSymbol</span></td>
+                                <td class="txn-cell--cat">
+                                    <input class="filter-input"
+                                           value="@row.DisplaySymbol"
+                                           @oninput="e => row.DisplaySymbol = e.Value?.ToString() ?? string.Empty" />
+                                </td>
+                                <td class="txn-cell--desc">
+                                    <input class="filter-input"
+                                           value="@row.Name"
+                                           @oninput="e => row.Name = e.Value?.ToString() ?? string.Empty" />
+                                </td>
+                                <td class="txn-cell--cat">
+                                    <input class="filter-input"
+                                           value="@row.Exchange"
+                                           @oninput="e => row.Exchange = e.Value?.ToString()" />
+                                </td>
+                                <td class="txn-cell--cat">
+                                    <input class="filter-input"
+                                           value="@row.Currency"
+                                           @oninput="e => row.Currency = e.Value?.ToString() ?? string.Empty" />
+                                </td>
+                                <td class="txn-cell--cat">
+                                    <input type="checkbox"
+                                           checked="@row.IsCashEquivalent"
+                                           @onchange="e => row.IsCashEquivalent = e.Value as bool? == true" />
+                                </td>
+                                <td class="txn-cell--cat">
+                                    @if (security.LatestPriceAsOfDate is { } asOfDate)
+                                    {
+                                        <span class="txn-no-value">@DisplayOrDash(security.LatestPriceSource) (@asOfDate.ToString("yyyy-MM-dd"))</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="txn-no-value">-</span>
+                                    }
+                                </td>
+                                <td class="txn-cell--amount txn-cell--right">
+                                    @if (security.LatestPrice is { } latestPrice)
+                                    {
+                                        <span>@latestPrice.ToString("N4") @DisplayOrDash(security.LatestPriceCurrency)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="txn-no-value">-</span>
+                                    }
+                                </td>
+                                <td class="txn-cell--cat">
+                                    <button type="button"
+                                            class="app-button app-button--primary"
+                                            disabled="@isSaving"
+                                            @onclick="() => SaveSecurityAsync(security.Id)">
+                                        Save
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr @key="@($"{security.Id}-aliases")">
+                                <td colspan="10" class="txn-cell--desc" style="padding-top: 0.4rem; padding-bottom: 1rem;">
+                                    <strong style="display:block; margin-bottom:0.35rem;">Aliases (1:N)</strong>
+                                    <div class="txn-table-wrapper" role="region" aria-label="Aliases for @security.DisplaySymbol">
+                                        <table class="txn-table" aria-label="Aliases for @security.DisplaySymbol">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col" class="txn-col--cat">Alias ID (GUID)</th>
+                                                    <th scope="col" class="txn-col--cat">Security ID (GUID)</th>
+                                                    <th scope="col" class="txn-col--cat">Institution/Site</th>
+                                                    <th scope="col" class="txn-col--cat">Alias symbol</th>
+                                                    <th scope="col" class="txn-col--cat">Exchange</th>
+                                                    <th scope="col" class="txn-col--cat">Primary</th>
+                                                    <th scope="col" class="txn-col--cat">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var alias in security.Aliases.OrderBy(a => a.Source).ThenBy(a => a.Symbol))
+                                                {
+                                                    var aliasRow = GetAliasEditRow(alias);
+
+                                                    <tr class="txn-row" @key="alias.Id">
+                                                        <td class="txn-cell--cat"><span class="txn-no-value">@alias.Id</span></td>
+                                                        <td class="txn-cell--cat"><span class="txn-no-value">@alias.SecurityId</span></td>
+                                                        <td class="txn-cell--cat">
+                                                            <input class="filter-input"
+                                                                   value="@aliasRow.Source"
+                                                                   @oninput="e => aliasRow.Source = e.Value?.ToString()" />
+                                                        </td>
+                                                        <td class="txn-cell--cat">
+                                                            <input class="filter-input"
+                                                                   value="@aliasRow.Symbol"
+                                                                   @oninput="e => aliasRow.Symbol = e.Value?.ToString() ?? string.Empty" />
+                                                        </td>
+                                                        <td class="txn-cell--cat">
+                                                            <input class="filter-input"
+                                                                   value="@aliasRow.Exchange"
+                                                                   @oninput="e => aliasRow.Exchange = e.Value?.ToString()" />
+                                                        </td>
+                                                        <td class="txn-cell--cat">
+                                                            <input type="checkbox"
+                                                                   checked="@aliasRow.IsPrimary"
+                                                                   @onchange="e => aliasRow.IsPrimary = e.Value as bool? == true" />
+                                                        </td>
+                                                        <td class="txn-cell--cat">
+                                                            <button type="button"
+                                                                    class="app-button app-button--primary"
+                                                                    disabled="@isSaving"
+                                                                    @onclick="() => SaveAliasAsync(security.Id, alias.Id)">
+                                                                Save
+                                                            </button>
+                                                            <button type="button"
+                                                                    class="app-button app-button--secondary"
+                                                                    disabled="@isSaving"
+                                                                    @onclick="() => DeleteAliasAsync(security.Id, alias.Id)">
+                                                                Remove
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+
+                                                <tr class="txn-row" @key="@($"{security.Id}-add-alias")">
+                                                    <td class="txn-cell--cat"><span class="txn-no-value">new</span></td>
+                                                    <td class="txn-cell--cat"><span class="txn-no-value">@security.Id</span></td>
+                                                    <td class="txn-cell--cat">
+                                                        <input class="filter-input"
+                                                               placeholder="e.g. YahooFinance"
+                                                               value="@aliasDraft.Source"
+                                                               @oninput="e => aliasDraft.Source = e.Value?.ToString()" />
+                                                    </td>
+                                                    <td class="txn-cell--cat">
+                                                        <input class="filter-input"
+                                                               placeholder="e.g. CASH.TO"
+                                                               value="@aliasDraft.Symbol"
+                                                               @oninput="e => aliasDraft.Symbol = e.Value?.ToString() ?? string.Empty" />
+                                                    </td>
+                                                    <td class="txn-cell--cat">
+                                                        <input class="filter-input"
+                                                               placeholder="e.g. XTSE"
+                                                               value="@aliasDraft.Exchange"
+                                                               @oninput="e => aliasDraft.Exchange = e.Value?.ToString()" />
+                                                    </td>
+                                                    <td class="txn-cell--cat">
+                                                        <input type="checkbox"
+                                                               checked="@aliasDraft.IsPrimary"
+                                                               @onchange="e => aliasDraft.IsPrimary = e.Value as bool? == true" />
+                                                    </td>
+                                                    <td class="txn-cell--cat">
+                                                        <button type="button"
+                                                                class="app-button app-button--secondary"
+                                                                disabled="@isSaving"
+                                                                @onclick="() => AddAliasAsync(security.Id)">
+                                                            Add alias
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </FluentCard>
+    }
+</section>
+
+@code {
+    private readonly List<SecurityCatalogItemResponse> _securities = [];
+    private readonly Dictionary<Guid, SecurityEditRow> _editRowsBySecurityId = [];
+    private readonly Dictionary<Guid, AliasEditRow> _aliasEditRowsByAliasId = [];
+    private readonly Dictionary<Guid, AliasDraftRow> _aliasDraftBySecurityId = [];
+    private readonly HashSet<Guid> _savingSecurityIds = [];
+
+    private bool _isLoading = true;
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _isLoading = true;
+        _statusMessage = null;
+
+        var results = await SecurityService.GetSecuritiesAsync();
+        _securities.Clear();
+        _securities.AddRange(results.OrderBy(s => s.DisplaySymbol, StringComparer.OrdinalIgnoreCase));
+
+        foreach (var security in _securities)
+        {
+            _editRowsBySecurityId[security.Id] = new SecurityEditRow
+            {
+                Name = security.Name,
+                DisplaySymbol = security.DisplaySymbol,
+                Currency = security.Currency,
+                Exchange = security.Exchange,
+                IsCashEquivalent = security.IsCashEquivalent,
+            };
+
+            SyncAliasEditRows(security);
+            _aliasDraftBySecurityId[security.Id] = new AliasDraftRow();
+        }
+
+        _isLoading = false;
+    }
+
+    private SecurityEditRow GetEditRow(SecurityCatalogItemResponse security)
+    {
+        if (_editRowsBySecurityId.TryGetValue(security.Id, out var row))
+            return row;
+
+        row = new SecurityEditRow
+        {
+            Name = security.Name,
+            DisplaySymbol = security.DisplaySymbol,
+            Currency = security.Currency,
+            Exchange = security.Exchange,
+            IsCashEquivalent = security.IsCashEquivalent,
+        };
+        _editRowsBySecurityId[security.Id] = row;
+        return row;
+    }
+
+    private AliasDraftRow GetAliasDraft(Guid securityId)
+    {
+        if (_aliasDraftBySecurityId.TryGetValue(securityId, out var row))
+            return row;
+
+        row = new AliasDraftRow();
+        _aliasDraftBySecurityId[securityId] = row;
+        return row;
+    }
+
+    private AliasEditRow GetAliasEditRow(SecurityAliasResponse alias)
+    {
+        if (_aliasEditRowsByAliasId.TryGetValue(alias.Id, out var row))
+            return row;
+
+        row = new AliasEditRow
+        {
+            SecurityId = alias.SecurityId,
+            Symbol = alias.Symbol,
+            Source = alias.Source,
+            Exchange = alias.Exchange,
+            IsPrimary = alias.IsPrimary,
+        };
+        _aliasEditRowsByAliasId[alias.Id] = row;
+        return row;
+    }
+
+    private async Task SaveSecurityAsync(Guid securityId)
+    {
+        var row = _editRowsBySecurityId.GetValueOrDefault(securityId);
+        if (row is null)
+            return;
+
+        if (
+            string.IsNullOrWhiteSpace(row.Name)
+            || string.IsNullOrWhiteSpace(row.DisplaySymbol)
+            || string.IsNullOrWhiteSpace(row.Currency)
+        )
+        {
+            SetStatus("Name, display symbol, and currency are required.", true);
+            return;
+        }
+
+        _savingSecurityIds.Add(securityId);
+
+        try
+        {
+            var updated = await SecurityService.UpdateSecurityAsync(
+                securityId,
+                new UpdateSecurityDetailsRequest
+                {
+                    Name = row.Name.Trim(),
+                    DisplaySymbol = row.DisplaySymbol.Trim(),
+                    Currency = row.Currency.Trim(),
+                    Exchange = EmptyToNull(row.Exchange),
+                    IsCashEquivalent = row.IsCashEquivalent,
+                }
+            );
+
+            if (updated is null)
+            {
+                SetStatus("Security update failed.", true);
+                return;
+            }
+
+            ReplaceSecurity(updated);
+            SetStatus($"Updated security {updated.DisplaySymbol}.", false);
+        }
+        finally
+        {
+            _savingSecurityIds.Remove(securityId);
+        }
+    }
+
+    private async Task AddAliasAsync(Guid securityId)
+    {
+        var draft = GetAliasDraft(securityId);
+        if (string.IsNullOrWhiteSpace(draft.Symbol))
+        {
+            SetStatus("Alias symbol is required.", true);
+            return;
+        }
+
+        _savingSecurityIds.Add(securityId);
+
+        try
+        {
+            var created = await SecurityService.AddSecurityAliasAsync(
+                securityId,
+                new AddSecurityAliasRequest
+                {
+                    Symbol = draft.Symbol.Trim(),
+                    Source = EmptyToNull(draft.Source),
+                    Exchange = EmptyToNull(draft.Exchange),
+                    IsPrimary = draft.IsPrimary,
+                }
+            );
+
+            if (created is null)
+            {
+                SetStatus("Alias could not be saved.", true);
+                return;
+            }
+
+            draft.Symbol = string.Empty;
+            draft.Source = null;
+            draft.Exchange = null;
+            draft.IsPrimary = false;
+
+            await RefreshSingleSecurityAsync(securityId);
+            SetStatus("Alias saved.", false);
+        }
+        finally
+        {
+            _savingSecurityIds.Remove(securityId);
+        }
+    }
+
+    private async Task SaveAliasAsync(Guid securityId, Guid aliasId)
+    {
+        var row = _aliasEditRowsByAliasId.GetValueOrDefault(aliasId);
+        if (row is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(row.Symbol))
+        {
+            SetStatus("Alias symbol is required.", true);
+            return;
+        }
+
+        _savingSecurityIds.Add(securityId);
+
+        try
+        {
+            var updated = await SecurityService.UpdateSecurityAliasAsync(
+                securityId,
+                aliasId,
+                new AddSecurityAliasRequest
+                {
+                    Symbol = row.Symbol.Trim(),
+                    Source = EmptyToNull(row.Source),
+                    Exchange = EmptyToNull(row.Exchange),
+                    IsPrimary = row.IsPrimary,
+                }
+            );
+
+            if (updated is null)
+            {
+                SetStatus("Alias could not be updated.", true);
+                return;
+            }
+
+            await RefreshSingleSecurityAsync(securityId);
+            SetStatus("Alias updated.", false);
+        }
+        finally
+        {
+            _savingSecurityIds.Remove(securityId);
+        }
+    }
+
+    private async Task DeleteAliasAsync(Guid securityId, Guid aliasId)
+    {
+        _savingSecurityIds.Add(securityId);
+
+        try
+        {
+            var deleted = await SecurityService.DeleteSecurityAliasAsync(securityId, aliasId);
+            if (!deleted)
+            {
+                SetStatus("Alias could not be removed.", true);
+                return;
+            }
+
+            await RefreshSingleSecurityAsync(securityId);
+            SetStatus("Alias removed.", false);
+        }
+        finally
+        {
+            _savingSecurityIds.Remove(securityId);
+        }
+    }
+
+    private async Task RefreshSingleSecurityAsync(Guid securityId)
+    {
+        var all = await SecurityService.GetSecuritiesAsync();
+        var updated = all.FirstOrDefault(s => s.Id == securityId);
+        if (updated is null)
+            return;
+
+        ReplaceSecurity(updated);
+    }
+
+    private void ReplaceSecurity(SecurityCatalogItemResponse updated)
+    {
+        var index = _securities.FindIndex(s => s.Id == updated.Id);
+        if (index < 0)
+            return;
+
+        _securities[index] = updated;
+        SyncAliasEditRows(updated);
+        _editRowsBySecurityId[updated.Id] = new SecurityEditRow
+        {
+            Name = updated.Name,
+            DisplaySymbol = updated.DisplaySymbol,
+            Currency = updated.Currency,
+            Exchange = updated.Exchange,
+            IsCashEquivalent = updated.IsCashEquivalent,
+        };
+    }
+
+    private void SyncAliasEditRows(SecurityCatalogItemResponse security)
+    {
+        var currentAliasIds = security.Aliases.Select(a => a.Id).ToHashSet();
+        var staleAliasIds = _aliasEditRowsByAliasId
+            .Where(pair => pair.Value.SecurityId == security.Id && !currentAliasIds.Contains(pair.Key))
+            .Select(pair => pair.Key)
+            .ToList();
+
+        foreach (var aliasId in staleAliasIds)
+        {
+            _aliasEditRowsByAliasId.Remove(aliasId);
+        }
+
+        foreach (var alias in security.Aliases)
+        {
+            _aliasEditRowsByAliasId[alias.Id] = new AliasEditRow
+            {
+                SecurityId = alias.SecurityId,
+                Symbol = alias.Symbol,
+                Source = alias.Source,
+                Exchange = alias.Exchange,
+                IsPrimary = alias.IsPrimary,
+            };
+        }
+    }
+
+    private void SetStatus(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusIsError = isError;
+    }
+
+    private static string DisplayOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static string? EmptyToNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed class SecurityEditRow
+    {
+        public string Name { get; set; } = string.Empty;
+        public string DisplaySymbol { get; set; } = string.Empty;
+        public string Currency { get; set; } = "CAD";
+        public string? Exchange { get; set; }
+        public bool IsCashEquivalent { get; set; }
+    }
+
+    private sealed class AliasDraftRow
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public string? Source { get; set; }
+        public string? Exchange { get; set; }
+        public bool IsPrimary { get; set; }
+    }
+
+    private sealed class AliasEditRow
+    {
+        public Guid SecurityId { get; set; }
+        public string Symbol { get; set; } = string.Empty;
+        public string? Source { get; set; }
+        public string? Exchange { get; set; }
+        public bool IsPrimary { get; set; }
+    }
+}

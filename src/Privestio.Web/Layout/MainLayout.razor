@@ -28,15 +28,15 @@
 
                     <div class="theme-switcher" role="group" aria-label="Theme preference">
                         <button type="button" class="theme-switcher__button @GetThemeButtonClass("system")"
-                                aria-pressed="@GetAriaPressed("system")"                   @onclick='() => SetThemePreferenceAsync("system")'>
+                                aria-pressed="@GetAriaPressed("system")" @onclick='() => SetThemePreferenceAsync("system")'>
                             Auto
                         </button>
                         <button type="button" class="theme-switcher__button @GetThemeButtonClass("light")"
-                                aria-pressed="@GetAriaPressed("light")"    @onclick='() => SetThemePreferenceAsync("light")'>
+                                aria-pressed="@GetAriaPressed("light")" @onclick='() => SetThemePreferenceAsync("light")'>
                             Light
                         </button>
                         <button type="button" class="theme-switcher__button @GetThemeButtonClass("dark")"
-                                aria-pressed="@GetAriaPressed("dark")"          @onclick='() => SetThemePreferenceAsync("dark")'>
+                                aria-pressed="@GetAriaPressed("dark")" @onclick='() => SetThemePreferenceAsync("dark")'>
                             Dark
                         </button>
                     </div>
@@ -60,6 +60,7 @@
                 @if (AuthService.IsAuthenticated)
                 {
                     <FluentAnchor Href="/accounts" Class="nav-pill">Accounts</FluentAnchor>
+                    <FluentAnchor Href="/securities" Class="nav-pill">Securities</FluentAnchor>
                     <FluentAnchor Href="/budgets" Class="nav-pill">Budgets</FluentAnchor>
                     <FluentAnchor Href="/sinking-funds" Class="nav-pill">Savings</FluentAnchor>
                     <FluentAnchor Href="/recurring-transactions" Class="nav-pill">Recurring</FluentAnchor>

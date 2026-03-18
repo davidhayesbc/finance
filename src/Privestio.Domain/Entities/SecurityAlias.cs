@@ -38,4 +38,14 @@ public class SecurityAlias : BaseEntity
         IsPrimary = isPrimary;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    internal void UpdateDetails(string symbol, string? source, string? exchange)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+
+        Symbol = SecuritySymbolMatcher.Normalize(symbol);
+        Source = string.IsNullOrWhiteSpace(source) ? null : source.Trim();
+        Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange.Trim().ToUpperInvariant();
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
