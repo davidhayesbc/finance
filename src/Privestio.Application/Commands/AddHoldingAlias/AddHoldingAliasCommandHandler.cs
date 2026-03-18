@@ -38,7 +38,12 @@ public class AddHoldingAliasCommandHandler
         var alias =
             request.IsPrimary && string.IsNullOrWhiteSpace(request.Source)
                 ? CreateOrPromoteDisplayAlias(security, request.Symbol)
-                : security.AddOrUpdateAlias(request.Symbol, request.Source, request.IsPrimary);
+                : security.AddOrUpdateAlias(
+                    request.Symbol,
+                    request.Source,
+                    request.IsPrimary,
+                    request.Exchange
+                );
 
         await _unitOfWork.Securities.UpdateAsync(security, cancellationToken);
         holding.RebindSecurity(security);

@@ -224,6 +224,7 @@ public static class HoldingEndpoints
                     holdingId,
                     request.Symbol,
                     request.Source,
+                    request.Exchange,
                     request.IsPrimary,
                     userId.Value
                 ),

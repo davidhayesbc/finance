@@ -1,4 +1,5 @@
 using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 using Privestio.Domain.Services;
 
 namespace Privestio.Domain.Tests.Entities;
@@ -25,6 +26,27 @@ public class SecurityTests
 
         security.GetPreferredSymbol("YahooFinance").Should().Be("KILO-B.TO");
         security.GetPreferredSymbol().Should().Be("KILO.B");
+    }
+
+    [Fact]
+    public void AddOrUpdateAlias_WithSourceAndExchange_PrefersExchangeSpecificPrimary()
+    {
+        var security = new Security("XEQT", "XEQT", "iShares Core Equity ETF Portfolio", "CAD");
+
+        security.AddOrUpdateAlias("XEQT", "Wealthsimple", false, "XTSE");
+        security.AddOrUpdateAlias("XEQT.TO", "Wealthsimple", true, "XTSE");
+
+        security.GetPreferredSymbol("Wealthsimple", "XTSE").Should().Be("XEQT.TO");
+    }
+
+    [Fact]
+    public void AddOrUpdateIdentifier_WithCusip_IsResolvable()
+    {
+        var security = new Security("XEQT", "XEQT", "iShares Core Equity ETF Portfolio", "CAD");
+
+        security.AddOrUpdateIdentifier(SecurityIdentifierType.Cusip, "46436D108", true);
+
+        security.HasIdentifier(SecurityIdentifierType.Cusip, "46436D108").Should().BeTrue();
     }
 
     [Fact]

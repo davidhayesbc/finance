@@ -1,4 +1,5 @@
 using Privestio.Domain.Services;
+using Privestio.Domain.Enums;
 
 namespace Privestio.Domain.Entities;
 
@@ -8,6 +9,7 @@ namespace Privestio.Domain.Entities;
 public class Security : BaseEntity
 {
     private readonly List<SecurityAlias> _aliases = [];
+    private readonly List<SecurityIdentifier> _identifiers = [];
 
     private Security() { }
 
@@ -43,6 +45,7 @@ public class Security : BaseEntity
     public bool IsCashEquivalent { get; private set; }
 
     public IReadOnlyCollection<SecurityAlias> Aliases => _aliases.AsReadOnly();
+    public IReadOnlyCollection<SecurityIdentifier> Identifiers => _identifiers.AsReadOnly();
 
     public void Rename(string name)
     {
@@ -65,21 +68,28 @@ public class Security : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public SecurityAlias AddOrUpdateAlias(string symbol, string? source, bool isPrimary = false)
+    public SecurityAlias AddOrUpdateAlias(
+        string symbol,
+        string? source,
+        bool isPrimary = false,
+        string? exchange = null
+    )
     {
         var normalizedSymbol = SecuritySymbolMatcher.Normalize(symbol);
         var normalizedSource = NormalizeSource(source);
+        var normalizedExchange = NormalizeExchange(exchange);
 
         var existing = _aliases.FirstOrDefault(a =>
             a.Symbol == normalizedSymbol
             && string.Equals(a.Source, normalizedSource, StringComparison.Ordinal)
+            && string.Equals(a.Exchange, normalizedExchange, StringComparison.Ordinal)
         );
 
         if (existing is not null)
         {
             if (isPrimary)
             {
-                ClearPrimary(normalizedSource);
+                ClearPrimary(normalizedSource, normalizedExchange);
             }
 
             existing.UpdatePrimary(isPrimary);
@@ -89,19 +99,26 @@ public class Security : BaseEntity
 
         if (isPrimary)
         {
-            ClearPrimary(normalizedSource);
+            ClearPrimary(normalizedSource, normalizedExchange);
         }
 
-        var alias = new SecurityAlias(Id, normalizedSymbol, normalizedSource, isPrimary);
+        var alias = new SecurityAlias(
+            Id,
+            normalizedSymbol,
+            normalizedSource,
+            isPrimary,
+            normalizedExchange
+        );
         _aliases.Add(alias);
         UpdatedAt = DateTime.UtcNow;
         return alias;
     }
 
-    public bool HasAlias(string symbol, string? source = null)
+    public bool HasAlias(string symbol, string? source = null, string? exchange = null)
     {
         var normalizedSymbol = SecuritySymbolMatcher.Normalize(symbol);
         var normalizedSource = NormalizeSource(source);
+        var normalizedExchange = NormalizeExchange(exchange);
 
         return _aliases.Any(a =>
             a.Symbol == normalizedSymbol
@@ -109,12 +126,35 @@ public class Security : BaseEntity
                 normalizedSource is null
                 || string.Equals(a.Source, normalizedSource, StringComparison.Ordinal)
             )
+            && (
+                normalizedExchange is null
+                || string.Equals(a.Exchange, normalizedExchange, StringComparison.Ordinal)
+            )
         );
     }
 
-    public string GetPreferredSymbol(string? source = null)
+    public string GetPreferredSymbol(string? source = null, string? exchange = null)
     {
         var normalizedSource = NormalizeSource(source);
+        var normalizedExchange = NormalizeExchange(exchange);
+
+        if (normalizedExchange is not null)
+        {
+            var sourceExchangePrimary = _aliases.FirstOrDefault(a =>
+                a.IsPrimary
+                && string.Equals(a.Source, normalizedSource, StringComparison.Ordinal)
+                && string.Equals(a.Exchange, normalizedExchange, StringComparison.Ordinal)
+            );
+            if (sourceExchangePrimary is not null)
+                return sourceExchangePrimary.Symbol;
+
+            var sourceExchangeAlias = _aliases.FirstOrDefault(a =>
+                string.Equals(a.Source, normalizedSource, StringComparison.Ordinal)
+                && string.Equals(a.Exchange, normalizedExchange, StringComparison.Ordinal)
+            );
+            if (sourceExchangeAlias is not null)
+                return sourceExchangeAlias.Symbol;
+        }
 
         var providerPrimary = _aliases.FirstOrDefault(a =>
             a.IsPrimary && string.Equals(a.Source, normalizedSource, StringComparison.Ordinal)
@@ -146,11 +186,60 @@ public class Security : BaseEntity
         return true;
     }
 
-    private void ClearPrimary(string? source)
+    public SecurityIdentifier AddOrUpdateIdentifier(
+        SecurityIdentifierType identifierType,
+        string value,
+        bool isPrimary = false
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        var normalized = NormalizeIdentifier(value);
+
+        var existing = _identifiers.FirstOrDefault(i =>
+            i.IdentifierType == identifierType
+            && string.Equals(i.Value, normalized, StringComparison.Ordinal)
+        );
+
+        if (existing is not null)
+        {
+            if (isPrimary)
+            {
+                ClearIdentifierPrimary(identifierType);
+            }
+
+            existing.UpdatePrimary(isPrimary);
+            UpdatedAt = DateTime.UtcNow;
+            return existing;
+        }
+
+        if (isPrimary)
+        {
+            ClearIdentifierPrimary(identifierType);
+        }
+
+        var created = new SecurityIdentifier(Id, identifierType, normalized, isPrimary);
+        _identifiers.Add(created);
+        UpdatedAt = DateTime.UtcNow;
+        return created;
+    }
+
+    public bool HasIdentifier(SecurityIdentifierType identifierType, string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        var normalized = NormalizeIdentifier(value);
+
+        return _identifiers.Any(i =>
+            i.IdentifierType == identifierType
+            && string.Equals(i.Value, normalized, StringComparison.Ordinal)
+        );
+    }
+
+    private void ClearPrimary(string? source, string? exchange)
     {
         foreach (
             var alias in _aliases.Where(a =>
                 string.Equals(a.Source, source, StringComparison.Ordinal)
+                && string.Equals(a.Exchange, exchange, StringComparison.Ordinal)
             )
         )
         {
@@ -158,6 +247,19 @@ public class Security : BaseEntity
         }
     }
 
+    private void ClearIdentifierPrimary(SecurityIdentifierType identifierType)
+    {
+        foreach (var identifier in _identifiers.Where(i => i.IdentifierType == identifierType))
+        {
+            identifier.UpdatePrimary(false);
+        }
+    }
+
     private static string? NormalizeSource(string? source) =>
         string.IsNullOrWhiteSpace(source) ? null : source.Trim();
+
+    private static string? NormalizeExchange(string? exchange) =>
+        string.IsNullOrWhiteSpace(exchange) ? null : exchange.Trim().ToUpperInvariant();
+
+    private static string NormalizeIdentifier(string value) => value.Trim().ToUpperInvariant();
 }

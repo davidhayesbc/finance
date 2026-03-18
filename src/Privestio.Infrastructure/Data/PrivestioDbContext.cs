@@ -30,6 +30,7 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Security> Securities => Set<Security>();
     public DbSet<SecurityAlias> SecurityAliases => Set<SecurityAlias>();
+    public DbSet<SecurityIdentifier> SecurityIdentifiers => Set<SecurityIdentifier>();
     public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
     public DbSet<Valuation> Valuations => Set<Valuation>();
     public DbSet<ImportMapping> ImportMappings => Set<ImportMapping>();
@@ -76,6 +77,7 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Notification>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Security>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<SecurityAlias>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SecurityIdentifier>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PriceHistory>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Valuation>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ImportMapping>().HasQueryFilter(e => !e.IsDeleted);

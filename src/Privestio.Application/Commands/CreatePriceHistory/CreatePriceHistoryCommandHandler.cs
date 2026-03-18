@@ -36,6 +36,7 @@ public class CreatePriceHistoryCommandHandler
                 null,
                 entry.Currency,
                 preferSymbolAsDisplay: false,
+                source: entry.Source,
                 cancellationToken: cancellationToken
             );
             resolvedEntries.Add((entry, security));

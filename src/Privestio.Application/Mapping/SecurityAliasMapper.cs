@@ -12,6 +12,7 @@ public static class SecurityAliasMapper
             SecurityId = alias.SecurityId,
             Symbol = alias.Symbol,
             Source = alias.Source,
+            Exchange = alias.Exchange,
             IsPrimary = alias.IsPrimary,
         };
 }

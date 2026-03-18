@@ -1,5 +1,6 @@
 using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 using Privestio.Domain.Services;
 
 namespace Privestio.Application.Services;
@@ -23,7 +24,7 @@ public class SecurityResolutionService
     ];
 
     private readonly IUnitOfWork _unitOfWork;
-    private readonly Dictionary<string, Security> _resolvedSymbolCache = new(
+    private readonly Dictionary<string, Security> _resolvedSecurityCache = new(
         StringComparer.Ordinal
     );
 
@@ -37,32 +38,102 @@ public class SecurityResolutionService
         CancellationToken cancellationToken = default
     ) => await _unitOfWork.Securities.GetByAnySymbolAsync(symbol, cancellationToken);
 
+    public async Task<Security?> ResolveAsync(
+        string symbol,
+        string? source,
+        string? exchange,
+        IReadOnlyDictionary<SecurityIdentifierType, string>? identifiers,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (identifiers is not null)
+        {
+            foreach (var identifier in identifiers.Where(i => !string.IsNullOrWhiteSpace(i.Value)))
+            {
+                var byIdentifier = await _unitOfWork.Securities.GetByIdentifierAsync(
+                    identifier.Key,
+                    identifier.Value,
+                    cancellationToken
+                );
+                if (byIdentifier is not null)
+                    return byIdentifier;
+            }
+        }
+
+        var byExactAliasContext = await _unitOfWork.Securities.GetByAliasContextAsync(
+            symbol,
+            source,
+            exchange,
+            cancellationToken
+        );
+        if (byExactAliasContext is not null)
+            return byExactAliasContext;
+
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            var bySource = await _unitOfWork.Securities.GetByAliasContextAsync(
+                symbol,
+                source,
+                null,
+                cancellationToken
+            );
+            if (bySource is not null)
+                return bySource;
+        }
+
+        if (!string.IsNullOrWhiteSpace(exchange))
+        {
+            var byExchange = await _unitOfWork.Securities.GetByAliasContextAsync(
+                symbol,
+                null,
+                exchange,
+                cancellationToken
+            );
+            if (byExchange is not null)
+                return byExchange;
+        }
+
+        return await ResolveAsync(symbol, cancellationToken);
+    }
+
     public async Task<Security> ResolveOrCreateAsync(
         string symbol,
         string? securityName,
         string currency,
         bool? isCashEquivalent = null,
         bool preferSymbolAsDisplay = true,
+        string? source = null,
+        string? exchange = null,
+        IReadOnlyDictionary<SecurityIdentifierType, string>? identifiers = null,
         CancellationToken cancellationToken = default
     )
     {
         var normalizedSymbol = SecuritySymbolMatcher.Normalize(symbol);
         var normalizedCurrency = currency.Trim().ToUpperInvariant();
 
-        if (TryGetCachedSecurity(normalizedSymbol, out var cached))
+        if (TryGetCachedSecurity(normalizedSymbol, source, exchange, out var cached))
         {
             ApplyUpdates(
                 cached,
                 normalizedSymbol,
                 securityName,
                 preferSymbolAsDisplay,
-                isCashEquivalent
+                isCashEquivalent,
+                source,
+                exchange,
+                identifiers
             );
-            CacheSecurity(cached, normalizedSymbol);
+            CacheSecurity(cached, normalizedSymbol, source, exchange, identifiers);
             return cached;
         }
 
-        var existing = await ResolveAsync(normalizedSymbol, cancellationToken);
+        var existing = await ResolveAsync(
+            normalizedSymbol,
+            source,
+            exchange,
+            identifiers,
+            cancellationToken
+        );
         if (existing is not null)
         {
             ApplyUpdates(
@@ -70,11 +141,14 @@ public class SecurityResolutionService
                 normalizedSymbol,
                 securityName,
                 preferSymbolAsDisplay,
-                isCashEquivalent
+                isCashEquivalent,
+                source,
+                exchange,
+                identifiers
             );
 
             await _unitOfWork.Securities.UpdateAsync(existing, cancellationToken);
-            CacheSecurity(existing, normalizedSymbol);
+            CacheSecurity(existing, normalizedSymbol, source, exchange, identifiers);
             return existing;
         }
 
@@ -83,30 +157,75 @@ public class SecurityResolutionService
             normalizedSymbol,
             string.IsNullOrWhiteSpace(securityName) ? normalizedSymbol : securityName,
             normalizedCurrency,
+            exchange,
             isCashEquivalent: isCashEquivalent.GetValueOrDefault()
                 || IsCashEquivalentSymbol(normalizedSymbol)
         );
 
+        if (!string.IsNullOrWhiteSpace(source) || !string.IsNullOrWhiteSpace(exchange))
+        {
+            created.AddOrUpdateAlias(normalizedSymbol, source, true, exchange);
+        }
+
+        if (identifiers is not null)
+        {
+            foreach (var identifier in identifiers.Where(i => !string.IsNullOrWhiteSpace(i.Value)))
+            {
+                created.AddOrUpdateIdentifier(identifier.Key, identifier.Value, true);
+            }
+        }
+
         await _unitOfWork.Securities.AddAsync(created, cancellationToken);
-        CacheSecurity(created, normalizedSymbol);
+        CacheSecurity(created, normalizedSymbol, source, exchange, identifiers);
         return created;
     }
 
-    private bool TryGetCachedSecurity(string normalizedSymbol, out Security security)
+    private bool TryGetCachedSecurity(
+        string normalizedSymbol,
+        string? source,
+        string? exchange,
+        out Security security
+    )
     {
-        return _resolvedSymbolCache.TryGetValue(normalizedSymbol, out security!);
+        var key = BuildCacheKey(normalizedSymbol, source, exchange);
+        return _resolvedSecurityCache.TryGetValue(key, out security!);
     }
 
-    private void CacheSecurity(Security security, string normalizedSymbol)
+    private void CacheSecurity(
+        Security security,
+        string normalizedSymbol,
+        string? source,
+        string? exchange,
+        IReadOnlyDictionary<SecurityIdentifierType, string>? identifiers
+    )
     {
-        _resolvedSymbolCache[normalizedSymbol] = security;
-        _resolvedSymbolCache[security.CanonicalSymbol] = security;
-        _resolvedSymbolCache[security.DisplaySymbol] = security;
+        _resolvedSecurityCache[BuildCacheKey(normalizedSymbol, source, exchange)] = security;
+        _resolvedSecurityCache[BuildCacheKey(security.CanonicalSymbol, source, exchange)] = security;
+        _resolvedSecurityCache[BuildCacheKey(security.DisplaySymbol, source, exchange)] = security;
 
         foreach (var alias in security.Aliases)
         {
-            _resolvedSymbolCache[alias.Symbol] = security;
+            _resolvedSecurityCache[BuildCacheKey(alias.Symbol, alias.Source, alias.Exchange)] =
+                security;
         }
+
+        if (identifiers is not null)
+        {
+            foreach (var identifier in identifiers.Where(i => !string.IsNullOrWhiteSpace(i.Value)))
+            {
+                _resolvedSecurityCache[$"ID|{identifier.Key}|{identifier.Value.Trim().ToUpperInvariant()}"] =
+                    security;
+            }
+        }
+    }
+
+    private static string BuildCacheKey(string symbol, string? source, string? exchange)
+    {
+        var normalizedSource = string.IsNullOrWhiteSpace(source) ? string.Empty : source.Trim();
+        var normalizedExchange = string.IsNullOrWhiteSpace(exchange)
+            ? string.Empty
+            : exchange.Trim().ToUpperInvariant();
+        return $"{symbol}|{normalizedSource}|{normalizedExchange}";
     }
 
     private static void ApplyUpdates(
@@ -114,12 +233,15 @@ public class SecurityResolutionService
         string normalizedSymbol,
         string? securityName,
         bool preferSymbolAsDisplay,
-        bool? isCashEquivalent
+        bool? isCashEquivalent,
+        string? source,
+        string? exchange,
+        IReadOnlyDictionary<SecurityIdentifierType, string>? identifiers
     )
     {
-        if (!security.HasAlias(normalizedSymbol))
+        if (!security.HasAlias(normalizedSymbol, source, exchange))
         {
-            security.AddOrUpdateAlias(normalizedSymbol, null);
+            security.AddOrUpdateAlias(normalizedSymbol, source, false, exchange);
         }
 
         if (preferSymbolAsDisplay)
@@ -135,6 +257,17 @@ public class SecurityResolutionService
         if (isCashEquivalent.GetValueOrDefault() || IsCashEquivalentSymbol(normalizedSymbol))
         {
             security.MarkCashEquivalent();
+        }
+
+        if (identifiers is not null)
+        {
+            foreach (var identifier in identifiers.Where(i => !string.IsNullOrWhiteSpace(i.Value)))
+            {
+                if (!security.HasIdentifier(identifier.Key, identifier.Value))
+                {
+                    security.AddOrUpdateIdentifier(identifier.Key, identifier.Value, true);
+                }
+            }
         }
     }
 

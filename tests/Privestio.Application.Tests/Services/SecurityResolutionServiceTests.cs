@@ -3,6 +3,7 @@ using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Application.Tests;
 using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 
 namespace Privestio.Application.Tests.Services;
 
@@ -65,6 +66,56 @@ public class SecurityResolutionServiceTests
         var result = service.GetPreferredPriceLookupSymbol(security, "YahooFinance");
 
         result.Should().Be("CASH.TO");
+    }
+
+    [Fact]
+    public async Task ResolveOrCreateAsync_WithMatchingCusip_ResolvesExistingSecurity()
+    {
+        var existing = SecurityTestHelper.CreateSecurity("XEQT", "iShares Core Equity ETF Portfolio");
+        existing.AddOrUpdateIdentifier(SecurityIdentifierType.Cusip, "46436D108", true);
+
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = SecurityTestHelper.CreateSecurityResolutionService(unitOfWork, [existing]);
+
+        var resolved = await service.ResolveOrCreateAsync(
+            "XEQT.TO",
+            "iShares Core Equity ETF Portfolio",
+            "CAD",
+            source: "Wealthsimple",
+            exchange: "XTSE",
+            identifiers: new Dictionary<SecurityIdentifierType, string>
+            {
+                [SecurityIdentifierType.Cusip] = "46436D108",
+            }
+        );
+
+        resolved.Id.Should().Be(existing.Id);
+    }
+
+    [Fact]
+    public async Task ResolveOrCreateAsync_WithSourceAndExchange_PrefersExactAliasContext()
+    {
+        var xeqtTsx = SecurityTestHelper.CreateSecurity("XEQT", "XEQT TSX");
+        xeqtTsx.AddOrUpdateAlias("XEQT", "ProviderA", true, "XTSE");
+
+        var xeqtOther = SecurityTestHelper.CreateSecurity("XEQT", "XEQT Other", currency: "USD");
+        xeqtOther.AddOrUpdateAlias("XEQT", "ProviderA", true, "XNAS");
+
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = SecurityTestHelper.CreateSecurityResolutionService(
+            unitOfWork,
+            [xeqtTsx, xeqtOther]
+        );
+
+        var resolved = await service.ResolveOrCreateAsync(
+            "XEQT",
+            "XEQT",
+            "CAD",
+            source: "ProviderA",
+            exchange: "XTSE"
+        );
+
+        resolved.Id.Should().Be(xeqtTsx.Id);
     }
 
     private static SecurityResolutionService CreateService()

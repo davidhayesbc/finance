@@ -2,6 +2,7 @@ using Moq;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Domain.Entities;
+using Privestio.Domain.Enums;
 using Privestio.Domain.Services;
 using Privestio.Domain.ValueObjects;
 
@@ -94,6 +95,64 @@ internal static class SecurityTestHelper
                         s.CanonicalSymbol == normalized
                         || s.DisplaySymbol == normalized
                         || s.Aliases.Any(a => a.Symbol == normalized)
+                    );
+                }
+            );
+
+        repository
+            .Setup(
+                r =>
+                    r.GetByIdentifierAsync(
+                        It.IsAny<SecurityIdentifierType>(),
+                        It.IsAny<string>(),
+                        It.IsAny<CancellationToken>()
+                    )
+            )
+            .ReturnsAsync(
+                (SecurityIdentifierType identifierType, string value, CancellationToken _) =>
+                {
+                    var normalized = value.Trim().ToUpperInvariant();
+                    return securities.FirstOrDefault(s =>
+                        s.Identifiers.Any(i =>
+                            i.IdentifierType == identifierType
+                            && string.Equals(i.Value, normalized, StringComparison.Ordinal)
+                        )
+                    );
+                }
+            );
+
+        repository
+            .Setup(
+                r =>
+                    r.GetByAliasContextAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string?>(),
+                        It.IsAny<string?>(),
+                        It.IsAny<CancellationToken>()
+                    )
+            )
+            .ReturnsAsync(
+                (
+                    string symbol,
+                    string? source,
+                    string? exchange,
+                    CancellationToken _
+                ) =>
+                {
+                    var normalized = SecuritySymbolMatcher.Normalize(symbol);
+                    var normalizedSource = string.IsNullOrWhiteSpace(source)
+                        ? null
+                        : source.Trim();
+                    var normalizedExchange = string.IsNullOrWhiteSpace(exchange)
+                        ? null
+                        : exchange.Trim().ToUpperInvariant();
+
+                    return securities.FirstOrDefault(s =>
+                        s.Aliases.Any(a =>
+                            a.Symbol == normalized
+                            && (normalizedSource is null || a.Source == normalizedSource)
+                            && (normalizedExchange is null || a.Exchange == normalizedExchange)
+                        )
                     );
                 }
             );

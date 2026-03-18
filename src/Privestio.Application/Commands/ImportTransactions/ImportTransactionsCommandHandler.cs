@@ -355,6 +355,7 @@ public class ImportTransactionsCommandHandler
                 ) ?? symbol,
                 currency,
                 isCashEquivalent: IsCashEquivalentSymbol(symbol, config),
+                source: "ImportTransactions",
                 cancellationToken: cancellationToken
             );
 

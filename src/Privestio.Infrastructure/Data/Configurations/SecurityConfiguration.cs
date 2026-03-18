@@ -22,6 +22,12 @@ public class SecurityConfiguration : IEntityTypeConfiguration<Security>
             .HasForeignKey(a => a.SecurityId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder
+            .HasMany(s => s.Identifiers)
+            .WithOne(i => i.Security)
+            .HasForeignKey(i => i.SecurityId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(s => s.CanonicalSymbol).IsUnique();
         builder.HasIndex(s => s.DisplaySymbol);
     }
