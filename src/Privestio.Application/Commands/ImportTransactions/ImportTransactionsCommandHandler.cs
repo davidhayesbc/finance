@@ -256,6 +256,7 @@ public class ImportTransactionsCommandHandler
                     account.Currency,
                     importedRows,
                     config,
+                    mapping?.Institution,
                     cancellationToken
                 );
             }
@@ -314,6 +315,7 @@ public class ImportTransactionsCommandHandler
         string accountCurrency,
         IEnumerable<ImportedTransactionRow> rows,
         ImportClassificationConfig config,
+        string? institution,
         CancellationToken cancellationToken
     )
     {
@@ -346,8 +348,8 @@ public class ImportTransactionsCommandHandler
             if (unitCost <= 0)
                 continue;
 
-            var currency = accountCurrency;
             var identifiers = BuildSecurityIdentifiers(row.Cusip, row.Isin);
+            var currency = row.Currency ?? accountCurrency;
             var security = await _securityResolutionService.ResolveOrCreateAsync(
                 symbol,
                 Truncate(
@@ -356,7 +358,7 @@ public class ImportTransactionsCommandHandler
                 ) ?? symbol,
                 currency,
                 isCashEquivalent: IsCashEquivalentSymbol(symbol, config),
-                source: "ImportTransactions",
+                source: institution ?? "ImportTransactions",
                 exchange: row.Exchange,
                 identifiers: identifiers,
                 cancellationToken: cancellationToken

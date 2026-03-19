@@ -23,7 +23,8 @@ public record ImportedTransactionRow(
     decimal? UnitPrice = null,
     string? Exchange = null,
     string? Cusip = null,
-    string? Isin = null
+    string? Isin = null,
+    string? Currency = null
 );
 
 /// <summary>

@@ -139,7 +139,14 @@ public class SecurityRepository : ISecurityRepository
         CancellationToken cancellationToken = default
     )
     {
-        _context.Securities.Update(security);
+        var tracked = _context
+            .ChangeTracker.Entries<Security>()
+            .FirstOrDefault(e => e.Entity.Id == security.Id);
+        if (tracked is null)
+        {
+            _context.Securities.Update(security);
+        }
+
         return Task.FromResult(security);
     }
 }

@@ -56,7 +56,14 @@ public class HoldingRepository : IHoldingRepository
 
     public Task<Holding> UpdateAsync(Holding holding, CancellationToken cancellationToken = default)
     {
-        _context.Holdings.Update(holding);
+        var tracked = _context
+            .ChangeTracker.Entries<Holding>()
+            .FirstOrDefault(e => e.Entity.Id == holding.Id);
+        if (tracked is null)
+        {
+            _context.Holdings.Update(holding);
+        }
+
         return Task.FromResult(holding);
     }
 

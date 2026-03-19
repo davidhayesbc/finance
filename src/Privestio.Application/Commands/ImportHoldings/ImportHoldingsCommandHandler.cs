@@ -77,7 +77,7 @@ public class ImportHoldingsCommandHandler
                 row.Symbol ?? SanitizeSymbol(row.InvestmentName),
                 row.InvestmentName,
                 parseResult.Currency,
-                source: importer.FileFormat,
+                source: account.Institution ?? importer.FileFormat,
                 exchange: row.Exchange,
                 identifiers: identifiers,
                 cancellationToken: cancellationToken

@@ -186,7 +186,6 @@ public class SecurityResolutionService
                 exchange,
                 identifiers
             );
-
             await _unitOfWork.Securities.UpdateAsync(existing, cancellationToken);
             CacheSecurity(existing, normalizedSymbol, source, exchange, identifiers);
             return existing;

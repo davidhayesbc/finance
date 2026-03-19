@@ -158,6 +158,7 @@ public class CsvTransactionImporter : ITransactionImporter
         var exchange = GetMappedField(csv, columnMap, "Exchange");
         var cusip = GetMappedField(csv, columnMap, "Cusip");
         var isin = GetMappedField(csv, columnMap, "Isin");
+        var currency = GetMappedField(csv, columnMap, "Currency")?.ToUpperInvariant();
 
         return new ImportedTransactionRow(
             Date: date,
@@ -177,7 +178,8 @@ public class CsvTransactionImporter : ITransactionImporter
             UnitPrice: unitPrice,
             Exchange: exchange,
             Cusip: cusip,
-            Isin: isin
+            Isin: isin,
+            Currency: currency
         );
     }
 
