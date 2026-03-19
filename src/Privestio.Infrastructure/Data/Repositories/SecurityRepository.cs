@@ -139,14 +139,45 @@ public class SecurityRepository : ISecurityRepository
         CancellationToken cancellationToken = default
     )
     {
-        var tracked = _context
-            .ChangeTracker.Entries<Security>()
-            .FirstOrDefault(e => e.Entity.Id == security.Id);
-        if (tracked is null)
+        // Disable AutoDetectChanges so that reading entry states below does not
+        // trigger DetectChanges prematurely.  When DetectChanges runs before we
+        // have a chance to register new child entities, EF Core can incorrectly
+        // track newly created SecurityAlias / SecurityIdentifier instances
+        // (which have client-generated non-default GUIDs) as EntityState.Modified
+        // instead of EntityState.Added, causing UPDATE … WHERE Version = 0 statements
+        // that find no row and throw DbUpdateConcurrencyException.
+        _context.ChangeTracker.AutoDetectChangesEnabled = false;
+        try
         {
-            _context.Securities.Update(security);
-        }
+            var entry = _context.Entry(security);
 
-        return Task.FromResult(security);
+            if (entry.State == EntityState.Detached)
+            {
+                // Entity was not loaded via a tracking query; let EF graph-update it.
+                _context.Securities.Update(security);
+                return Task.FromResult(security);
+            }
+
+            // Entity is already tracked (loaded via GetByIdAsync).
+            // Explicitly register any child entities that are not yet tracked so that
+            // EF Core starts them as Added rather than accidentally as Modified.
+            foreach (var alias in security.Aliases)
+            {
+                if (_context.Entry(alias).State == EntityState.Detached)
+                    _context.Entry(alias).State = EntityState.Added;
+            }
+
+            foreach (var identifier in security.Identifiers)
+            {
+                if (_context.Entry(identifier).State == EntityState.Detached)
+                    _context.Entry(identifier).State = EntityState.Added;
+            }
+
+            return Task.FromResult(security);
+        }
+        finally
+        {
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+        }
     }
 }

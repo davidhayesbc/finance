@@ -34,9 +34,7 @@ public class DeleteSecurityAliasCommandHandler : IRequestHandler<DeleteSecurityA
 
         var deleted = security.RemoveAlias(request.AliasId);
         if (!deleted)
-            throw new InvalidOperationException(
-                "Alias could not be removed. Display aliases must be promoted first."
-            );
+            return false;
 
         await _unitOfWork.Securities.UpdateAsync(security, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

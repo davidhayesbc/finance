@@ -50,14 +50,24 @@ public class Security : BaseEntity
     public void Rename(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        Name = name.Trim();
+        var trimmed = name.Trim();
+
+        if (string.Equals(Name, trimmed, StringComparison.Ordinal))
+            return;
+
+        Name = trimmed;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateDisplaySymbol(string displaySymbol)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(displaySymbol);
-        DisplaySymbol = SecuritySymbolMatcher.Normalize(displaySymbol);
+        var normalized = SecuritySymbolMatcher.Normalize(displaySymbol);
+
+        if (string.Equals(DisplaySymbol, normalized, StringComparison.Ordinal))
+            return;
+
+        DisplaySymbol = normalized;
         AddOrUpdateAlias(DisplaySymbol, null, true);
         UpdatedAt = DateTime.UtcNow;
     }
@@ -65,18 +75,33 @@ public class Security : BaseEntity
     public void UpdateCurrency(string currency)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);
-        Currency = currency.Trim().ToUpperInvariant();
+        var normalized = currency.Trim().ToUpperInvariant();
+
+        if (string.Equals(Currency, normalized, StringComparison.Ordinal))
+            return;
+
+        Currency = normalized;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateExchange(string? exchange)
     {
-        Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange.Trim().ToUpperInvariant();
+        var normalized = string.IsNullOrWhiteSpace(exchange)
+            ? null
+            : exchange.Trim().ToUpperInvariant();
+
+        if (string.Equals(Exchange, normalized, StringComparison.Ordinal))
+            return;
+
+        Exchange = normalized;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void SetCashEquivalent(bool isCashEquivalent)
     {
+        if (IsCashEquivalent == isCashEquivalent)
+            return;
+
         IsCashEquivalent = isCashEquivalent;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -198,7 +223,9 @@ public class Security : BaseEntity
 
         // Keep canonical display mapping safe so every security remains resolvable.
         if (alias.Source is null && alias.Symbol == DisplaySymbol)
-            return false;
+            throw new InvalidOperationException(
+                "The display alias cannot be deleted directly. Change the security's display symbol first."
+            );
 
         _aliases.Remove(alias);
         UpdatedAt = DateTime.UtcNow;

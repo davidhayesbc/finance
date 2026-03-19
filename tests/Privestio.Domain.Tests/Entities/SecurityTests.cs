@@ -66,4 +66,111 @@ public class SecurityTests
 
         normalized.Should().Be("ZUAG.F");
     }
+
+    [Fact]
+    public void Rename_WhenNameUnchanged_DoesNotUpdateTimestamp()
+    {
+        var security = new Security("TEST", "TEST", "Original Name", "CAD");
+        var originalUpdatedAt = security.UpdatedAt;
+
+        security.Rename("Original Name");
+
+        security.UpdatedAt.Should().Be(originalUpdatedAt);
+    }
+
+    [Fact]
+    public void Rename_WhenNameChanged_UpdatesNameAndTimestamp()
+    {
+        var security = new Security("TEST", "TEST", "Original Name", "CAD");
+        var originalUpdatedAt = security.UpdatedAt;
+
+        security.Rename("New Name");
+
+        security.Name.Should().Be("New Name");
+        security.UpdatedAt.Should().BeOnOrAfter(originalUpdatedAt);
+    }
+
+    [Fact]
+    public void UpdateDisplaySymbol_WhenSymbolUnchanged_DoesNotModifyAliases()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+        var originalAliasCount = security.Aliases.Count;
+        var originalUpdatedAt = security.UpdatedAt;
+
+        security.UpdateDisplaySymbol("TEST");
+
+        security.Aliases.Should().HaveCount(originalAliasCount);
+        security.UpdatedAt.Should().Be(originalUpdatedAt);
+    }
+
+    [Fact]
+    public void UpdateDisplaySymbol_WhenSymbolChanged_UpdatesSymbolAndCreatesAlias()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+
+        security.UpdateDisplaySymbol("NEWTEST");
+
+        security.DisplaySymbol.Should().Be("NEWTEST");
+        security.Aliases.Should().Contain(a => a.Symbol == "NEWTEST" && a.IsPrimary);
+    }
+
+    [Fact]
+    public void UpdateCurrency_WhenSameValue_DoesNotUpdateTimestamp()
+    {
+        var security = new Security("TEST", "TEST", "Test", "CAD");
+        var originalUpdatedAt = security.UpdatedAt;
+
+        security.UpdateCurrency("CAD");
+
+        security.UpdatedAt.Should().Be(originalUpdatedAt);
+    }
+
+    [Fact]
+    public void UpdateExchange_WhenSameValue_DoesNotUpdateTimestamp()
+    {
+        var security = new Security("TEST", "TEST", "Test", "CAD", "TSX");
+        var originalUpdatedAt = security.UpdatedAt;
+
+        security.UpdateExchange("TSX");
+
+        security.UpdatedAt.Should().Be(originalUpdatedAt);
+    }
+
+    [Fact]
+    public void SetCashEquivalent_WhenSameValue_DoesNotUpdateTimestamp()
+    {
+        var security = new Security("TEST", "TEST", "Test", "CAD");
+        var originalUpdatedAt = security.UpdatedAt;
+
+        security.SetCashEquivalent(false);
+
+        security.UpdatedAt.Should().Be(originalUpdatedAt);
+    }
+
+    [Fact]
+    public void SetCashEquivalent_WhenValueChanged_Updates()
+    {
+        var security = new Security("TEST", "TEST", "Test", "CAD");
+
+        security.SetCashEquivalent(true);
+
+        security.IsCashEquivalent.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ClearPrimary_WhenAliasAlreadyNotPrimary_DoesNotUpdateTimestamp()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+        // Add a non-primary alias
+        security.AddOrUpdateAlias("OTHER", "SomeSource", false);
+        var nonPrimaryAlias = security.Aliases.First(a => a.Symbol == "OTHER");
+        var originalUpdatedAt = nonPrimaryAlias.UpdatedAt;
+
+        // ClearPrimary is internal, but we can trigger it through AddOrUpdateAlias with isPrimary=true
+        // for a different alias in the same source scope — this should NOT modify the non-primary alias
+        security.AddOrUpdateAlias("ANOTHER", "SomeSource", true);
+
+        // The non-primary "OTHER" alias should not have its UpdatedAt changed
+        nonPrimaryAlias.UpdatedAt.Should().Be(originalUpdatedAt);
+    }
 }

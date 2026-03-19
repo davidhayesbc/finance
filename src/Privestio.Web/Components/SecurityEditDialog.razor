@@ -1,0 +1,331 @@
+@implements IDialogContentComponent<SecurityCatalogItemResponse>
+@inject ISecurityWebService SecurityService
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 1.25rem;">
+
+    @if (!string.IsNullOrWhiteSpace(_statusMessage))
+    {
+        <FluentMessageBar Intent="@(_statusIsError? MessageIntent.Error: MessageIntent.Success)">
+            @_statusMessage
+        </FluentMessageBar>
+    }
+
+    <fieldset style="border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 1rem;">
+        <legend style="font-weight: 600; padding: 0 0.5rem;">Security details</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <FluentTextField @bind-Value="_displaySymbol" Label="Display symbol" />
+            <FluentTextField @bind-Value="_name" Label="Security name" />
+            <FluentTextField @bind-Value="_exchange" Label="Exchange" />
+            <FluentTextField @bind-Value="_currency" Label="Currency" />
+        </div>
+        <div style="margin-top: 0.75rem;">
+            <FluentCheckbox @bind-Value="_isCashEquivalent" Label="Cash equivalent" />
+        </div>
+        <div style="margin-top: 1rem;">
+            <FluentButton Appearance="Appearance.Accent" Disabled="@_isSaving"                          OnClick="SaveSecurityAsync">
+                Save security
+            </FluentButton>
+        </div>
+    </fieldset>
+
+    <fieldset style="border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 1rem;">
+        <legend style="font-weight: 600; padding: 0 0.5rem;">Aliases</legend>
+
+        @if (_security.Aliases.Any())
+        {
+            <FluentDataGrid Items="@(_security.Aliases.OrderBy(a => a.Source).ThenBy(a => a.Symbol).AsQueryable())"
+                            TGridItem="SecurityAliasResponse"                            Class="data-grid--elevated"                            Style="margin-bottom: 1rem;"
+                            aria-label="@($"Aliases for {_security.DisplaySymbol}")">
+                <TemplateColumn Title="Institution/Site">
+                    @{
+                        var sourceRow = GetAliasEditRow(context);
+                    }
+                    <FluentTextField @bind-Value="sourceRow.Source" style="width: 100%;" />
+                </TemplateColumn>
+                <TemplateColumn Title="Symbol">
+                    @{
+                        var symbolRow = GetAliasEditRow(context);
+                    }
+                    <FluentTextField @bind-Value="symbolRow.Symbol" style="width: 100%;" />
+                </TemplateColumn>
+                <TemplateColumn Title="Exchange">
+                    @{
+                        var exchRow = GetAliasEditRow(context);
+                    }
+                    <FluentTextField @bind-Value="exchRow.Exchange" style="width: 100%;" />
+                </TemplateColumn>
+                <TemplateColumn Title="Primary">
+                    @{
+                        var priRow = GetAliasEditRow(context);
+                    }
+                    <FluentCheckbox @bind-Value="priRow.IsPrimary" />
+                </TemplateColumn>
+                <TemplateColumn Title="Actions">
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                        <FluentButton Appearance="Appearance.Stealth" Disabled="@_isSaving"
+                                      OnClick="@(() => SaveAliasAsync(context.Id))">
+                            Save
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" Disabled="@_isSaving"
+                                      OnClick="@(() => DeleteAliasAsync(context.Id))">
+                            Remove
+                        </FluentButton>
+                    </FluentStack>
+                </TemplateColumn>
+            </FluentDataGrid>
+        }
+
+        <h5 style="margin: 0 0 0.5rem 0; font-weight: 600;">Add alias</h5>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <FluentTextField @bind-Value="_draftSource" Label="Institution/Site" Placeholder="e.g. YahooFinance" />
+            <FluentTextField @bind-Value="_draftSymbol" Label="Symbol" Placeholder="e.g. CASH.TO" />
+            <FluentTextField @bind-Value="_draftExchange" Label="Exchange" Placeholder="e.g. XTSE" />
+            <FluentCheckbox @bind-Value="_draftIsPrimary" Label="Primary" Style="align-self: end;" />
+        </div>
+        <div style="margin-top: 0.75rem;">
+            <FluentButton Appearance="Appearance.Outline" Disabled="@_isSaving"                          OnClick="AddAliasAsync">
+                Add alias
+            </FluentButton>
+        </div>
+    </fieldset>
+</FluentStack>
+
+@code {
+    [Parameter]
+    public SecurityCatalogItemResponse Content { get; set; } = default!;
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    private SecurityCatalogItemResponse _security = default!;
+    private readonly Dictionary<Guid, AliasEditRow> _aliasEditRows = [];
+
+    private string _displaySymbol = string.Empty;
+    private string _name = string.Empty;
+    private string _currency = "CAD";
+    private string? _exchange;
+    private bool _isCashEquivalent;
+
+    private string _draftSymbol = string.Empty;
+    private string? _draftSource;
+    private string? _draftExchange;
+    private bool _draftIsPrimary;
+
+    private bool _isSaving;
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    protected override void OnParametersSet()
+    {
+        _security = Content;
+        _displaySymbol = _security.DisplaySymbol;
+        _name = _security.Name;
+        _currency = _security.Currency;
+        _exchange = _security.Exchange;
+        _isCashEquivalent = _security.IsCashEquivalent;
+        SyncAliasEditRows();
+    }
+
+    private AliasEditRow GetAliasEditRow(SecurityAliasResponse alias)
+    {
+        if (_aliasEditRows.TryGetValue(alias.Id, out var row))
+            return row;
+
+        row = new AliasEditRow
+        {
+            Symbol = alias.Symbol,
+            Source = alias.Source,
+            Exchange = alias.Exchange,
+            IsPrimary = alias.IsPrimary,
+        };
+        _aliasEditRows[alias.Id] = row;
+        return row;
+    }
+
+    private async Task SaveSecurityAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_displaySymbol) ||
+string.IsNullOrWhiteSpace(_currency))
+        {
+            SetStatus("Name, display symbol, and currency are required.", true);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var updated = await SecurityService.UpdateSecurityAsync(
+                _security.Id,
+                new UpdateSecurityDetailsRequest
+                {
+                    Name = _name.Trim(),
+                    DisplaySymbol = _displaySymbol.Trim(),
+                    Currency = _currency.Trim(),
+                    Exchange = EmptyToNull(_exchange),
+                    IsCashEquivalent = _isCashEquivalent,
+                }
+            );
+
+            if (updated is null)
+            {
+                SetStatus("Security update failed.", true);
+                return;
+            }
+
+            _security = updated;
+            SetStatus($"Updated security {updated.DisplaySymbol}.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task AddAliasAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_draftSymbol))
+        {
+            SetStatus("Alias symbol is required.", true);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var created = await SecurityService.AddSecurityAliasAsync(
+                _security.Id,
+                new AddSecurityAliasRequest
+                {
+                    Symbol = _draftSymbol.Trim(),
+                    Source = EmptyToNull(_draftSource),
+                    Exchange = EmptyToNull(_draftExchange),
+                    IsPrimary = _draftIsPrimary,
+                }
+            );
+
+            if (created is null)
+            {
+                SetStatus("Alias could not be saved.", true);
+                return;
+            }
+
+            _draftSymbol = string.Empty;
+            _draftSource = null;
+            _draftExchange = null;
+            _draftIsPrimary = false;
+
+            await RefreshAsync();
+            SetStatus("Alias saved.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SaveAliasAsync(Guid aliasId)
+    {
+        var row = _aliasEditRows.GetValueOrDefault(aliasId);
+        if (row is null || string.IsNullOrWhiteSpace(row.Symbol))
+        {
+            SetStatus("Alias symbol is required.", true);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var updated = await SecurityService.UpdateSecurityAliasAsync(
+                _security.Id,
+                aliasId,
+                new AddSecurityAliasRequest
+                {
+                    Symbol = row.Symbol.Trim(),
+                    Source = EmptyToNull(row.Source),
+                    Exchange = EmptyToNull(row.Exchange),
+                    IsPrimary = row.IsPrimary,
+                }
+            );
+
+            if (updated is null)
+            {
+                SetStatus("Alias could not be updated.", true);
+                return;
+            }
+
+            await RefreshAsync();
+            SetStatus("Alias updated.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteAliasAsync(Guid aliasId)
+    {
+        _isSaving = true;
+        try
+        {
+            var deleted = await SecurityService.DeleteSecurityAliasAsync(_security.Id, aliasId);
+            if (!deleted)
+            {
+                SetStatus("Alias could not be removed.", true);
+                return;
+            }
+
+            await RefreshAsync();
+            SetStatus("Alias removed.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        var all = await SecurityService.GetSecuritiesAsync();
+        var updated = all.FirstOrDefault(s => s.Id == _security.Id);
+        if (updated is not null)
+        {
+            _security = updated;
+            SyncAliasEditRows();
+        }
+    }
+
+    private void SyncAliasEditRows()
+    {
+        var currentIds = _security.Aliases.Select(a => a.Id).ToHashSet();
+        var stale = _aliasEditRows.Keys.Where(k => !currentIds.Contains(k)).ToList();
+        foreach (var id in stale) _aliasEditRows.Remove(id);
+
+        foreach (var alias in _security.Aliases)
+        {
+            _aliasEditRows[alias.Id] = new AliasEditRow
+            {
+                Symbol = alias.Symbol,
+                Source = alias.Source,
+                Exchange = alias.Exchange,
+                IsPrimary = alias.IsPrimary,
+            };
+        }
+    }
+
+    private void SetStatus(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusIsError = isError;
+    }
+
+    private static string? EmptyToNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed class AliasEditRow
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public string? Source { get; set; }
+        public string? Exchange { get; set; }
+        public bool IsPrimary { get; set; }
+    }
+}

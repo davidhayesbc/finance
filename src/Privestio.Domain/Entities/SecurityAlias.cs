@@ -35,6 +35,9 @@ public class SecurityAlias : BaseEntity
 
     internal void UpdatePrimary(bool isPrimary)
     {
+        if (IsPrimary == isPrimary)
+            return;
+
         IsPrimary = isPrimary;
         UpdatedAt = DateTime.UtcNow;
     }

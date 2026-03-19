@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Privestio.Application.Commands.AddHoldingSecurityIdentifier;
 using Privestio.Application.Commands.AddSecurityAlias;
 using Privestio.Application.Commands.CorrectHoldingSecurity;
@@ -109,6 +110,15 @@ public static class SecurityEndpoints
 
             return Results.Created($"/api/v1/securities/{securityId}/aliases/{result.Id}", result);
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.Conflict(
+                new
+                {
+                    error = "The security was modified by another operation. Please refresh and try again.",
+                }
+            );
+        }
         catch (InvalidOperationException ex)
         {
             return Results.BadRequest(new { error = ex.Message });
@@ -135,6 +145,15 @@ public static class SecurityEndpoints
             );
 
             return deleted ? Results.NoContent() : Results.NotFound();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.Conflict(
+                new
+                {
+                    error = "The security was modified by another operation. Please refresh and try again.",
+                }
+            );
         }
         catch (InvalidOperationException ex)
         {
@@ -171,6 +190,15 @@ public static class SecurityEndpoints
             );
 
             return Results.Ok(result);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.Conflict(
+                new
+                {
+                    error = "The security was modified by another operation. Please refresh and try again.",
+                }
+            );
         }
         catch (InvalidOperationException ex)
         {
@@ -223,6 +251,15 @@ public static class SecurityEndpoints
             );
 
             return Results.Ok(result);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.Conflict(
+                new
+                {
+                    error = "The security was modified by another operation. Please close and reopen the editor to refresh.",
+                }
+            );
         }
         catch (InvalidOperationException ex)
         {
