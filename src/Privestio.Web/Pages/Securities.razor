@@ -30,10 +30,8 @@
                 <table class="txn-table" aria-label="Securities inline editor">
                     <thead>
                         <tr>
-                            <th scope="col" class="txn-col--cat">Security ID (GUID)</th>
-                            <th scope="col" class="txn-col--cat">Canonical</th>
                             <th scope="col" class="txn-col--cat">Display symbol</th>
-                            <th scope="col" class="txn-col--desc">Name</th>
+                            <th scope="col" class="txn-col--desc">Security name</th>
                             <th scope="col" class="txn-col--cat">Exchange</th>
                             <th scope="col" class="txn-col--cat">Currency</th>
                             <th scope="col" class="txn-col--cat">Cash</th>
@@ -50,8 +48,6 @@
                             var isSaving = _savingSecurityIds.Contains(security.Id);
 
                             <tr class="txn-row" @key="security.Id">
-                                <td class="txn-cell--cat"><span class="txn-no-value">@security.Id</span></td>
-                                <td class="txn-cell--cat"><span class="txn-category">@security.CanonicalSymbol</span></td>
                                 <td class="txn-cell--cat">
                                     <input class="filter-input"
                                            value="@row.DisplaySymbol"
@@ -108,14 +104,12 @@
                             </tr>
 
                             <tr @key="@($"{security.Id}-aliases")">
-                                <td colspan="10" class="txn-cell--desc" style="padding-top: 0.4rem; padding-bottom: 1rem;">
-                                    <strong style="display:block; margin-bottom:0.35rem;">Aliases (1:N)</strong>
-                                    <div class="txn-table-wrapper" role="region" aria-label="Aliases for @security.DisplaySymbol">
-                                        <table class="txn-table" aria-label="Aliases for @security.DisplaySymbol">
+                                <td colspan="8" class="txn-cell--desc" style="padding-top: 0.4rem; padding-bottom: 1rem;">
+                                    <strong style="display:block; margin-bottom:0.3rem; font-size:0.8rem; font-weight:600; color:var(--neutral-foreground-rest);">Aliases (1:N)</strong>
+                                    <div class="txn-table-wrapper" role="region" aria-label="Aliases for @security.DisplaySymbol (@security.Name)" style="font-size:0.82rem; opacity:0.92;">
+                                        <table class="txn-table" aria-label="Aliases for @security.DisplaySymbol (@security.Name)" style="font-size:0.82rem;">
                                             <thead>
                                                 <tr>
-                                                    <th scope="col" class="txn-col--cat">Alias ID (GUID)</th>
-                                                    <th scope="col" class="txn-col--cat">Security ID (GUID)</th>
                                                     <th scope="col" class="txn-col--cat">Institution/Site</th>
                                                     <th scope="col" class="txn-col--cat">Alias symbol</th>
                                                     <th scope="col" class="txn-col--cat">Exchange</th>
@@ -129,20 +123,21 @@
                                                     var aliasRow = GetAliasEditRow(alias);
 
                                                     <tr class="txn-row" @key="alias.Id">
-                                                        <td class="txn-cell--cat"><span class="txn-no-value">@alias.Id</span></td>
-                                                        <td class="txn-cell--cat"><span class="txn-no-value">@alias.SecurityId</span></td>
                                                         <td class="txn-cell--cat">
                                                             <input class="filter-input"
+                                                                   style="font-size:0.82rem; padding:0.3rem 0.45rem;"
                                                                    value="@aliasRow.Source"
                                                                    @oninput="e => aliasRow.Source = e.Value?.ToString()" />
                                                         </td>
                                                         <td class="txn-cell--cat">
                                                             <input class="filter-input"
+                                                                   style="font-size:0.82rem; padding:0.3rem 0.45rem;"
                                                                    value="@aliasRow.Symbol"
                                                                    @oninput="e => aliasRow.Symbol = e.Value?.ToString() ?? string.Empty" />
                                                         </td>
                                                         <td class="txn-cell--cat">
                                                             <input class="filter-input"
+                                                                   style="font-size:0.82rem; padding:0.3rem 0.45rem;"
                                                                    value="@aliasRow.Exchange"
                                                                    @oninput="e => aliasRow.Exchange = e.Value?.ToString()" />
                                                         </td>
@@ -154,12 +149,14 @@
                                                         <td class="txn-cell--cat">
                                                             <button type="button"
                                                                     class="app-button app-button--primary"
+                                                                    style="padding:0.2rem 0.5rem; font-size:0.76rem;"
                                                                     disabled="@isSaving"
                                                                     @onclick="() => SaveAliasAsync(security.Id, alias.Id)">
                                                                 Save
                                                             </button>
                                                             <button type="button"
                                                                     class="app-button app-button--secondary"
+                                                                    style="padding:0.2rem 0.5rem; font-size:0.76rem;"
                                                                     disabled="@isSaving"
                                                                     @onclick="() => DeleteAliasAsync(security.Id, alias.Id)">
                                                                 Remove
@@ -169,22 +166,23 @@
                                                 }
 
                                                 <tr class="txn-row" @key="@($"{security.Id}-add-alias")">
-                                                    <td class="txn-cell--cat"><span class="txn-no-value">new</span></td>
-                                                    <td class="txn-cell--cat"><span class="txn-no-value">@security.Id</span></td>
                                                     <td class="txn-cell--cat">
                                                         <input class="filter-input"
+                                                               style="font-size:0.82rem; padding:0.3rem 0.45rem;"
                                                                placeholder="e.g. YahooFinance"
                                                                value="@aliasDraft.Source"
                                                                @oninput="e => aliasDraft.Source = e.Value?.ToString()" />
                                                     </td>
                                                     <td class="txn-cell--cat">
                                                         <input class="filter-input"
+                                                               style="font-size:0.82rem; padding:0.3rem 0.45rem;"
                                                                placeholder="e.g. CASH.TO"
                                                                value="@aliasDraft.Symbol"
                                                                @oninput="e => aliasDraft.Symbol = e.Value?.ToString() ?? string.Empty" />
                                                     </td>
                                                     <td class="txn-cell--cat">
                                                         <input class="filter-input"
+                                                               style="font-size:0.82rem; padding:0.3rem 0.45rem;"
                                                                placeholder="e.g. XTSE"
                                                                value="@aliasDraft.Exchange"
                                                                @oninput="e => aliasDraft.Exchange = e.Value?.ToString()" />
@@ -197,6 +195,7 @@
                                                     <td class="txn-cell--cat">
                                                         <button type="button"
                                                                 class="app-button app-button--secondary"
+                                                                style="padding:0.2rem 0.5rem; font-size:0.76rem;"
                                                                 disabled="@isSaving"
                                                                 @onclick="() => AddAliasAsync(security.Id)">
                                                             Add alias
