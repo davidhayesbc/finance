@@ -23,6 +23,15 @@ public sealed class HistoricalValueTimelineService
 
     public sealed record HistoricalValuePoint(DateOnly Date, decimal Value, string Currency);
 
+    public sealed record AccountHistoricalValuePoint(
+        Guid AccountId,
+        string AccountName,
+        AccountType AccountType,
+        DateOnly Date,
+        decimal Value,
+        string Currency
+    );
+
     public async Task<IReadOnlyList<HistoricalValuePoint>> GetAccountHistoryAsync(
         Account account,
         DateOnly fromDate,
@@ -144,6 +153,83 @@ public sealed class HistoricalValueTimelineService
         }
 
         return points.AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<AccountHistoricalValuePoint>> GetNetWorthHistoryByAccountAsync(
+        Guid userId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken,
+        string baseCurrency = DefaultBaseCurrency
+    )
+    {
+        if (fromDate > toDate)
+            throw new ArgumentOutOfRangeException(nameof(fromDate));
+
+        var accounts = (await _unitOfWork.Accounts.GetByOwnerIdAsync(userId, cancellationToken))
+            .Where(a => a.IsActive)
+            .ToList();
+
+        if (accounts.Count == 0)
+            return [];
+
+        var accountPoints = new List<AccountHistoricalValuePoint>();
+
+        foreach (var account in accounts)
+        {
+            var history = await GetAccountHistoryAsync(
+                account,
+                fromDate,
+                toDate,
+                cancellationToken
+            );
+
+            var fxMaps = await LoadFxRateMapsAsync(
+                history
+                    .Select(p => p.Currency)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Where(currency =>
+                        !string.Equals(currency, baseCurrency, StringComparison.OrdinalIgnoreCase)
+                    )
+                    .Select(currency => (FromCurrency: currency, ToCurrency: baseCurrency)),
+                fromDate,
+                toDate,
+                cancellationToken
+            );
+
+            foreach (var point in history)
+            {
+                var converted = ConvertValue(
+                    point.Value,
+                    point.Currency,
+                    baseCurrency,
+                    point.Date,
+                    fxMaps
+                );
+
+                var displayValue =
+                    converted
+                    ?? (
+                        AccountType.Credit == account.AccountType
+                        || AccountType.Loan == account.AccountType
+                            ? -Math.Abs(point.Value)
+                            : point.Value
+                    );
+
+                accountPoints.Add(
+                    new AccountHistoricalValuePoint(
+                        account.Id,
+                        account.Name,
+                        account.AccountType,
+                        point.Date,
+                        Math.Round(displayValue, 2, MidpointRounding.ToEven),
+                        baseCurrency
+                    )
+                );
+            }
+        }
+
+        return accountPoints.AsReadOnly();
     }
 
     private async Task<IReadOnlyList<HistoricalValuePoint>> BuildTransactionalHistoryAsync(

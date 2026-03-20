@@ -1,6 +1,7 @@
 using MediatR;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
+using Privestio.Domain.Enums;
 
 namespace Privestio.Application.Queries.GetNetWorthHistory;
 
@@ -28,6 +29,38 @@ public class GetNetWorthHistoryQueryHandler
             cancellationToken
         );
 
+        var accountHistories =
+            await _historicalValueTimelineService.GetNetWorthHistoryByAccountAsync(
+                request.UserId,
+                request.FromDate,
+                request.ToDate,
+                cancellationToken
+            );
+
+        var series = accountHistories
+            .GroupBy(ah => new
+            {
+                ah.AccountId,
+                ah.AccountName,
+                ah.AccountType,
+            })
+            .Select(g => new AccountNetWorthSeries
+            {
+                AccountId = g.Key.AccountId,
+                AccountName = g.Key.AccountName,
+                AccountType = g.Key.AccountType.ToString(),
+                Points = g.OrderBy(ah => ah.Date)
+                    .Select(ah => new ValueHistoryPointResponse
+                    {
+                        Date = ah.Date,
+                        Value = ah.Value,
+                    })
+                    .ToList()
+                    .AsReadOnly(),
+            })
+            .ToList()
+            .AsReadOnly();
+
         return new NetWorthHistoryResponse
         {
             Currency = history.FirstOrDefault()?.Currency ?? "CAD",
@@ -39,6 +72,7 @@ public class GetNetWorthHistoryQueryHandler
                 })
                 .ToList()
                 .AsReadOnly(),
+            Series = series,
         };
     }
 }

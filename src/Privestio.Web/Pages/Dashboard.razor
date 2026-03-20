@@ -35,8 +35,17 @@
         {
             <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0 0 1rem 0;">Net Worth Growth</h3>
-                <HistoricalValueChart Points="_history.Points" SeriesName="Net Worth" EmptyTitle="No net worth history yet."
-                                      EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+                @if (_history.Series.Count > 0)
+                {
+                    <StackedNetWorthChart Series="_history.Series"
+                                         EmptyTitle="No net worth history yet."
+                                         EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+                }
+                else
+                {
+                    <HistoricalValueChart Points="_history.Points" SeriesName="Net Worth" EmptyTitle="No net worth history yet."
+                                          EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+                }
             </FluentCard>
         }
 

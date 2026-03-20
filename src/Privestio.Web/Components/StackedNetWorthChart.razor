@@ -1,0 +1,84 @@
+@using ApexCharts
+@using Privestio.Contracts.Responses
+
+@if (_series.Count == 0)
+{
+    <div class="empty-inline">
+        <strong>@EmptyTitle</strong>
+        <span>@EmptyMessage</span>
+    </div>
+}
+else
+{
+    <ApexChart TItem="ValueHistoryPointResponse" Title="" Height="@Height">
+        @foreach (var accountSeries in _series)
+        {
+            <ApexPointSeries TItem="ValueHistoryPointResponse"
+                           Items="@accountSeries.Points"
+                           SeriesType="SeriesType.Area"
+                           Name="@accountSeries.AccountName"
+                           XValue="@GetXAxisLabel"
+                           YValue="@(item => item.Value)" />
+        }
+    </ApexChart>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AccountNetWorthSeries> Series { get; set; } = [];
+    [Parameter] public string EmptyTitle { get; set; } = "No net worth history yet.";
+    [Parameter] public string EmptyMessage { get; set; } = "Sync historical prices and keep account activity up to date to build your trend line.";
+    [Parameter] public string Height { get; set; } = "350";
+
+    private List<AccountNetWorthSeries> _series = new();
+    private bool _groupedMonthly;
+
+    protected override void OnParametersSet()
+    {
+        _series = Series
+            .Where(s => s.Points.Count > 0)
+            .OrderBy(s => s.AccountName)
+            .ToList();
+
+        if (_series.Count == 0)
+            return;
+
+        var allPoints = _series.SelectMany(s => s.Points).OrderBy(p => p.Date).ToList();
+        _groupedMonthly = allPoints.Count > 180;
+
+        if (_groupedMonthly)
+        {
+            // Group points by month and take the last point of each month
+            var grouped = allPoints
+                .GroupBy(p => new { p.Date.Year, p.Date.Month })
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderBy(p => p.Date).Last().Date
+                );
+
+            // Recreate series with only monthly data points
+            var monthlyDates = grouped.Values.Distinct().OrderBy(d => d).ToHashSet();
+            var newSeries = new List<AccountNetWorthSeries>();
+
+            foreach (var series in _series)
+            {
+                var monthlyPoints = series.Points
+                    .Where(p => monthlyDates.Contains(p.Date))
+                    .ToList()
+                    .AsReadOnly();
+
+                newSeries.Add(new AccountNetWorthSeries
+                {
+                    AccountId = series.AccountId,
+                    AccountName = series.AccountName,
+                    AccountType = series.AccountType,
+                    Points = monthlyPoints,
+                });
+            }
+
+            _series = newSeries;
+        }
+    }
+
+    private string GetXAxisLabel(ValueHistoryPointResponse point) =>
+        _groupedMonthly ? point.Date.ToString("MMM yyyy") : point.Date.ToString("MMM d");
+}
