@@ -12,16 +12,17 @@ public class SecurityAlias : BaseEntity
     internal SecurityAlias(
         Guid securityId,
         string symbol,
-        string? source,
+        string source,
         bool isPrimary,
         string? exchange
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
 
         SecurityId = securityId;
         Symbol = SecuritySymbolMatcher.Normalize(symbol);
-        Source = string.IsNullOrWhiteSpace(source) ? null : source.Trim();
+        Source = source.Trim();
         Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange.Trim().ToUpperInvariant();
         IsPrimary = isPrimary;
     }
@@ -29,7 +30,7 @@ public class SecurityAlias : BaseEntity
     public Guid SecurityId { get; private set; }
     public Security? Security { get; set; }
     public string Symbol { get; private set; } = string.Empty;
-    public string? Source { get; private set; }
+    public string Source { get; private set; } = string.Empty;
     public string? Exchange { get; private set; }
     public bool IsPrimary { get; private set; }
 
@@ -42,12 +43,13 @@ public class SecurityAlias : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    internal void UpdateDetails(string symbol, string? source, string? exchange)
+    internal void UpdateDetails(string symbol, string source, string? exchange)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
 
         Symbol = SecuritySymbolMatcher.Normalize(symbol);
-        Source = string.IsNullOrWhiteSpace(source) ? null : source.Trim();
+        Source = source.Trim();
         Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange.Trim().ToUpperInvariant();
         UpdatedAt = DateTime.UtcNow;
     }

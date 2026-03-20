@@ -16,4 +16,5 @@ public record SecurityCatalogItemResponse
     public DateOnly? LatestPriceAsOfDate { get; init; }
     public string? LatestPriceSource { get; init; }
     public string? LatestProviderSymbol { get; init; }
+    public IReadOnlyList<string>? PricingProviderOrder { get; init; }
 }

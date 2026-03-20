@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Domain.Interfaces;
@@ -73,6 +75,8 @@ public static class DependencyInjection
         services.AddScoped<IFilePreviewService, CsvFilePreviewService>();
 
         // Price feed providers (Phase 5.4)
+        services.Configure<PricingOptions>(configuration.GetSection("Pricing"));
+
         services.AddHttpClient<YahooFinancePriceFeedProvider>(client =>
         {
             client.BaseAddress = new Uri("https://query1.finance.yahoo.com/");
@@ -97,8 +101,16 @@ public static class DependencyInjection
         {
             var yahoo = sp.GetRequiredService<YahooFinancePriceFeedProvider>();
             var msn = sp.GetRequiredService<MsnFinancePriceFeedProvider>();
-            var logger = sp.GetRequiredService<ILogger<FallbackPriceFeedProvider>>();
-            return new FallbackPriceFeedProvider(yahoo, msn, logger);
+            var options = sp.GetRequiredService<IOptions<PricingOptions>>();
+            var logger = sp.GetRequiredService<ILogger<ChainedPriceFeedProvider>>();
+
+            var providers = new Dictionary<string, IPriceFeedProvider>
+            {
+                [yahoo.ProviderName] = yahoo,
+                [msn.ProviderName] = msn,
+            };
+
+            return new ChainedPriceFeedProvider(providers, options.Value.ProviderOrder, logger);
         });
 
         // Exchange rate ingestion provider (Phase 5.5a)

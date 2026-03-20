@@ -88,7 +88,7 @@
                                                         <strong style="font-size:0.72rem;">primary</strong>
                                                     }
                                                     <button type="button" class="app-button app-button--secondary"
-                                                            style="padding:0.1rem 0.45rem; font-size:0.72rem;"                                                         disabled="@isAliasBusy"
+                                                            style="padding:0.1rem 0.45rem; font-size:0.72rem;" disabled="@isAliasBusy"
                                                             @onclick="() => DeleteAliasAsync(holding.Id, alias.Id)">
                                                         Remove
                                                     </button>
@@ -101,18 +101,18 @@
                                         <input class="filter-input" style="max-width:9rem;" placeholder="Alias symbol"
                                                value="@newAliasSymbol"
                                                @oninput="e => _aliasSymbolByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
-                                        <input class="filter-input" style="max-width:9rem;" placeholder="Source (optional)"
+                                        <input class="filter-input" style="max-width:9rem;" placeholder="Source (required)"
                                                value="@newAliasSource"
                                                @oninput="e => _aliasSourceByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
-                                             <input class="filter-input" style="max-width:9rem;" placeholder="Exchange"
-                                                 value="@newAliasExchange"
-                                                 @oninput="e => _aliasExchangeByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
+                                        <input class="filter-input" style="max-width:9rem;" placeholder="Exchange"
+                                               value="@newAliasExchange"
+                                               @oninput="e => _aliasExchangeByHoldingId[holding.Id] = e.Value?.ToString() ?? string.Empty" />
                                         <label style="display:inline-flex; gap:0.3rem; align-items:center; font-size:0.8rem;">
                                             <input type="checkbox" checked="@isPrimaryAlias"
                                                    @onchange="e => _aliasPrimaryByHoldingId[holding.Id] = e.Value as bool? == true" />
                                             Primary
                                         </label>
-                                        <button type="button" class="app-button app-button--secondary"                              disabled="@isAliasBusy"
+                                        <button type="button" class="app-button app-button--secondary" disabled="@isAliasBusy"
                                                 @onclick="() => AddAliasAsync(holding.Id)">
                                             Add alias
                                         </button>
@@ -247,19 +247,25 @@
             return;
         }
 
+        var source = (_aliasSourceByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            _aliasMessageByHoldingId[holdingId] = "Institution/Source is required.";
+            return;
+        }
+
         _aliasBusyHoldingIds.Add(holdingId);
         _aliasMessageByHoldingId[holdingId] = string.Empty;
 
         try
         {
-            var source = (_aliasSourceByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
             var exchange = (_aliasExchangeByHoldingId.GetValueOrDefault(holdingId) ?? string.Empty).Trim();
             var created = await HoldingService.AddAliasAsync(
                 holdingId,
                 new AddSecurityAliasRequest
                 {
                     Symbol = symbol,
-                    Source = string.IsNullOrWhiteSpace(source) ? null : source,
+                    Source = source,
                     Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange,
                     IsPrimary = _aliasPrimaryByHoldingId.GetValueOrDefault(holdingId),
                 }

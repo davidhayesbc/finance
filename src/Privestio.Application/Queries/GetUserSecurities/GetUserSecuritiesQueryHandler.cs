@@ -92,6 +92,7 @@ public class GetUserSecuritiesQueryHandler
             LatestPriceAsOfDate = latestPrice?.AsOfDate,
             LatestPriceSource = latestPrice?.Source,
             LatestProviderSymbol = latestPrice?.ProviderSymbol,
+            PricingProviderOrder = security.PricingProviderOrder,
         };
     }
 }

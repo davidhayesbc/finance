@@ -1,6 +1,8 @@
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Privestio.Application.Commands.SyncHistoricalPrices;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Application.Tests;
@@ -60,7 +62,8 @@ public class SyncHistoricalPricesCommandTests
         var handler = new SyncHistoricalPricesCommandHandler(
             _unitOfWork.Object,
             _priceFeedProvider.Object,
-            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork)
+            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork),
+            Options.Create(new PricingOptions())
         );
 
         var result = await handler.Handle(
@@ -154,7 +157,8 @@ public class SyncHistoricalPricesCommandTests
         var handler = new SyncHistoricalPricesCommandHandler(
             _unitOfWork.Object,
             _priceFeedProvider.Object,
-            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork, [security])
+            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork, [security]),
+            Options.Create(new PricingOptions())
         );
 
         var result = await handler.Handle(

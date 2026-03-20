@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
+using Privestio.Domain.Interfaces;
 using Privestio.Domain.Services;
 
 namespace Privestio.Application.Services;
@@ -201,7 +202,10 @@ public class SecurityResolutionService
                 || IsCashEquivalentSymbol(normalizedSymbol)
         );
 
-        if (!string.IsNullOrWhiteSpace(source) || !string.IsNullOrWhiteSpace(exchange))
+        if (
+            !string.IsNullOrWhiteSpace(source)
+            && !string.Equals(normalizedSymbol, created.DisplaySymbol, StringComparison.Ordinal)
+        )
         {
             created.AddOrUpdateAlias(normalizedSymbol, source, true, exchange);
         }
@@ -280,7 +284,11 @@ public class SecurityResolutionService
         IReadOnlyDictionary<SecurityIdentifierType, string>? identifiers
     )
     {
-        if (!security.HasAlias(normalizedSymbol, source, exchange))
+        if (
+            !string.IsNullOrWhiteSpace(source)
+            && !string.Equals(normalizedSymbol, security.DisplaySymbol, StringComparison.Ordinal)
+            && !security.HasAlias(normalizedSymbol, source, exchange)
+        )
         {
             security.AddOrUpdateAlias(normalizedSymbol, source, false, exchange);
         }
@@ -310,6 +318,19 @@ public class SecurityResolutionService
                 }
             }
         }
+    }
+
+    public PriceLookup BuildPriceLookup(Security security, IReadOnlyList<string> providerNames)
+    {
+        ArgumentNullException.ThrowIfNull(security);
+
+        var providerSymbols = new Dictionary<string, string>();
+        foreach (var providerName in providerNames)
+        {
+            providerSymbols[providerName] = GetPreferredPriceLookupSymbol(security, providerName);
+        }
+
+        return new PriceLookup(security.Id, security.DisplaySymbol, providerSymbols);
     }
 
     public string GetPreferredPriceLookupSymbol(Security security, string providerName)

@@ -22,6 +22,10 @@ public interface ISecurityWebService
         AddSecurityAliasRequest request
     );
     Task<bool> DeleteSecurityAliasAsync(Guid securityId, Guid aliasId);
+    Task<SecurityCatalogItemResponse?> SetPricingProviderOrderAsync(
+        Guid securityId,
+        List<string>? providerOrder
+    );
     Task<IReadOnlyList<SecurityIdentifierResponse>> GetHoldingIdentifiersAsync(Guid holdingId);
     Task<SecurityIdentifierResponse?> AddHoldingIdentifierAsync(
         Guid holdingId,
@@ -149,6 +153,28 @@ public class SecurityWebService : ISecurityWebService
         catch
         {
             return false;
+        }
+    }
+
+    public async Task<SecurityCatalogItemResponse?> SetPricingProviderOrderAsync(
+        Guid securityId,
+        List<string>? providerOrder
+    )
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync(
+                $"/api/v1/securities/{securityId}/pricing-order",
+                new SetPricingProviderOrderRequest { ProviderOrder = providerOrder }
+            );
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<SecurityCatalogItemResponse>();
+        }
+        catch
+        {
+            return null;
         }
     }
 

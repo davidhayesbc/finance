@@ -3,20 +3,20 @@ using Privestio.Application.Interfaces;
 using Privestio.Application.Mapping;
 using Privestio.Contracts.Responses;
 
-namespace Privestio.Application.Commands.AddSecurityAlias;
+namespace Privestio.Application.Commands.SetPricingProviderOrder;
 
-public class AddSecurityAliasCommandHandler
-    : IRequestHandler<AddSecurityAliasCommand, SecurityAliasResponse>
+public class SetPricingProviderOrderCommandHandler
+    : IRequestHandler<SetPricingProviderOrderCommand, SecurityCatalogItemResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
 
-    public AddSecurityAliasCommandHandler(IUnitOfWork unitOfWork)
+    public SetPricingProviderOrderCommandHandler(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<SecurityAliasResponse> Handle(
-        AddSecurityAliasCommand request,
+    public async Task<SecurityCatalogItemResponse> Handle(
+        SetPricingProviderOrderCommand request,
         CancellationToken cancellationToken
     )
     {
@@ -35,17 +35,24 @@ public class AddSecurityAliasCommandHandler
         if (!userHasSecurity)
             throw new InvalidOperationException("Security not found.");
 
-        var alias = security.AddOrUpdateAlias(
-            request.Symbol,
-            request.Source,
-            request.IsPrimary,
-            request.Exchange
-        );
+        security.SetPricingProviderOrder(request.ProviderOrder);
 
         await _unitOfWork.Securities.UpdateAsync(security, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return SecurityAliasMapper.ToResponse(alias);
+        return new SecurityCatalogItemResponse
+        {
+            Id = security.Id,
+            CanonicalSymbol = security.CanonicalSymbol,
+            DisplaySymbol = security.DisplaySymbol,
+            Name = security.Name,
+            Currency = security.Currency,
+            Exchange = security.Exchange,
+            IsCashEquivalent = security.IsCashEquivalent,
+            Aliases = security.Aliases.Select(SecurityAliasMapper.ToResponse).ToList(),
+            Identifiers = security.Identifiers.Select(SecurityIdentifierMapper.ToResponse).ToList(),
+            PricingProviderOrder = security.PricingProviderOrder,
+        };
     }
 
     private async Task<bool> UserHasSecurityAsync(

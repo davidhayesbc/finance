@@ -33,8 +33,6 @@ public class Security : BaseEntity
         Currency = currency.Trim().ToUpperInvariant();
         Exchange = string.IsNullOrWhiteSpace(exchange) ? null : exchange.Trim().ToUpperInvariant();
         IsCashEquivalent = isCashEquivalent;
-
-        AddOrUpdateAlias(DisplaySymbol, null, true);
     }
 
     public string CanonicalSymbol { get; private set; } = string.Empty;
@@ -43,6 +41,7 @@ public class Security : BaseEntity
     public string Currency { get; private set; } = string.Empty;
     public string? Exchange { get; private set; }
     public bool IsCashEquivalent { get; private set; }
+    public List<string>? PricingProviderOrder { get; private set; }
 
     public IReadOnlyCollection<SecurityAlias> Aliases => _aliases.AsReadOnly();
     public IReadOnlyCollection<SecurityIdentifier> Identifiers => _identifiers.AsReadOnly();
@@ -68,7 +67,6 @@ public class Security : BaseEntity
             return;
 
         DisplaySymbol = normalized;
-        AddOrUpdateAlias(DisplaySymbol, null, true);
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -114,13 +112,14 @@ public class Security : BaseEntity
 
     public SecurityAlias AddOrUpdateAlias(
         string symbol,
-        string? source,
+        string source,
         bool isPrimary = false,
         string? exchange = null
     )
     {
         var normalizedSymbol = SecuritySymbolMatcher.Normalize(symbol);
-        var normalizedSource = NormalizeSource(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        var normalizedSource = source.Trim();
         var normalizedExchange = NormalizeExchange(exchange);
 
         var existing = _aliases.FirstOrDefault(a =>
@@ -221,12 +220,6 @@ public class Security : BaseEntity
         if (alias is null)
             return false;
 
-        // Keep canonical display mapping safe so every security remains resolvable.
-        if (alias.Source is null && alias.Symbol == DisplaySymbol)
-            throw new InvalidOperationException(
-                "The display alias cannot be deleted directly. Change the security's display symbol first."
-            );
-
         _aliases.Remove(alias);
         UpdatedAt = DateTime.UtcNow;
         return true;
@@ -235,7 +228,7 @@ public class Security : BaseEntity
     public SecurityAlias UpdateAlias(
         Guid aliasId,
         string symbol,
-        string? source,
+        string source,
         string? exchange,
         bool isPrimary
     )
@@ -245,23 +238,9 @@ public class Security : BaseEntity
             throw new InvalidOperationException("Alias not found.");
 
         var normalizedSymbol = SecuritySymbolMatcher.Normalize(symbol);
-        var normalizedSource = NormalizeSource(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        var normalizedSource = source.Trim();
         var normalizedExchange = NormalizeExchange(exchange);
-
-        var isDisplayAlias = alias.Source is null && alias.Symbol == DisplaySymbol;
-        if (
-            isDisplayAlias
-            && (
-                !string.Equals(normalizedSymbol, DisplaySymbol, StringComparison.Ordinal)
-                || normalizedSource is not null
-                || normalizedExchange is not null
-            )
-        )
-        {
-            throw new InvalidOperationException(
-                "Display alias details cannot be changed. Update display symbol from security details instead."
-            );
-        }
 
         var duplicateExists = _aliases.Any(a =>
             a.Id != aliasId
@@ -347,6 +326,20 @@ public class Security : BaseEntity
         _identifiers.Remove(identifier);
         UpdatedAt = DateTime.UtcNow;
         return true;
+    }
+
+    public void SetPricingProviderOrder(List<string>? order)
+    {
+        if (order is not null)
+        {
+            foreach (var provider in order)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(provider);
+            }
+        }
+
+        PricingProviderOrder = order;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     private void ClearPrimary(string? source, string? exchange)

@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using Moq;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetAccountById;
 using Privestio.Application.Services;
@@ -50,7 +52,8 @@ public class GetAccountByIdQueryTests
             _unitOfWorkMock.Object,
             _priceFeedProviderMock.Object,
             _exchangeRateProviderMock.Object,
-            _securityResolutionService
+            _securityResolutionService,
+            Options.Create(new PricingOptions())
         );
 
         _priceFeedProviderMock.SetupGet(x => x.ProviderName).Returns("YahooFinance");

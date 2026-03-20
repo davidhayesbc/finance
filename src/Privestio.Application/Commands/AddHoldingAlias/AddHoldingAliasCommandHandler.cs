@@ -35,15 +35,12 @@ public class AddHoldingAliasCommandHandler
         if (security is null)
             throw new InvalidOperationException("Security not found.");
 
-        var alias =
-            request.IsPrimary && string.IsNullOrWhiteSpace(request.Source)
-                ? CreateOrPromoteDisplayAlias(security, request.Symbol)
-                : security.AddOrUpdateAlias(
-                    request.Symbol,
-                    request.Source,
-                    request.IsPrimary,
-                    request.Exchange
-                );
+        var alias = security.AddOrUpdateAlias(
+            request.Symbol,
+            request.Source,
+            request.IsPrimary,
+            request.Exchange
+        );
 
         await _unitOfWork.Securities.UpdateAsync(security, cancellationToken);
         holding.RebindSecurity(security);
@@ -51,14 +48,5 @@ public class AddHoldingAliasCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return SecurityAliasMapper.ToResponse(alias);
-    }
-
-    private static Domain.Entities.SecurityAlias CreateOrPromoteDisplayAlias(
-        Domain.Entities.Security security,
-        string symbol
-    )
-    {
-        security.UpdateDisplaySymbol(symbol);
-        return security.Aliases.First(a => a.Source is null && a.Symbol == security.DisplaySymbol);
     }
 }

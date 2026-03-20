@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.Extensions.Options;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
@@ -15,16 +17,19 @@ public class SyncHistoricalPricesCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPriceFeedProvider _priceFeedProvider;
     private readonly SecurityResolutionService _securityResolutionService;
+    private readonly PricingOptions _pricingOptions;
 
     public SyncHistoricalPricesCommandHandler(
         IUnitOfWork unitOfWork,
         IPriceFeedProvider priceFeedProvider,
-        SecurityResolutionService securityResolutionService
+        SecurityResolutionService securityResolutionService,
+        IOptions<PricingOptions> pricingOptions
     )
     {
         _unitOfWork = unitOfWork;
         _priceFeedProvider = priceFeedProvider;
         _securityResolutionService = securityResolutionService;
+        _pricingOptions = pricingOptions.Value;
     }
 
     public async Task<HistoricalPriceSyncResponse> Handle(
@@ -89,13 +94,11 @@ public class SyncHistoricalPricesCommandHandler
         }
 
         var lookups = securities
-            .Select(s => new PriceLookup(
-                s.Id,
-                _securityResolutionService.GetPreferredPriceLookupSymbol(
-                    s,
-                    _priceFeedProvider.ProviderName
-                )
-            ))
+            .Select(s =>
+            {
+                var order = s.PricingProviderOrder ?? _pricingOptions.ProviderOrder;
+                return _securityResolutionService.BuildPriceLookup(s, order);
+            })
             .ToList();
 
         var allQuotes = new List<PriceQuote>();

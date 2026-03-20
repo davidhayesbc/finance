@@ -3,7 +3,11 @@ namespace Privestio.Domain.Interfaces;
 /// <summary>
 /// A lookup request for a provider-specific market symbol.
 /// </summary>
-public record PriceLookup(Guid SecurityId, string Symbol);
+public record PriceLookup(
+    Guid SecurityId,
+    string Symbol,
+    IReadOnlyDictionary<string, string>? ProviderSymbols = null
+);
 
 /// <summary>
 /// A quote returned by a price feed provider for a given security symbol.

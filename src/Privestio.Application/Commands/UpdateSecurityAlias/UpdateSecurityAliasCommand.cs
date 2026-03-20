@@ -7,7 +7,7 @@ public record UpdateSecurityAliasCommand(
     Guid SecurityId,
     Guid AliasId,
     string Symbol,
-    string? Source,
+    string Source,
     string? Exchange,
     bool IsPrimary,
     Guid UserId

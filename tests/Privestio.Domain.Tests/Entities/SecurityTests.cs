@@ -14,7 +14,7 @@ public class SecurityTests
         security.CanonicalSymbol.Should().Be("KILO.B");
         security.DisplaySymbol.Should().Be("KILO.B");
         security.Currency.Should().Be("CAD");
-        security.Aliases.Should().ContainSingle(a => a.Symbol == "KILO.B" && a.Source == null);
+        security.Aliases.Should().BeEmpty();
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public class SecurityTests
         security.AddOrUpdateAlias("KILO-B.TO", "YahooFinance", true);
 
         security.GetPreferredSymbol("YahooFinance").Should().Be("KILO-B.TO");
-        security.GetPreferredSymbol().Should().Be("KILO.B");
+        security.GetPreferredSymbol().Should().Be("KILO.B"); // Falls back to DisplaySymbol
     }
 
     [Fact]
@@ -91,27 +91,26 @@ public class SecurityTests
     }
 
     [Fact]
-    public void UpdateDisplaySymbol_WhenSymbolUnchanged_DoesNotModifyAliases()
+    public void UpdateDisplaySymbol_WhenSymbolUnchanged_DoesNotModifyAnything()
     {
         var security = new Security("TEST", "TEST", "Test Security", "CAD");
-        var originalAliasCount = security.Aliases.Count;
         var originalUpdatedAt = security.UpdatedAt;
 
         security.UpdateDisplaySymbol("TEST");
 
-        security.Aliases.Should().HaveCount(originalAliasCount);
+        security.Aliases.Should().BeEmpty();
         security.UpdatedAt.Should().Be(originalUpdatedAt);
     }
 
     [Fact]
-    public void UpdateDisplaySymbol_WhenSymbolChanged_UpdatesSymbolAndCreatesAlias()
+    public void UpdateDisplaySymbol_WhenSymbolChanged_UpdatesSymbolOnly()
     {
         var security = new Security("TEST", "TEST", "Test Security", "CAD");
 
         security.UpdateDisplaySymbol("NEWTEST");
 
         security.DisplaySymbol.Should().Be("NEWTEST");
-        security.Aliases.Should().Contain(a => a.Symbol == "NEWTEST" && a.IsPrimary);
+        security.Aliases.Should().BeEmpty();
     }
 
     [Fact]
@@ -172,5 +171,82 @@ public class SecurityTests
 
         // The non-primary "OTHER" alias should not have its UpdatedAt changed
         nonPrimaryAlias.UpdatedAt.Should().Be(originalUpdatedAt);
+    }
+
+    [Fact]
+    public void AddOrUpdateAlias_WithNullSource_Throws()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+
+        var act = () => security.AddOrUpdateAlias("TEST.TO", null!, true);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AddOrUpdateAlias_WithEmptySource_Throws()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+
+        var act = () => security.AddOrUpdateAlias("TEST.TO", " ", true);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void RemoveAlias_AllowsRemovingAnyAlias()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+        security.AddOrUpdateAlias("TEST.TO", "YahooFinance", true);
+        var alias = security.Aliases.First();
+
+        var result = security.RemoveAlias(alias.Id);
+
+        result.Should().BeTrue();
+        security.Aliases.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UpdateAlias_AllowsEditingAnyAlias()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+        security.AddOrUpdateAlias("TEST.TO", "YahooFinance", true);
+        var alias = security.Aliases.First();
+
+        var updated = security.UpdateAlias(alias.Id, "TEST-NEW.TO", "YahooFinance", "XTSE", false);
+
+        updated.Symbol.Should().Be("TEST-NEW.TO");
+        updated.Exchange.Should().Be("XTSE");
+    }
+
+    [Fact]
+    public void SetPricingProviderOrder_WithValidList_SetsProperty()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+
+        security.SetPricingProviderOrder(["MsnFinance", "YahooFinance"]);
+
+        security.PricingProviderOrder.Should().BeEquivalentTo(["MsnFinance", "YahooFinance"]);
+    }
+
+    [Fact]
+    public void SetPricingProviderOrder_WithNull_ClearsOverride()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+        security.SetPricingProviderOrder(["YahooFinance"]);
+
+        security.SetPricingProviderOrder(null);
+
+        security.PricingProviderOrder.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetPricingProviderOrder_WithBlankEntry_Throws()
+    {
+        var security = new Security("TEST", "TEST", "Test Security", "CAD");
+
+        var act = () => security.SetPricingProviderOrder(["YahooFinance", " "]);
+
+        act.Should().Throw<ArgumentException>();
     }
 }

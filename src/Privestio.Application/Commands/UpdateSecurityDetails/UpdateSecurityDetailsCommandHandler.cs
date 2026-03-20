@@ -98,6 +98,7 @@ public class UpdateSecurityDetailsCommandHandler
             LatestPriceAsOfDate = latestPrice?.AsOfDate,
             LatestPriceSource = latestPrice?.Source,
             LatestProviderSymbol = latestPrice?.ProviderSymbol,
+            PricingProviderOrder = security.PricingProviderOrder,
         };
     }
 }

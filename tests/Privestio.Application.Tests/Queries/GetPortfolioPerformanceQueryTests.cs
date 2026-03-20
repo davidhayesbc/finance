@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using Moq;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetPortfolioPerformance;
 using Privestio.Application.Services;
@@ -98,7 +100,8 @@ public class GetPortfolioPerformanceQueryTests
             _uow.Object,
             _priceFeed.Object,
             _exchangeRateProvider.Object,
-            _securityResolutionService
+            _securityResolutionService,
+            Options.Create(new PricingOptions())
         );
         return new GetPortfolioPerformanceQueryHandler(_uow.Object, valuationService);
     }
@@ -257,7 +260,9 @@ public class GetPortfolioPerformanceQueryTests
                 x.GetLatestPricesAsync(
                     It.Is<IEnumerable<PriceLookup>>(lookups =>
                         lookups.Single().SecurityId == security.Id
-                        && lookups.Single().Symbol == "KILO-B.TO"
+                        && lookups.Single().Symbol == "KILO.B"
+                        && lookups.Single().ProviderSymbols != null
+                        && lookups.Single().ProviderSymbols!["YahooFinance"] == "KILO-B.TO"
                     ),
                     It.IsAny<CancellationToken>()
                 )

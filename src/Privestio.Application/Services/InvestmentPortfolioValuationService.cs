@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
@@ -12,18 +14,21 @@ public sealed class InvestmentPortfolioValuationService
     private readonly IPriceFeedProvider _priceFeedProvider;
     private readonly IExchangeRateProvider _exchangeRateProvider;
     private readonly SecurityResolutionService _securityResolutionService;
+    private readonly PricingOptions _pricingOptions;
 
     public InvestmentPortfolioValuationService(
         IUnitOfWork unitOfWork,
         IPriceFeedProvider priceFeedProvider,
         IExchangeRateProvider exchangeRateProvider,
-        SecurityResolutionService securityResolutionService
+        SecurityResolutionService securityResolutionService,
+        IOptions<PricingOptions> pricingOptions
     )
     {
         _unitOfWork = unitOfWork;
         _priceFeedProvider = priceFeedProvider;
         _exchangeRateProvider = exchangeRateProvider;
         _securityResolutionService = securityResolutionService;
+        _pricingOptions = pricingOptions.Value;
     }
 
     public sealed record InvestmentHoldingValuation(
@@ -277,13 +282,11 @@ public sealed class InvestmentPortfolioValuationService
     {
         var lookups = missingHoldings
             .Where(h => h.Security is not null)
-            .Select(h => new PriceLookup(
-                h.SecurityId,
-                _securityResolutionService.GetPreferredPriceLookupSymbol(
-                    h.Security!,
-                    _priceFeedProvider.ProviderName
-                )
-            ))
+            .Select(h =>
+            {
+                var order = h.Security!.PricingProviderOrder ?? _pricingOptions.ProviderOrder;
+                return _securityResolutionService.BuildPriceLookup(h.Security!, order);
+            })
             .DistinctBy(l => l.SecurityId)
             .ToList();
 

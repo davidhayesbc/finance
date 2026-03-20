@@ -11,7 +11,7 @@ public class SecurityAliasConfiguration : IEntityTypeConfiguration<SecurityAlias
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.Symbol).IsRequired().HasMaxLength(40);
-        builder.Property(a => a.Source).HasMaxLength(100);
+        builder.Property(a => a.Source).IsRequired().HasMaxLength(100);
         builder.Property(a => a.Exchange).HasMaxLength(20);
 
         builder

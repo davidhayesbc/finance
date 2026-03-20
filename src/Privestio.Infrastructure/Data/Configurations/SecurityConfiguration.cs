@@ -30,5 +30,7 @@ public class SecurityConfiguration : IEntityTypeConfiguration<Security>
 
         builder.HasIndex(s => s.CanonicalSymbol).IsUnique();
         builder.HasIndex(s => s.DisplaySymbol);
+
+        builder.Property(s => s.PricingProviderOrder).HasColumnType("jsonb");
     }
 }

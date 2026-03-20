@@ -7,6 +7,7 @@ using Privestio.Application.Commands.AddSecurityAlias;
 using Privestio.Application.Commands.CorrectHoldingSecurity;
 using Privestio.Application.Commands.DeleteHoldingSecurityIdentifier;
 using Privestio.Application.Commands.DeleteSecurityAlias;
+using Privestio.Application.Commands.SetPricingProviderOrder;
 using Privestio.Application.Commands.UpdateSecurityAlias;
 using Privestio.Application.Commands.UpdateSecurityDetails;
 using Privestio.Application.Queries.GetHoldingSecurityIdentifiers;
@@ -78,6 +79,11 @@ public static class SecurityEndpoints
             .WithSummary(
                 "Correct a holding's linked security using symbol/source/exchange/identifier context"
             );
+
+        group
+            .MapPut("/{securityId:guid}/pricing-order", SetPricingProviderOrderAsync)
+            .WithName("SetPricingProviderOrder")
+            .WithSummary("Set the pricing provider order for a specific security");
 
         return app;
     }
@@ -383,6 +389,33 @@ public static class SecurityEndpoints
                     request.Isin,
                     userId.Value
                 ),
+                cancellationToken
+            );
+
+            return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> SetPricingProviderOrderAsync(
+        Guid securityId,
+        [FromBody] SetPricingProviderOrderRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var result = await mediator.Send(
+                new SetPricingProviderOrderCommand(securityId, request.ProviderOrder, userId.Value),
                 cancellationToken
             );
 

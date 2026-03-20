@@ -22,7 +22,7 @@
             <FluentCheckbox @bind-Value="_isCashEquivalent" Label="Cash equivalent" />
         </div>
         <div style="margin-top: 1rem;">
-            <FluentButton Appearance="Appearance.Accent" Disabled="@_isSaving"                          OnClick="SaveSecurityAsync">
+            <FluentButton Appearance="Appearance.Accent" Disabled="@_isSaving" OnClick="SaveSecurityAsync">
                 Save security
             </FluentButton>
         </div>
@@ -34,7 +34,7 @@
         @if (_security.Aliases.Any())
         {
             <FluentDataGrid Items="@(_security.Aliases.OrderBy(a => a.Source).ThenBy(a => a.Symbol).AsQueryable())"
-                            TGridItem="SecurityAliasResponse"                            Class="data-grid--elevated"                            Style="margin-bottom: 1rem;"
+                            TGridItem="SecurityAliasResponse" Class="data-grid--elevated" Style="margin-bottom: 1rem;"
                             aria-label="@($"Aliases for {_security.DisplaySymbol}")">
                 <TemplateColumn Title="Institution/Site">
                     @{
@@ -83,12 +83,52 @@
             <FluentCheckbox @bind-Value="_draftIsPrimary" Label="Primary" Style="align-self: end;" />
         </div>
         <div style="margin-top: 0.75rem;">
-            <FluentButton Appearance="Appearance.Outline" Disabled="@_isSaving"                          OnClick="AddAliasAsync">
+            <FluentButton Appearance="Appearance.Outline" Disabled="@_isSaving" OnClick="AddAliasAsync">
                 Add alias
             </FluentButton>
         </div>
     </fieldset>
-</FluentStack>
+
+    <fieldset style="border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 1rem;">
+        <legend style="font-weight: 600; padding: 0 0.5rem;">Pricing provider order</legend>
+        <p style="margin: 0 0 0.75rem 0; color: var(--neutral-foreground-hint); font-size: 0.875rem;">
+            Providers are tried in order. Leave empty to use the global default (YahooFinance, MsnFinance).
+        </p>
+
+        @if (_pricingProviders.Count > 0)
+        {
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                @for (var i = 0; i < _pricingProviders.Count; i++)
+                {
+                    var idx = i;
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="min-width: 1.5rem; text-align: center; font-weight: 600;">@(idx + 1).</span>
+                        <FluentTextField Value="@_pricingProviders[idx]"                                         ValueChanged="@(v => _pricingProviders[idx] = v)"
+                                         style="flex: 1;" />
+                        <FluentButton Appearance="Appearance.Stealth" Disabled="@(idx == 0)"
+                                      OnClick="@(() => MovePricingProvider(idx, -1))">↑</FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" Disabled="@(idx == _pricingProviders.Count - 1)"
+                                      OnClick="@(() => MovePricingProvider(idx, 1))">↓</FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth"                                      OnClick="@(() => _pricingProviders.RemoveAt(idx))">×
+                        </FluentButton>
+                    </div>
+                }
+            </div>
+        }
+
+        <FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem;">
+            <FluentTextField @bind-Value="_draftPricingProvider" Placeholder="e.g. YahooFinance" />
+            <FluentButton Appearance="Appearance.Outline" Disabled="@(string.IsNullOrWhiteSpace(_draftPricingProvider))"
+                          OnClick="AddPricingProvider">Add</FluentButton>
+        </FluentStack>
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+            <FluentButton Appearance="Appearance.Accent" Disabled="@_isSaving"                          OnClick="SavePricingOrderAsync">Save
+                pricing order</FluentButton>
+                <FluentButton Appearance="Appearance.Outline" Disabled="@_isSaving"                          OnClick="ClearPricingOrderAsync">Use
+                    global default</FluentButton>
+                </div>
+            </fieldset>
+        </FluentStack>
 
 @code {
     [Parameter]
@@ -107,13 +147,16 @@
     private bool _isCashEquivalent;
 
     private string _draftSymbol = string.Empty;
-    private string? _draftSource;
+    private string _draftSource = string.Empty;
     private string? _draftExchange;
     private bool _draftIsPrimary;
 
     private bool _isSaving;
     private string? _statusMessage;
     private bool _statusIsError;
+
+    private List<string> _pricingProviders = [];
+    private string _draftPricingProvider = string.Empty;
 
     protected override void OnParametersSet()
     {
@@ -123,6 +166,7 @@
         _currency = _security.Currency;
         _exchange = _security.Exchange;
         _isCashEquivalent = _security.IsCashEquivalent;
+        _pricingProviders = _security.PricingProviderOrder?.ToList() ?? [];
         SyncAliasEditRows();
     }
 
@@ -189,6 +233,12 @@ string.IsNullOrWhiteSpace(_currency))
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(_draftSource))
+        {
+            SetStatus("Institution/Site is required.", true);
+            return;
+        }
+
         _isSaving = true;
         try
         {
@@ -197,7 +247,7 @@ string.IsNullOrWhiteSpace(_currency))
                 new AddSecurityAliasRequest
                 {
                     Symbol = _draftSymbol.Trim(),
-                    Source = EmptyToNull(_draftSource),
+                    Source = _draftSource.Trim(),
                     Exchange = EmptyToNull(_draftExchange),
                     IsPrimary = _draftIsPrimary,
                 }
@@ -210,7 +260,7 @@ string.IsNullOrWhiteSpace(_currency))
             }
 
             _draftSymbol = string.Empty;
-            _draftSource = null;
+            _draftSource = string.Empty;
             _draftExchange = null;
             _draftIsPrimary = false;
 
@@ -232,6 +282,12 @@ string.IsNullOrWhiteSpace(_currency))
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(row.Source))
+        {
+            SetStatus("Institution/Site is required.", true);
+            return;
+        }
+
         _isSaving = true;
         try
         {
@@ -241,7 +297,7 @@ string.IsNullOrWhiteSpace(_currency))
                 new AddSecurityAliasRequest
                 {
                     Symbol = row.Symbol.Trim(),
-                    Source = EmptyToNull(row.Source),
+                    Source = row.Source.Trim(),
                     Exchange = EmptyToNull(row.Exchange),
                     IsPrimary = row.IsPrimary,
                 }
@@ -318,13 +374,74 @@ string.IsNullOrWhiteSpace(_currency))
         _statusIsError = isError;
     }
 
+    private void AddPricingProvider()
+    {
+        if (!string.IsNullOrWhiteSpace(_draftPricingProvider))
+        {
+            _pricingProviders.Add(_draftPricingProvider.Trim());
+            _draftPricingProvider = string.Empty;
+        }
+    }
+
+    private void MovePricingProvider(int index, int direction)
+    {
+        var newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= _pricingProviders.Count) return;
+        (_pricingProviders[index], _pricingProviders[newIndex]) = (_pricingProviders[newIndex], _pricingProviders[index]);
+    }
+
+    private async Task SavePricingOrderAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var order = _pricingProviders.Count > 0 ? _pricingProviders : null;
+            var updated = await SecurityService.SetPricingProviderOrderAsync(_security.Id, order);
+            if (updated is null)
+            {
+                SetStatus("Failed to save pricing order.", true);
+                return;
+            }
+
+            _security = updated;
+            _pricingProviders = updated.PricingProviderOrder?.ToList() ?? [];
+            SetStatus("Pricing provider order saved.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ClearPricingOrderAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var updated = await SecurityService.SetPricingProviderOrderAsync(_security.Id, null);
+            if (updated is null)
+            {
+                SetStatus("Failed to clear pricing order.", true);
+                return;
+            }
+
+            _security = updated;
+            _pricingProviders = [];
+            SetStatus("Using global default pricing order.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
     private static string? EmptyToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private sealed class AliasEditRow
     {
         public string Symbol { get; set; } = string.Empty;
-        public string? Source { get; set; }
+        public string Source { get; set; } = string.Empty;
         public string? Exchange { get; set; }
         public bool IsPrimary { get; set; }
     }

@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using Moq;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetAccounts;
 using Privestio.Application.Services;
@@ -39,7 +41,9 @@ public class GetAccountsQueryTests
         _unitOfWorkMock.SetupGet(x => x.Holdings).Returns(_holdingRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.PriceHistories).Returns(_priceHistoryRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.ExchangeRates).Returns(_exchangeRateRepositoryMock.Object);
-        _unitOfWorkMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _unitOfWorkMock
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         _securityResolutionService = SecurityTestHelper.CreateSecurityResolutionService(
             _unitOfWorkMock
@@ -48,7 +52,8 @@ public class GetAccountsQueryTests
             _unitOfWorkMock.Object,
             _priceFeedProviderMock.Object,
             _exchangeRateProviderMock.Object,
-            _securityResolutionService
+            _securityResolutionService,
+            Options.Create(new PricingOptions())
         );
 
         _priceFeedProviderMock.SetupGet(x => x.ProviderName).Returns("YahooFinance");
@@ -459,7 +464,9 @@ public class GetAccountsQueryTests
                 x.GetLatestPricesAsync(
                     It.Is<IEnumerable<PriceLookup>>(lookups =>
                         lookups.Single().SecurityId == security.Id
-                        && lookups.Single().Symbol == "XEQT.TO"
+                        && lookups.Single().Symbol == "XEQT"
+                        && lookups.Single().ProviderSymbols != null
+                        && lookups.Single().ProviderSymbols!["YahooFinance"] == "XEQT.TO"
                     ),
                     It.IsAny<CancellationToken>()
                 )
