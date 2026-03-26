@@ -7,6 +7,7 @@ using Privestio.Application.Commands.AddSecurityAlias;
 using Privestio.Application.Commands.CorrectHoldingSecurity;
 using Privestio.Application.Commands.DeleteHoldingSecurityIdentifier;
 using Privestio.Application.Commands.DeleteSecurityAlias;
+using Privestio.Application.Commands.FetchSecurityPrice;
 using Privestio.Application.Commands.SetPricingProviderOrder;
 using Privestio.Application.Commands.UpdateSecurityAlias;
 using Privestio.Application.Commands.UpdateSecurityDetails;
@@ -84,6 +85,13 @@ public static class SecurityEndpoints
             .MapPut("/{securityId:guid}/pricing-order", SetPricingProviderOrderAsync)
             .WithName("SetPricingProviderOrder")
             .WithSummary("Set the pricing provider order for a specific security");
+
+        group
+            .MapPost("/{securityId:guid}/fetch-price", FetchSecurityPriceAsync)
+            .WithName("FetchSecurityPrice")
+            .WithSummary(
+                "Fetch the latest price for a specific security from configured providers"
+            );
 
         return app;
     }
@@ -416,6 +424,32 @@ public static class SecurityEndpoints
         {
             var result = await mediator.Send(
                 new SetPricingProviderOrderCommand(securityId, request.ProviderOrder, userId.Value),
+                cancellationToken
+            );
+
+            return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> FetchSecurityPriceAsync(
+        Guid securityId,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var result = await mediator.Send(
+                new FetchSecurityPriceCommand(securityId, userId.Value),
                 cancellationToken
             );
 

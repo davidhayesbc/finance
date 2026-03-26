@@ -5,7 +5,7 @@
 <PageTitle>Securities - Privestio</PageTitle>
 
 <section class="page-shell">
-    <PageHeader Eyebrow="Reference data"  Title="Securities"
+    <PageHeader Eyebrow="Reference data" Title="Securities"
                 Description="View and manage securities, pricing, and aliases." />
 
     @if (_isLoading)
@@ -52,11 +52,24 @@
                     }
                 </TemplateColumn>
                 <TemplateColumn Title="">
-                    <FluentButton Appearance="Appearance.Stealth"
-                                  OnClick="@(() => OpenEditDialogAsync(context))"
-                                  aria-label="@($"Edit {context.DisplaySymbol}")">
-                        Edit
-                    </FluentButton>
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                        <FluentButton Appearance="Appearance.Stealth"                                      Disabled="@(_fetchingPriceFor == context.Id)"
+                                      OnClick="@(() => FetchPriceAsync(context))"
+                                      aria-label="@($"Fetch price for {context.DisplaySymbol}")">
+                            @if (_fetchingPriceFor == context.Id)
+                            {
+                                <span>Fetching…</span>
+                            }
+                            else
+                            {
+                                <span>Fetch price</span>
+                            }
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth"                                      OnClick="@(() => OpenEditDialogAsync(context))"
+                                      aria-label="@($"Edit {context.DisplaySymbol}")">
+                            Edit
+                        </FluentButton>
+                    </FluentStack>
                 </TemplateColumn>
             </FluentDataGrid>
         </FluentCard>
@@ -67,6 +80,7 @@
     private readonly List<SecurityCatalogItemResponse> _securities = [];
 
     private bool _isLoading = true;
+    private Guid? _fetchingPriceFor;
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,6 +96,25 @@
         _securities.AddRange(results.OrderBy(s => s.DisplaySymbol, StringComparer.OrdinalIgnoreCase));
 
         _isLoading = false;
+    }
+
+    private async Task FetchPriceAsync(SecurityCatalogItemResponse security)
+    {
+        _fetchingPriceFor = security.Id;
+        try
+        {
+            var updated = await SecurityService.FetchPriceAsync(security.Id);
+            if (updated is not null)
+            {
+                var index = _securities.FindIndex(s => s.Id == security.Id);
+                if (index >= 0)
+                    _securities[index] = updated;
+            }
+        }
+        finally
+        {
+            _fetchingPriceFor = null;
+        }
     }
 
     private async Task OpenEditDialogAsync(SecurityCatalogItemResponse security)

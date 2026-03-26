@@ -36,6 +36,7 @@ public interface ISecurityWebService
         Guid holdingId,
         CorrectHoldingSecurityRequest request
     );
+    Task<SecurityCatalogItemResponse?> FetchPriceAsync(Guid securityId);
 }
 
 public class SecurityWebService : ISecurityWebService
@@ -247,6 +248,25 @@ public class SecurityWebService : ISecurityWebService
                 return null;
 
             return await response.Content.ReadFromJsonAsync<HoldingResponse>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<SecurityCatalogItemResponse?> FetchPriceAsync(Guid securityId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync(
+                $"/api/v1/securities/{securityId}/fetch-price",
+                null
+            );
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<SecurityCatalogItemResponse>();
         }
         catch
         {

@@ -133,4 +133,86 @@ public class SecurityResolutionServiceTests
             Mock.Of<Microsoft.Extensions.Logging.ILogger<SecurityResolutionService>>()
         );
     }
+
+    [Fact]
+    public async Task ResolveOrCreateAsync_NewSecurity_CreatesSourceAlias()
+    {
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = SecurityTestHelper.CreateSecurityResolutionService(unitOfWork);
+
+        var security = await service.ResolveOrCreateAsync(
+            "ZFL",
+            "BMO Long Federal Bond Index ETF",
+            "CAD",
+            source: "Wealthsimple"
+        );
+
+        security.HasAlias("ZFL", "Wealthsimple").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResolveOrCreateAsync_NewSecurity_CreatesYahooFinanceAlias()
+    {
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = SecurityTestHelper.CreateSecurityResolutionService(unitOfWork);
+
+        var security = await service.ResolveOrCreateAsync(
+            "ZFL",
+            "BMO Long Federal Bond Index ETF",
+            "CAD",
+            source: "Wealthsimple"
+        );
+
+        security.HasAlias("ZFL.TO", "YahooFinance").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResolveOrCreateAsync_NewUsdSecurity_CreatesYahooFinanceAliasWithoutToSuffix()
+    {
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = SecurityTestHelper.CreateSecurityResolutionService(unitOfWork);
+
+        var security = await service.ResolveOrCreateAsync(
+            "VTI",
+            "Vanguard Total Stock Market ETF",
+            "USD",
+            source: "Wealthsimple"
+        );
+
+        security.HasAlias("VTI", "YahooFinance").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResolveOrCreateAsync_ExistingSecurity_AddsSourceAliasEvenWhenSymbolMatchesDisplay()
+    {
+        var existing = SecurityTestHelper.CreateSecurity("ZCS", "BMO Short Corp Bond", "CAD");
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = SecurityTestHelper.CreateSecurityResolutionService(unitOfWork, [existing]);
+
+        var resolved = await service.ResolveOrCreateAsync(
+            "ZCS",
+            "BMO Short Corporate Bond Index ETF",
+            "CAD",
+            source: "WorldSource"
+        );
+
+        resolved.HasAlias("ZCS", "WorldSource").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResolveOrCreateAsync_ExistingSecurity_AddsYahooFinanceAliasIfMissing()
+    {
+        var existing = SecurityTestHelper.CreateSecurity("ZCS", "BMO Short Corp Bond", "CAD");
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = SecurityTestHelper.CreateSecurityResolutionService(unitOfWork, [existing]);
+
+        await service.ResolveOrCreateAsync(
+            "ZCS",
+            "BMO Short Corporate Bond Index ETF",
+            "CAD",
+            source: "WorldSource"
+        );
+
+        existing.HasAlias("ZCS.TO", "YahooFinance").Should().BeTrue();
+    }
 }

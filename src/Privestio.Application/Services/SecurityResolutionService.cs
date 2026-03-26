@@ -202,13 +202,12 @@ public class SecurityResolutionService
                 || IsCashEquivalentSymbol(normalizedSymbol)
         );
 
-        if (
-            !string.IsNullOrWhiteSpace(source)
-            && !string.Equals(normalizedSymbol, created.DisplaySymbol, StringComparison.Ordinal)
-        )
+        if (!string.IsNullOrWhiteSpace(source))
         {
             created.AddOrUpdateAlias(normalizedSymbol, source, true, exchange);
         }
+
+        EnsureYahooFinanceAlias(created);
 
         if (identifiers is not null)
         {
@@ -286,12 +285,13 @@ public class SecurityResolutionService
     {
         if (
             !string.IsNullOrWhiteSpace(source)
-            && !string.Equals(normalizedSymbol, security.DisplaySymbol, StringComparison.Ordinal)
             && !security.HasAlias(normalizedSymbol, source, exchange)
         )
         {
             security.AddOrUpdateAlias(normalizedSymbol, source, false, exchange);
         }
+
+        EnsureYahooFinanceAlias(security);
 
         if (preferSymbolAsDisplay)
         {
@@ -347,6 +347,15 @@ public class SecurityResolutionService
             "YahooFinance" => FormatYahooFinanceSymbol(security),
             _ => security.DisplaySymbol,
         };
+    }
+
+    private static void EnsureYahooFinanceAlias(Security security)
+    {
+        var yahooSymbol = FormatYahooFinanceSymbol(security);
+        if (!security.HasAlias(yahooSymbol, "YahooFinance"))
+        {
+            security.AddOrUpdateAlias(yahooSymbol, "YahooFinance", true);
+        }
     }
 
     private static bool IsCashEquivalentSymbol(string symbol) =>

@@ -21,10 +21,27 @@
         <div style="margin-top: 0.75rem;">
             <FluentCheckbox @bind-Value="_isCashEquivalent" Label="Cash equivalent" />
         </div>
-        <div style="margin-top: 1rem;">
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
             <FluentButton Appearance="Appearance.Accent" Disabled="@_isSaving" OnClick="SaveSecurityAsync">
                 Save security
             </FluentButton>
+            <FluentButton Appearance="Appearance.Outline" Disabled="@_isSaving" OnClick="FetchPriceAsync">
+                @if (_isFetchingPrice)
+                {
+                    <span>Fetching…</span>
+                }
+                else
+                {
+                    <span>Fetch price</span>
+                }
+            </FluentButton>
+            @if (_security.LatestPrice is { } price)
+            {
+                <span style="align-self: center; color: var(--neutral-foreground-hint); font-size: 0.875rem;">
+                    Latest: @price.ToString("N4") @_security.LatestPriceCurrency
+                    (@(_security.LatestPriceAsOfDate?.ToString("yyyy-MM-dd") ?? "—"))
+                </span>
+            }
         </div>
     </fieldset>
 
@@ -152,6 +169,7 @@
     private bool _draftIsPrimary;
 
     private bool _isSaving;
+    private bool _isFetchingPrice;
     private string? _statusMessage;
     private bool _statusIsError;
 
@@ -269,6 +287,41 @@ string.IsNullOrWhiteSpace(_currency))
         }
         finally
         {
+            _isSaving = false;
+        }
+    }
+
+    private async Task FetchPriceAsync()
+    {
+        _isFetchingPrice = true;
+        _isSaving = true;
+        try
+        {
+            var updated = await SecurityService.FetchPriceAsync(_security.Id);
+            if (updated is null)
+            {
+                SetStatus("Price fetch failed. Check provider configuration.", true);
+                return;
+            }
+
+            _security = updated;
+            SyncAliasEditRows();
+
+            if (updated.LatestPrice is { } price)
+            {
+                SetStatus(
+                    $"Fetched {price:N4} {updated.LatestPriceCurrency} ({updated.LatestPriceAsOfDate?.ToString("yyyy-MM-dd") ?? "—"}) from {updated.LatestPriceSource ?? "unknown"}.",
+                    false
+                );
+            }
+            else
+            {
+                SetStatus("No price returned from providers.", true);
+            }
+        }
+        finally
+        {
+            _isFetchingPrice = false;
             _isSaving = false;
         }
     }
