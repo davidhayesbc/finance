@@ -28,6 +28,7 @@ public interface IUnitOfWork
     ISecurityRepository Securities { get; }
     IPriceHistoryRepository PriceHistories { get; }
     IHoldingRepository Holdings { get; }
+    IHoldingSnapshotRepository HoldingSnapshots { get; }
     ILotRepository Lots { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

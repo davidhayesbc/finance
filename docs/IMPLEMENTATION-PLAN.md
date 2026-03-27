@@ -895,6 +895,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 5.5 | PriceHistory entity (`Symbol`, `Price`, `AsOfDate`, `RecordedAt`, `Source`) for point-in-time security prices; stale-price detection via AsOfDate vs RecordedAt gap | 4h | [x] |
 | 5.5a | Exchange rate ingestion providers and historical FX backfill into `ExchangeRate(AsOfDate, RecordedAt)` with `FxConversion` linkage validation | 4h | [x] |
 | 5.5b | Valuation entity (`Account`, `EstimatedValue`, `EffectiveDate`, `RecordedAt`, `Source`, `Notes`) for manual property/asset valuations with effective-date vs entry-date separation | 3h | [x] |
+| 5.5c | HoldingSnapshot entity (`Account`, `Security`, `Quantity`, `UnitPrice`, `MarketValue`, `AsOfDate`, `RecordedAt`, `Source`) for point-in-time holding snapshots; enables historical portfolio value reconstruction from periodic statement imports | 3h | [x] |
 | 5.6 | Investment dashboard: portfolio value, gain/loss, allocation | 6h | [x] |
 | 5.7 | Plugin loader: assembly scanning, registration, configuration | 6h | [ ] |
 | 5.7a | Trusted plugin runtime guardrails: contract validation, startup integrity checks, explicit capability interfaces, and operation logging | 3h | [ ] |

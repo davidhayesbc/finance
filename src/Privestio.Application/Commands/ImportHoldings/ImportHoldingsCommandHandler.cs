@@ -158,6 +158,31 @@ public class ImportHoldingsCommandHandler
 
             if (newPrices.Count > 0)
                 await _unitOfWork.PriceHistories.AddRangeAsync(newPrices, cancellationToken);
+
+            // Create holding snapshots for historical portfolio reconstruction.
+            // Each statement date gets a full snapshot of all holdings at that point in time.
+            var existingSnapshotKeys = await _unitOfWork.HoldingSnapshots.GetExistingKeysAsync(
+                request.AccountId,
+                importedPrices.Select(p => (p.Security.Id, statementDate)),
+                cancellationToken
+            );
+
+            var newSnapshots = importedPrices
+                .Where(p => !existingSnapshotKeys.Contains((p.Security.Id, statementDate)))
+                .Select(p => new HoldingSnapshot(
+                    request.AccountId,
+                    p.Security.Id,
+                    p.Security.DisplaySymbol,
+                    p.Row.InvestmentName,
+                    p.Row.Units,
+                    new Money(p.Row.UnitPrice, parseResult.Currency),
+                    statementDate,
+                    "PDFStatement"
+                ))
+                .ToList();
+
+            if (newSnapshots.Count > 0)
+                await _unitOfWork.HoldingSnapshots.AddRangeAsync(newSnapshots, cancellationToken);
         }
 
         batch.Complete(

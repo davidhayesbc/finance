@@ -36,6 +36,7 @@ public class UnitOfWork : IUnitOfWork
         Securities = new SecurityRepository(context);
         PriceHistories = new PriceHistoryRepository(context);
         Holdings = new HoldingRepository(context);
+        HoldingSnapshots = new HoldingSnapshotRepository(context);
         Lots = new LotRepository(context);
     }
 
@@ -65,6 +66,7 @@ public class UnitOfWork : IUnitOfWork
     public ISecurityRepository Securities { get; }
     public IPriceHistoryRepository PriceHistories { get; }
     public IHoldingRepository Holdings { get; }
+    public IHoldingSnapshotRepository HoldingSnapshots { get; }
     public ILotRepository Lots { get; }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>

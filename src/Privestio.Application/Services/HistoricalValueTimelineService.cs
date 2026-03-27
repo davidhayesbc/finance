@@ -344,6 +344,157 @@ public sealed class HistoricalValueTimelineService
         CancellationToken cancellationToken
     )
     {
+        // Try snapshot-based history first (created from PDF statement imports).
+        var snapshots = await _unitOfWork.HoldingSnapshots.GetByAccountIdAsync(
+            account.Id,
+            null,
+            toDate,
+            cancellationToken
+        );
+
+        if (snapshots.Count > 0)
+        {
+            return await BuildSnapshotBasedHistoryAsync(
+                account,
+                snapshots,
+                fromDate,
+                toDate,
+                cancellationToken
+            );
+        }
+
+        // Fall back to current holding + lots/price history approach.
+        return await BuildHoldingBasedHistoryAsync(account, fromDate, toDate, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<HistoricalValuePoint>> BuildSnapshotBasedHistoryAsync(
+        Account account,
+        IReadOnlyList<HoldingSnapshot> snapshots,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken
+    )
+    {
+        // Group snapshots by security, ordered by date within each group.
+        var snapshotsBySecurityId = snapshots
+            .GroupBy(s => s.SecurityId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.AsOfDate).ToList());
+
+        // Load price histories for interpolation between snapshot dates.
+        var priceHistoriesBySecurityId = new Dictionary<Guid, IReadOnlyList<PriceHistory>>();
+        foreach (var securityId in snapshotsBySecurityId.Keys)
+        {
+            var priceHistories = await _unitOfWork.PriceHistories.GetBySecurityIdAsync(
+                securityId,
+                null,
+                toDate,
+                cancellationToken
+            );
+            priceHistoriesBySecurityId[securityId] = priceHistories
+                .OrderBy(p => p.AsOfDate)
+                .ToList();
+        }
+
+        // Collect currencies for FX conversion.
+        var currenciesFromSnapshots = snapshotsBySecurityId
+            .Values.SelectMany(list => list)
+            .Select(s => s.UnitPrice.CurrencyCode);
+        var currenciesFromPrices = priceHistoriesBySecurityId
+            .Values.SelectMany(values => values)
+            .Select(p => p.Price.CurrencyCode);
+        var allCurrencies = currenciesFromSnapshots
+            .Concat(currenciesFromPrices)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(c => !string.Equals(c, account.Currency, StringComparison.OrdinalIgnoreCase));
+
+        var fxMaps = await LoadFxRateMapsAsync(
+            allCurrencies.Select(c => (FromCurrency: c, ToCurrency: account.Currency)),
+            fromDate,
+            toDate,
+            cancellationToken
+        );
+
+        var points = new List<HistoricalValuePoint>();
+        foreach (var date in EnumerateDates(fromDate, toDate))
+        {
+            if (date < account.OpeningDate)
+            {
+                points.Add(new HistoricalValuePoint(date, 0m, account.Currency));
+                continue;
+            }
+
+            var totalValue = 0m;
+            foreach (var (securityId, securitySnapshots) in snapshotsBySecurityId)
+            {
+                // Find the most recent snapshot on or before this date.
+                var snapshot = securitySnapshots.LastOrDefault(s => s.AsOfDate <= date);
+                if (snapshot is null || snapshot.Quantity <= 0m)
+                    continue;
+
+                // Use snapshot's own price on the snapshot date; interpolate with
+                // price history for dates between snapshots.
+                decimal priceAmount;
+                string priceCurrency;
+
+                if (date == snapshot.AsOfDate)
+                {
+                    priceAmount = snapshot.UnitPrice.Amount;
+                    priceCurrency = snapshot.UnitPrice.CurrencyCode;
+                }
+                else if (priceHistoriesBySecurityId.TryGetValue(securityId, out var priceHistories))
+                {
+                    var price = priceHistories.LastOrDefault(p => p.AsOfDate <= date);
+                    if (price is not null)
+                    {
+                        priceAmount = price.Price.Amount;
+                        priceCurrency = price.Price.CurrencyCode;
+                    }
+                    else
+                    {
+                        // No price history before this date; use snapshot price.
+                        priceAmount = snapshot.UnitPrice.Amount;
+                        priceCurrency = snapshot.UnitPrice.CurrencyCode;
+                    }
+                }
+                else
+                {
+                    priceAmount = snapshot.UnitPrice.Amount;
+                    priceCurrency = snapshot.UnitPrice.CurrencyCode;
+                }
+
+                var convertedPrice = ConvertValue(
+                    priceAmount,
+                    priceCurrency,
+                    account.Currency,
+                    date,
+                    fxMaps
+                );
+
+                if (!convertedPrice.HasValue)
+                    continue;
+
+                totalValue += snapshot.Quantity * convertedPrice.Value;
+            }
+
+            points.Add(
+                new HistoricalValuePoint(
+                    date,
+                    Math.Round(totalValue, 2, MidpointRounding.ToEven),
+                    account.Currency
+                )
+            );
+        }
+
+        return points.AsReadOnly();
+    }
+
+    private async Task<IReadOnlyList<HistoricalValuePoint>> BuildHoldingBasedHistoryAsync(
+        Account account,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken
+    )
+    {
         var holdings = (
             await _unitOfWork.Holdings.GetByAccountIdAsync(account.Id, cancellationToken)
         )
