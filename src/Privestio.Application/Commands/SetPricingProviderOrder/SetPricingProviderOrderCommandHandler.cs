@@ -9,10 +9,15 @@ public class SetPricingProviderOrderCommandHandler
     : IRequestHandler<SetPricingProviderOrderCommand, SecurityCatalogItemResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPluginRegistryService _pluginRegistry;
 
-    public SetPricingProviderOrderCommandHandler(IUnitOfWork unitOfWork)
+    public SetPricingProviderOrderCommandHandler(
+        IUnitOfWork unitOfWork,
+        IPluginRegistryService pluginRegistry
+    )
     {
         _unitOfWork = unitOfWork;
+        _pluginRegistry = pluginRegistry;
     }
 
     public async Task<SecurityCatalogItemResponse> Handle(
@@ -34,6 +39,21 @@ public class SetPricingProviderOrderCommandHandler
         );
         if (!userHasSecurity)
             throw new InvalidOperationException("Security not found.");
+
+        if (request.ProviderOrder is not null)
+        {
+            var invalid = request
+                .ProviderOrder.Where(p => !_pluginRegistry.IsRegisteredPricingSource(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (invalid.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Unknown pricing provider(s): {string.Join(", ", invalid)}. Only registered providers can be selected."
+                );
+            }
+        }
 
         security.SetPricingProviderOrder(request.ProviderOrder);
 

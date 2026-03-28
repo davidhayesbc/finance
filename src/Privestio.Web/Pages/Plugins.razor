@@ -1,0 +1,59 @@
+@page "/plugins"
+@inject IPluginCatalogWebService PluginCatalogService
+
+<PageTitle>Plugins - Privestio</PageTitle>
+
+<section class="page-shell panel-stack">
+    <PageHeader Eyebrow="Configuration" Title="Registered plugins"
+                Description="View registered pricing and importer plugins, including DLL identity and assembly version." />
+
+    @if (_isLoading)
+    {
+        <LoadingSpinner AriaLabel="Loading plugin catalog" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <FluentMessageBar Intent="@MessageIntent.Error">@_errorMessage</FluentMessageBar>
+    }
+    else if (_catalog is null || _catalog.Plugins.Count == 0)
+    {
+        <EmptyStateCard Message="No plugins are currently registered." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card">
+            <div class="detail-grid" style="margin-bottom: 1rem;">
+                <StatCard Label="Pricing sources">@_catalog.PricingSourceNames.Count</StatCard>
+                <StatCard Label="Transaction formats">@_catalog.TransactionImportFormats.Count</StatCard>
+                <StatCard Label="Holdings formats">@_catalog.HoldingsImportFormats.Count</StatCard>
+                <StatCard Label="Total plugins">@_catalog.Plugins.Count</StatCard>
+            </div>
+
+            <FluentDataGrid Items="_catalog.Plugins.AsQueryable()" TGridItem="RegisteredPluginResponse"
+                            Class="data-grid--elevated" aria-label="Registered plugins">
+                <PropertyColumn Property="@(p => p.Kind)" Title="Kind" Sortable="true" />
+                <PropertyColumn Property="@(p => p.Name)" Title="Name" Sortable="true" />
+                <PropertyColumn Property="@(p => p.Key)" Title="Key" Sortable="true" />
+                <PropertyColumn Property="@(p => p.AssemblyName)" Title="Assembly" Sortable="true" />
+                <PropertyColumn Property="@(p => p.AssemblyVersion)" Title="Version" />
+                <PropertyColumn Property="@(p => p.DllIdentity)" Title="DLL Identity" />
+                <PropertyColumn Property="@(p => p.TypeName)" Title="Type" />
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</section>
+
+@code {
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private PluginCatalogResponse? _catalog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _catalog = await PluginCatalogService.GetPluginCatalogAsync();
+        if (_catalog is null)
+            _errorMessage = "Failed to load plugin catalog.";
+
+        _isLoading = false;
+    }
+}

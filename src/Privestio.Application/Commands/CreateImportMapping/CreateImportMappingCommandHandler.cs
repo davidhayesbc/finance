@@ -9,14 +9,29 @@ public class CreateImportMappingCommandHandler
     : IRequestHandler<CreateImportMappingCommand, ImportMappingResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPluginRegistryService _pluginRegistry;
 
-    public CreateImportMappingCommandHandler(IUnitOfWork unitOfWork) => _unitOfWork = unitOfWork;
+    public CreateImportMappingCommandHandler(
+        IUnitOfWork unitOfWork,
+        IPluginRegistryService pluginRegistry
+    )
+    {
+        _unitOfWork = unitOfWork;
+        _pluginRegistry = pluginRegistry;
+    }
 
     public async Task<ImportMappingResponse> Handle(
         CreateImportMappingCommand request,
         CancellationToken cancellationToken
     )
     {
+        if (!_pluginRegistry.IsRegisteredTransactionImportFormat(request.FileFormat))
+        {
+            throw new InvalidOperationException(
+                $"Unknown import source format '{request.FileFormat}'. Only registered importer plugin formats can be selected."
+            );
+        }
+
         var mapping = new ImportMapping(
             request.Name,
             request.FileFormat,

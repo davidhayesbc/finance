@@ -1,5 +1,6 @@
 @page "/import/mappings"
 @inject IImportService ImportService
+@inject IPluginCatalogWebService PluginCatalogService
 @inject NavigationManager Navigation
 
 <PageTitle>Saved Mappings — Privestio</PageTitle>
@@ -11,7 +12,7 @@
         <FluentBreadcrumbItem>Saved Mappings</FluentBreadcrumbItem>
     </FluentBreadcrumb>
 
-    <PageHeader Eyebrow="Import"                Title="Saved mappings"
+    <PageHeader Eyebrow="Import" Title="Saved mappings"
                 Description="Review reusable file mappings and remove obsolete templates before the next import run."
                 Compact="true" />
 
@@ -28,10 +29,24 @@
     else
     {
         <FluentCard Class="surface-card data-card">
+            @if (_registeredFormats.Count == 0)
+            {
+                <FluentMessageBar Intent="@MessageIntent.Warning" style="margin-bottom: 0.75rem;">
+                    No registered transaction-import plugins are available. Existing mappings may fail until a compatible
+                    importer is registered.
+                </FluentMessageBar>
+            }
+
             <FluentDataGrid Items="_mappings.AsQueryable()" aria-label="Saved import mappings"
                             TGridItem="ImportMappingResponse" Class="data-grid--elevated">
                 <PropertyColumn Property="@(m => m.Name)" Title="Name" />
                 <PropertyColumn Property="@(m => m.FileFormat)" Title="Format" />
+                <TemplateColumn Title="Registration">
+                    <FluentBadge
+                        Appearance="@(_registeredFormats.Contains(context.FileFormat) ? Appearance.Accent : Appearance.Neutral)">
+                        @(_registeredFormats.Contains(context.FileFormat) ? "Registered" : "Unregistered")
+                    </FluentBadge>
+                </TemplateColumn>
                 <PropertyColumn Property="@(m => m.Institution ?? "—")" Title="Institution" />
                 <TemplateColumn Title="Mapped Columns">
                     <FluentBadge Appearance="Appearance.Neutral">
@@ -39,7 +54,7 @@
                     </FluentBadge>
                 </TemplateColumn>
                 <TemplateColumn Title="">
-                    <FluentButton Appearance="Appearance.Stealth"          OnClick="@(() => DeleteMappingAsync(context.Id))"
+                    <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteMappingAsync(context.Id))"
                                   aria-label="@($"Delete mapping {context.Name}")">
                         Delete
                     </FluentButton>
@@ -51,11 +66,19 @@
 
 @code {
     private List<ImportMappingResponse> _mappings = [];
+    private readonly HashSet<string> _registeredFormats = new(StringComparer.OrdinalIgnoreCase);
     private bool _isLoading = true;
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        var catalog = await PluginCatalogService.GetPluginCatalogAsync();
+        foreach (var format in catalog?.TransactionImportFormats ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(format))
+                _registeredFormats.Add(format.Trim());
+        }
+
         _mappings = (await ImportService.GetMappingsAsync()).ToList();
         _isLoading = false;
     }

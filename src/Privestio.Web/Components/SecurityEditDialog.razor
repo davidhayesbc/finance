@@ -1,5 +1,6 @@
 @implements IDialogContentComponent<SecurityCatalogItemResponse>
 @inject ISecurityWebService SecurityService
+@inject IPluginCatalogWebService PluginCatalogService
 
 <FluentStack Orientation="Orientation.Vertical" Style="gap: 1.25rem;">
 
@@ -109,8 +110,23 @@
     <fieldset style="border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 1rem;">
         <legend style="font-weight: 600; padding: 0 0.5rem;">Pricing provider order</legend>
         <p style="margin: 0 0 0.75rem 0; color: var(--neutral-foreground-hint); font-size: 0.875rem;">
-            Providers are tried in order. Leave empty to use the global default (YahooFinance, MsnFinance).
+            Providers are tried in order. Only registered pricing-source plugins are selectable.
         </p>
+
+        @if (_unregisteredPricingProviders.Count > 0)
+        {
+            <FluentMessageBar Intent="@MessageIntent.Warning" style="margin-bottom: 0.75rem;">
+                Removed unregistered providers from this security override:
+                @string.Join(", ", _unregisteredPricingProviders)
+            </FluentMessageBar>
+        }
+
+        @if (_availablePricingProviders.Count == 0)
+        {
+            <FluentMessageBar Intent="@MessageIntent.Error" style="margin-bottom: 0.75rem;">
+                No registered pricing-source plugins are available.
+            </FluentMessageBar>
+        }
 
         @if (_pricingProviders.Count > 0)
         {
@@ -120,13 +136,18 @@
                     var idx = i;
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <span style="min-width: 1.5rem; text-align: center; font-weight: 600;">@(idx + 1).</span>
-                        <FluentTextField Value="@_pricingProviders[idx]"                                         ValueChanged="@(v => _pricingProviders[idx] = v)"
-                                         style="flex: 1;" />
+                        <FluentSelect TOption="string" Value="@_pricingProviders[idx]"
+                                      ValueChanged="@(v => _pricingProviders[idx] = v)" style="flex: 1;">
+                            @foreach (var provider in _availablePricingProviders)
+                            {
+                                <FluentOption TOption="string" Value="@provider">@provider</FluentOption>
+                            }
+                        </FluentSelect>
                         <FluentButton Appearance="Appearance.Stealth" Disabled="@(idx == 0)"
                                       OnClick="@(() => MovePricingProvider(idx, -1))">↑</FluentButton>
                         <FluentButton Appearance="Appearance.Stealth" Disabled="@(idx == _pricingProviders.Count - 1)"
                                       OnClick="@(() => MovePricingProvider(idx, 1))">↓</FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth"                                      OnClick="@(() => _pricingProviders.RemoveAt(idx))">×
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _pricingProviders.RemoveAt(idx))">×
                         </FluentButton>
                     </div>
                 }
@@ -134,14 +155,21 @@
         }
 
         <FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem;">
-            <FluentTextField @bind-Value="_draftPricingProvider" Placeholder="e.g. YahooFinance" />
-            <FluentButton Appearance="Appearance.Outline" Disabled="@(string.IsNullOrWhiteSpace(_draftPricingProvider))"
+            <FluentSelect TOption="string" @bind-Value="_draftPricingProvider" style="flex: 1;">
+                <FluentOption TOption="string" Value="">Select provider</FluentOption>
+                @foreach (var provider in _availablePricingProviders)
+                {
+                    <FluentOption TOption="string" Value="@provider">@provider</FluentOption>
+                }
+            </FluentSelect>
+            <FluentButton Appearance="Appearance.Outline"
+                          Disabled="@(string.IsNullOrWhiteSpace(_draftPricingProvider) || !_availablePricingProviders.Contains(_draftPricingProvider, StringComparer.OrdinalIgnoreCase))"
                           OnClick="AddPricingProvider">Add</FluentButton>
         </FluentStack>
         <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
-            <FluentButton Appearance="Appearance.Accent" Disabled="@_isSaving"                          OnClick="SavePricingOrderAsync">Save
+            <FluentButton Appearance="Appearance.Accent" Disabled="@_isSaving" OnClick="SavePricingOrderAsync">Save
                 pricing order</FluentButton>
-                <FluentButton Appearance="Appearance.Outline" Disabled="@_isSaving"                          OnClick="ClearPricingOrderAsync">Use
+                <FluentButton Appearance="Appearance.Outline" Disabled="@_isSaving" OnClick="ClearPricingOrderAsync">Use
                     global default</FluentButton>
                 </div>
             </fieldset>
@@ -175,6 +203,16 @@
 
     private List<string> _pricingProviders = [];
     private string _draftPricingProvider = string.Empty;
+    private List<string> _availablePricingProviders = [];
+    private readonly List<string> _unregisteredPricingProviders = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var catalog = await PluginCatalogService.GetPluginCatalogAsync();
+        _availablePricingProviders = (catalog?.PricingSourceNames ?? [])
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
 
     protected override void OnParametersSet()
     {
@@ -184,8 +222,39 @@
         _currency = _security.Currency;
         _exchange = _security.Exchange;
         _isCashEquivalent = _security.IsCashEquivalent;
-        _pricingProviders = _security.PricingProviderOrder?.ToList() ?? [];
+        NormalizePricingProviders(_security.PricingProviderOrder);
         SyncAliasEditRows();
+    }
+
+    private void NormalizePricingProviders(IReadOnlyList<string>? providerOrder)
+    {
+        var source = providerOrder?.ToList() ?? [];
+        if (_availablePricingProviders.Count == 0)
+        {
+            _pricingProviders = source;
+            return;
+        }
+
+        _unregisteredPricingProviders.Clear();
+        _pricingProviders = [];
+
+        foreach (var provider in source)
+        {
+            if (
+                _availablePricingProviders.Contains(
+                    provider,
+                    StringComparer.OrdinalIgnoreCase
+                )
+            )
+            {
+                if (!_pricingProviders.Contains(provider, StringComparer.OrdinalIgnoreCase))
+                    _pricingProviders.Add(provider);
+            }
+            else
+            {
+                _unregisteredPricingProviders.Add(provider);
+            }
+        }
     }
 
     private AliasEditRow GetAliasEditRow(SecurityAliasResponse alias)
@@ -429,11 +498,23 @@ string.IsNullOrWhiteSpace(_currency))
 
     private void AddPricingProvider()
     {
-        if (!string.IsNullOrWhiteSpace(_draftPricingProvider))
+        if (
+            string.IsNullOrWhiteSpace(_draftPricingProvider)
+            || !_availablePricingProviders.Contains(
+                _draftPricingProvider,
+                StringComparer.OrdinalIgnoreCase
+            )
+        )
+        {
+            return;
+        }
+
+        if (!_pricingProviders.Contains(_draftPricingProvider, StringComparer.OrdinalIgnoreCase))
         {
             _pricingProviders.Add(_draftPricingProvider.Trim());
-            _draftPricingProvider = string.Empty;
         }
+
+        _draftPricingProvider = string.Empty;
     }
 
     private void MovePricingProvider(int index, int direction)
@@ -445,10 +526,31 @@ string.IsNullOrWhiteSpace(_currency))
 
     private async Task SavePricingOrderAsync()
     {
+        var invalid = _pricingProviders
+            .Where(p =>
+                !_availablePricingProviders.Contains(
+                    p,
+                    StringComparer.OrdinalIgnoreCase
+                )
+            )
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (invalid.Count > 0)
+        {
+            SetStatus(
+                $"Unregistered provider(s): {string.Join(", ", invalid)}",
+                true
+            );
+            return;
+        }
+
         _isSaving = true;
         try
         {
-            var order = _pricingProviders.Count > 0 ? _pricingProviders : null;
+            var order = _pricingProviders.Count > 0
+                ? _pricingProviders.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+                : null;
             var updated = await SecurityService.SetPricingProviderOrderAsync(_security.Id, order);
             if (updated is null)
             {
@@ -457,7 +559,7 @@ string.IsNullOrWhiteSpace(_currency))
             }
 
             _security = updated;
-            _pricingProviders = updated.PricingProviderOrder?.ToList() ?? [];
+            NormalizePricingProviders(updated.PricingProviderOrder);
             SetStatus("Pricing provider order saved.", false);
         }
         finally

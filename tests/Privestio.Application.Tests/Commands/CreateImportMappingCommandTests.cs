@@ -11,22 +11,31 @@ public class CreateImportMappingCommandTests
 {
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IImportMappingRepository> _mappingRepoMock;
+    private readonly Mock<IPluginRegistryService> _pluginRegistryMock;
     private readonly CreateImportMappingCommandHandler _handler;
 
     public CreateImportMappingCommandTests()
     {
         _mappingRepoMock = new Mock<IImportMappingRepository>();
+        _pluginRegistryMock = new Mock<IPluginRegistryService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _unitOfWorkMock.Setup(u => u.ImportMappings).Returns(_mappingRepoMock.Object);
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
+        _pluginRegistryMock
+            .Setup(p => p.IsRegisteredTransactionImportFormat(It.IsAny<string>()))
+            .Returns(true);
+
         _mappingRepoMock
             .Setup(r => r.AddAsync(It.IsAny<ImportMapping>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ImportMapping m, CancellationToken _) => m);
 
-        _handler = new CreateImportMappingCommandHandler(_unitOfWorkMock.Object);
+        _handler = new CreateImportMappingCommandHandler(
+            _unitOfWorkMock.Object,
+            _pluginRegistryMock.Object
+        );
     }
 
     [Fact]

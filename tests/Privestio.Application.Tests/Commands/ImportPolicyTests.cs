@@ -25,6 +25,7 @@ public class ImportPolicyTests
     private readonly TransactionFingerprintService _fingerprintService;
     private readonly ImportTransactionsCommandHandler _handler;
     private readonly Mock<IPriceFeedProvider> _priceFeedProvider = new();
+    private readonly Mock<IPluginRegistryService> _pluginRegistry;
 
     private readonly Guid _accountId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
@@ -77,6 +78,7 @@ public class ImportPolicyTests
         _csvImporter.Setup(i => i.FileFormat).Returns("CSV");
 
         _fingerprintService = new TransactionFingerprintService();
+        _pluginRegistry = new Mock<IPluginRegistryService>();
 
         _handler = new ImportTransactionsCommandHandler(
             _unitOfWork.Object,
@@ -84,9 +86,13 @@ public class ImportPolicyTests
             _fingerprintService,
             SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork),
             _priceFeedProvider.Object,
+            _pluginRegistry.Object,
             Options.Create(new PricingOptions()),
             NullLogger<ImportTransactionsCommandHandler>.Instance
         );
+        _pluginRegistry
+            .Setup(p => p.IsRegisteredTransactionImportFormat(It.IsAny<string>()))
+            .Returns(true);
     }
 
     [Fact]

@@ -65,6 +65,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserDataResetService, UserDataResetService>();
+        services.AddScoped<IPluginRegistryService, PluginRegistryService>();
 
         // Ingestion and pricing plugins
         PluginModuleLoader.RegisterModules(

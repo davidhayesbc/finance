@@ -25,6 +25,7 @@ public class ImportTransactionsCommandTests
     private readonly Mock<ILotRepository> _lotRepo;
     private readonly Mock<IPriceHistoryRepository> _priceHistoryRepo;
     private readonly Mock<IPriceFeedProvider> _priceFeedProvider;
+    private readonly Mock<IPluginRegistryService> _pluginRegistry;
     private readonly Mock<ITransactionImporter> _csvImporter;
     private readonly TransactionFingerprintService _fingerprintService;
     private readonly ImportTransactionsCommandHandler _handler;
@@ -42,6 +43,7 @@ public class ImportTransactionsCommandTests
         _lotRepo = new Mock<ILotRepository>();
         _priceHistoryRepo = new Mock<IPriceHistoryRepository>();
         _priceFeedProvider = new Mock<IPriceFeedProvider>();
+        _pluginRegistry = new Mock<IPluginRegistryService>();
         _unitOfWork = new Mock<IUnitOfWork>();
 
         _unitOfWork.Setup(u => u.Transactions).Returns(_transactionRepo.Object);
@@ -125,12 +127,17 @@ public class ImportTransactionsCommandTests
 
         _fingerprintService = new TransactionFingerprintService();
 
+        _pluginRegistry
+            .Setup(p => p.IsRegisteredTransactionImportFormat(It.IsAny<string>()))
+            .Returns(true);
+
         _handler = new ImportTransactionsCommandHandler(
             _unitOfWork.Object,
             [_csvImporter.Object],
             _fingerprintService,
             SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork),
             _priceFeedProvider.Object,
+            _pluginRegistry.Object,
             Options.Create(new PricingOptions()),
             NullLogger<ImportTransactionsCommandHandler>.Instance
         );

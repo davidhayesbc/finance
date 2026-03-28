@@ -43,6 +43,7 @@ builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddScoped<IConflictResolutionWebService, ConflictResolutionWebService>();
 builder.Services.AddScoped<ISecurityWebService, SecurityWebService>();
+builder.Services.AddScoped<IPluginCatalogWebService, PluginCatalogWebService>();
 
 var host = builder.Build();
 

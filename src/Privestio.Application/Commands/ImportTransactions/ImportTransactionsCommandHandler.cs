@@ -21,6 +21,7 @@ public class ImportTransactionsCommandHandler
     private readonly TransactionFingerprintService _fingerprintService;
     private readonly SecurityResolutionService _securityResolutionService;
     private readonly IPriceFeedProvider _priceFeedProvider;
+    private readonly IPluginRegistryService _pluginRegistry;
     private readonly PricingOptions _pricingOptions;
     private readonly ILogger<ImportTransactionsCommandHandler> _logger;
 
@@ -39,6 +40,7 @@ public class ImportTransactionsCommandHandler
         TransactionFingerprintService fingerprintService,
         SecurityResolutionService securityResolutionService,
         IPriceFeedProvider priceFeedProvider,
+        IPluginRegistryService pluginRegistry,
         IOptions<PricingOptions> pricingOptions,
         ILogger<ImportTransactionsCommandHandler> logger
     )
@@ -48,6 +50,7 @@ public class ImportTransactionsCommandHandler
         _fingerprintService = fingerprintService;
         _securityResolutionService = securityResolutionService;
         _priceFeedProvider = priceFeedProvider;
+        _pluginRegistry = pluginRegistry;
         _pricingOptions = pricingOptions.Value;
         _logger = logger;
     }
@@ -79,6 +82,16 @@ public class ImportTransactionsCommandHandler
                 request.MappingId.Value,
                 cancellationToken
             );
+
+            if (
+                mapping is not null
+                && !_pluginRegistry.IsRegisteredTransactionImportFormat(mapping.FileFormat)
+            )
+            {
+                throw new InvalidOperationException(
+                    $"The selected mapping uses unregistered import source format '{mapping.FileFormat}'."
+                );
+            }
         }
 
         // Build classification config from the mapping, falling back to defaults.

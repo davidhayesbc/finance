@@ -216,6 +216,7 @@ try
     app.MapImportEndpoints();
     app.MapImportHoldingsEndpoints();
     app.MapImportMappingEndpoints();
+    app.MapPluginEndpoints();
     app.MapRuleEndpoints();
     app.MapBudgetEndpoints();
     app.MapSinkingFundEndpoints();
