@@ -1,0 +1,247 @@
+@implements IDialogContentComponent<SecurityCatalogItemResponse>
+@inject IPriceHistoryService PriceHistoryService
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 1.25rem;">
+
+    @if (!string.IsNullOrWhiteSpace(_statusMessage))
+    {
+        <FluentMessageBar Intent="@(_statusIsError ? MessageIntent.Error : MessageIntent.Success)">
+            @_statusMessage
+        </FluentMessageBar>
+    }
+
+    <fieldset style="border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 1rem;">
+        <legend style="font-weight: 600; padding: 0 0.5rem;">Add manual price</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; align-items: end;">
+            <FluentDatePicker @bind-Value="_draftDateNullable" Label="Date" />
+            <FluentNumberField @bind-Value="_draftPrice" Label="Price" Min="0" Step="0.01" TValue="decimal" />
+            <FluentTextField @bind-Value="_draftCurrency" Label="Currency" />
+        </div>
+        <div style="margin-top: 0.75rem;">
+            <FluentButton Appearance="Appearance.Accent" Disabled="@(_isSaving || _draftPrice <= 0)"
+                          OnClick="AddManualPriceAsync">
+                Add price
+            </FluentButton>
+        </div>
+    </fieldset>
+
+    @if (_isLoading)
+    {
+        <LoadingSpinner AriaLabel="Loading price history" />
+    }
+    else if (_entries.Count == 0)
+    {
+        <EmptyStateCard Message="No price history recorded yet." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card">
+            <FluentDataGrid Items="@(_entries.AsQueryable())" TGridItem="PriceHistoryRow"
+                            Class="data-grid--elevated" aria-label="Price history">
+                <PropertyColumn Property="@(r => r.AsOfDate)" Title="Date" Sortable="true" Format="yyyy-MM-dd" />
+                <TemplateColumn Title="Price">
+                    @if (_editingId == context.Id)
+                    {
+                        <FluentNumberField @bind-Value="_editPrice" Min="0" Step="0.01" TValue="decimal" Style="width: 120px;" />
+                    }
+                    else
+                    {
+                        <span>@context.Price.ToString("N4") @context.Currency</span>
+                    }
+                </TemplateColumn>
+                <PropertyColumn Property="@(r => r.Source)" Title="Source" />
+                <PropertyColumn Property="@(r => r.RecordedAt)" Title="Recorded" Format="yyyy-MM-dd HH:mm" />
+                <TemplateColumn Title="">
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                        @if (_editingId == context.Id)
+                        {
+                            <FluentButton Appearance="Appearance.Stealth" Disabled="@_isSaving"
+                                          OnClick="@(() => SaveEditAsync(context))">
+                                Save
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth"
+                                          OnClick="@(() => _editingId = null)">
+                                Cancel
+                            </FluentButton>
+                        }
+                        else
+                        {
+                            <FluentButton Appearance="Appearance.Stealth"
+                                          OnClick="@(() => BeginEdit(context))"
+                                          aria-label="Edit price">
+                                Edit
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" Disabled="@_isSaving"
+                                          OnClick="@(() => DeleteAsync(context))"
+                                          aria-label="Delete price">
+                                Delete
+                            </FluentButton>
+                        }
+                    </FluentStack>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</FluentStack>
+
+@code {
+    [Parameter]
+    public SecurityCatalogItemResponse Content { get; set; } = default!;
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    private readonly List<PriceHistoryRow> _entries = [];
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    private DateTime? _draftDateNullable = DateTime.Today;
+    private decimal _draftPrice;
+    private string _draftCurrency = "CAD";
+
+    private Guid? _editingId;
+    private decimal _editPrice;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _draftCurrency = Content.Currency;
+        await LoadHistoryAsync();
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        _isLoading = true;
+        var result = await PriceHistoryService.GetBySymbolAsync(Content.DisplaySymbol);
+        _entries.Clear();
+        _entries.AddRange(
+            result.Select(r => new PriceHistoryRow(
+                r.Id,
+                r.AsOfDate,
+                r.Price,
+                r.Currency,
+                r.Source,
+                r.RecordedAt
+            ))
+        );
+        _isLoading = false;
+    }
+
+    private async Task AddManualPriceAsync()
+    {
+        if (_draftPrice <= 0 || _draftDateNullable is null)
+        {
+            SetStatus("Price must be greater than zero and date is required.", true);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var asOfDate = DateOnly.FromDateTime(_draftDateNullable.Value);
+            var request = new Privestio.Contracts.Requests.CreatePriceHistoryRequest
+            {
+                Symbol = Content.DisplaySymbol,
+                Price = _draftPrice,
+                Currency = string.IsNullOrWhiteSpace(_draftCurrency) ? "CAD" : _draftCurrency.Trim(),
+                AsOfDate = asOfDate,
+                Source = "Manual",
+            };
+
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("/api/v1/price-history", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                SetStatus("Failed to add price entry.", true);
+                return;
+            }
+
+            _draftPrice = 0;
+            _draftDateNullable = DateTime.Today;
+            SetStatus("Price entry added.", false);
+            await LoadHistoryAsync();
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void BeginEdit(PriceHistoryRow row)
+    {
+        _editingId = row.Id;
+        _editPrice = row.Price;
+    }
+
+    private async Task SaveEditAsync(PriceHistoryRow row)
+    {
+        if (_editPrice <= 0)
+        {
+            SetStatus("Price must be greater than zero.", true);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var updated = await PriceHistoryService.UpdateAsync(row.Id, _editPrice, row.Currency);
+            if (updated is null)
+            {
+                SetStatus("Update failed.", true);
+                return;
+            }
+
+            var idx = _entries.FindIndex(e => e.Id == row.Id);
+            if (idx >= 0)
+                _entries[idx] = row with { Price = updated.Price };
+
+            _editingId = null;
+            SetStatus("Price updated.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteAsync(PriceHistoryRow row)
+    {
+        _isSaving = true;
+        try
+        {
+            var deleted = await PriceHistoryService.DeleteAsync(row.Id);
+            if (!deleted)
+            {
+                SetStatus("Delete failed.", true);
+                return;
+            }
+
+            _entries.RemoveAll(e => e.Id == row.Id);
+            SetStatus("Price entry deleted.", false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void SetStatus(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusIsError = isError;
+    }
+
+    // Resolve HttpClient via DI cascade to be able to POST directly
+    [Inject] private System.Net.Http.HttpClient HttpClientInternal { get; set; } = default!;
+    private System.Net.Http.HttpClient GetHttpClient() => HttpClientInternal;
+
+    private sealed record PriceHistoryRow(
+        Guid Id,
+        DateOnly AsOfDate,
+        decimal Price,
+        string Currency,
+        string Source,
+        DateTime RecordedAt
+    );
+}

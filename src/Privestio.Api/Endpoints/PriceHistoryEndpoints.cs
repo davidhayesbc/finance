@@ -3,7 +3,9 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Privestio.Application.Commands.CreatePriceHistory;
+using Privestio.Application.Commands.DeletePriceHistory;
 using Privestio.Application.Commands.SyncHistoricalPrices;
+using Privestio.Application.Commands.UpdatePriceHistory;
 using Privestio.Application.Queries.GetPriceHistory;
 using Privestio.Contracts.Requests;
 
@@ -38,6 +40,16 @@ public static class PriceHistoryEndpoints
             .WithSummary(
                 "Fetch and persist historical prices for the current user's investment holdings"
             );
+
+        group
+            .MapPut("/{id:guid}", UpdatePriceHistoryAsync)
+            .WithName("UpdatePriceHistory")
+            .WithSummary("Update the price of an existing price history entry");
+
+        group
+            .MapDelete("/{id:guid}", DeletePriceHistoryAsync)
+            .WithName("DeletePriceHistory")
+            .WithSummary("Delete a price history entry");
 
         return app;
     }
@@ -168,5 +180,40 @@ public static class PriceHistoryEndpoints
         );
 
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdatePriceHistoryAsync(
+        Guid id,
+        [FromBody] UpdatePriceHistoryRequest request,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var result = await mediator.Send(
+            new UpdatePriceHistoryCommand(id, request.Price, request.Currency),
+            cancellationToken
+        );
+
+        return result is null ? Results.NotFound() : Results.Ok(result);
+    }
+
+    private static async Task<IResult> DeletePriceHistoryAsync(
+        Guid id,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var deleted = await mediator.Send(new DeletePriceHistoryCommand(id), cancellationToken);
+        return deleted ? Results.NoContent() : Results.NotFound();
     }
 }

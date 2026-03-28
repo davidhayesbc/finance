@@ -49,4 +49,13 @@ public class PriceHistory : BaseEntity
     public DateTime RecordedAt { get; private set; }
 
     public string Source { get; private set; } = string.Empty;
+
+    /// <summary>Update the price and mark when the correction was recorded.</summary>
+    public void UpdatePrice(Money newPrice, string source)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        Price = newPrice;
+        Source = source;
+        RecordedAt = DateTime.UtcNow;
+    }
 }

@@ -113,6 +113,8 @@ public static class DependencyInjection
             return new ChainedPriceFeedProvider(providers, options.Value.ProviderOrder, logger);
         });
 
+        services.AddHostedService<DailyPriceFetchBackgroundService>();
+
         // Exchange rate ingestion provider (Phase 5.5a)
         services.AddHttpClient<IExchangeRateProvider, FrankfurterExchangeRateProvider>(client =>
         {

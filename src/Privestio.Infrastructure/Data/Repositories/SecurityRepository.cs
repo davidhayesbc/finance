@@ -125,6 +125,16 @@ public class SecurityRepository : ISecurityRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Security>> GetAllNonCashAsync(
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Securities.Include(s => s.Aliases)
+            .Include(s => s.Identifiers)
+            .Where(s => !s.IsCashEquivalent)
+            .OrderBy(s => s.Name)
+            .ToListAsync(cancellationToken);
+
     public async Task<Security> AddAsync(
         Security security,
         CancellationToken cancellationToken = default

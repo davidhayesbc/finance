@@ -115,4 +115,18 @@ public class PriceHistoryRepository : IPriceHistoryRepository
             .PriceHistories.Where(p => ids.Contains(p.SecurityId) && p.Source != "PDFStatement")
             .ExecuteDeleteAsync(cancellationToken);
     }
+
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await _context.PriceHistories.Where(p => p.Id == id).ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public Task<PriceHistory> UpdateAsync(
+        PriceHistory priceHistory,
+        CancellationToken cancellationToken = default
+    )
+    {
+        _context.PriceHistories.Update(priceHistory);
+        return Task.FromResult(priceHistory);
+    }
 }

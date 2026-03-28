@@ -1,6 +1,9 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Privestio.Application.Commands.ImportTransactions;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Application.Tests;
@@ -21,6 +24,7 @@ public class ImportPolicyTests
     private readonly Mock<ITransactionImporter> _csvImporter;
     private readonly TransactionFingerprintService _fingerprintService;
     private readonly ImportTransactionsCommandHandler _handler;
+    private readonly Mock<IPriceFeedProvider> _priceFeedProvider = new();
 
     private readonly Guid _accountId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
@@ -78,7 +82,10 @@ public class ImportPolicyTests
             _unitOfWork.Object,
             [_csvImporter.Object],
             _fingerprintService,
-            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork)
+            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork),
+            _priceFeedProvider.Object,
+            Options.Create(new PricingOptions()),
+            NullLogger<ImportTransactionsCommandHandler>.Instance
         );
     }
 

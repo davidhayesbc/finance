@@ -29,6 +29,7 @@ public interface ISecurityRepository
         IReadOnlyCollection<Guid> securityIds,
         CancellationToken cancellationToken = default
     );
+    Task<IReadOnlyList<Security>> GetAllNonCashAsync(CancellationToken cancellationToken = default);
     Task<Security> AddAsync(Security security, CancellationToken cancellationToken = default);
     Task<Security> UpdateAsync(Security security, CancellationToken cancellationToken = default);
 }

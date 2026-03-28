@@ -7,6 +7,7 @@ using Privestio.Application.Commands.AddSecurityAlias;
 using Privestio.Application.Commands.CorrectHoldingSecurity;
 using Privestio.Application.Commands.DeleteHoldingSecurityIdentifier;
 using Privestio.Application.Commands.DeleteSecurityAlias;
+using Privestio.Application.Commands.FetchSecurityHistoricalPrices;
 using Privestio.Application.Commands.FetchSecurityPrice;
 using Privestio.Application.Commands.SetPricingProviderOrder;
 using Privestio.Application.Commands.UpdateSecurityAlias;
@@ -91,6 +92,16 @@ public static class SecurityEndpoints
             .WithName("FetchSecurityPrice")
             .WithSummary(
                 "Fetch the latest price for a specific security from configured providers"
+            );
+
+        group
+            .MapPost(
+                "/{securityId:guid}/fetch-historical-prices",
+                FetchSecurityHistoricalPricesAsync
+            )
+            .WithName("FetchSecurityHistoricalPrices")
+            .WithSummary(
+                "Fetch and persist historical prices for a specific security from the first transaction date forward"
             );
 
         return app;
@@ -458,6 +469,39 @@ public static class SecurityEndpoints
         catch (InvalidOperationException ex)
         {
             return Results.BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> FetchSecurityHistoricalPricesAsync(
+        Guid securityId,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            var result = await mediator.Send(
+                new FetchSecurityHistoricalPricesCommand(
+                    securityId,
+                    userId.Value,
+                    fromDate,
+                    toDate
+                ),
+                cancellationToken
+            );
+
+            return Results.Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
         }
     }
 }

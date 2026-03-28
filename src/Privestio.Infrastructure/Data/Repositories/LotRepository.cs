@@ -25,6 +25,17 @@ public class LotRepository : ILotRepository
             .OrderBy(l => l.AcquiredDate)
             .ToListAsync(cancellationToken);
 
+    public async Task<DateOnly?> GetEarliestAcquiredDateBySecurityIdAsync(
+        Guid securityId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var date = await _context
+            .Lots.Where(l => l.Holding != null && l.Holding.SecurityId == securityId)
+            .MinAsync(l => (DateOnly?)l.AcquiredDate, cancellationToken);
+        return date;
+    }
+
     public async Task<Lot> AddAsync(Lot lot, CancellationToken cancellationToken = default)
     {
         await _context.Lots.AddAsync(lot, cancellationToken);

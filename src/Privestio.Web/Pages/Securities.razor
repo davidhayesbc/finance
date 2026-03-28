@@ -53,7 +53,7 @@
                 </TemplateColumn>
                 <TemplateColumn Title="">
                     <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
-                        <FluentButton Appearance="Appearance.Stealth"                                      Disabled="@(_fetchingPriceFor == context.Id)"
+                        <FluentButton Appearance="Appearance.Stealth" Disabled="@(_fetchingPriceFor == context.Id)"
                                       OnClick="@(() => FetchPriceAsync(context))"
                                       aria-label="@($"Fetch price for {context.DisplaySymbol}")">
                             @if (_fetchingPriceFor == context.Id)
@@ -65,9 +65,27 @@
                                 <span>Fetch price</span>
                             }
                         </FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth"                                      OnClick="@(() => OpenEditDialogAsync(context))"
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      Disabled="@(_fetchingHistoricalPricesFor == context.Id)"
+                                      OnClick="@(() => FetchHistoricalPricesAsync(context))"
+                                      aria-label="@($"Fetch historical prices for {context.DisplaySymbol}")">
+                            @if (_fetchingHistoricalPricesFor == context.Id)
+                            {
+                                <span>Fetching…</span>
+                            }
+                            else
+                            {
+                                <span>Fetch historical prices</span>
+                            }
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => OpenEditDialogAsync(context))"
                                       aria-label="@($"Edit {context.DisplaySymbol}")">
                             Edit
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      OnClick="@(() => OpenPriceHistoryDialogAsync(context))"
+                                      aria-label="@($"Price history for {context.DisplaySymbol}")">
+                            Price history
                         </FluentButton>
                     </FluentStack>
                 </TemplateColumn>
@@ -81,6 +99,7 @@
 
     private bool _isLoading = true;
     private Guid? _fetchingPriceFor;
+    private Guid? _fetchingHistoricalPricesFor;
 
     protected override async Task OnInitializedAsync()
     {
@@ -117,6 +136,19 @@
         }
     }
 
+    private async Task FetchHistoricalPricesAsync(SecurityCatalogItemResponse security)
+    {
+        _fetchingHistoricalPricesFor = security.Id;
+        try
+        {
+            await SecurityService.FetchHistoricalPricesAsync(security.Id);
+        }
+        finally
+        {
+            _fetchingHistoricalPricesFor = null;
+        }
+    }
+
     private async Task OpenEditDialogAsync(SecurityCatalogItemResponse security)
     {
         var dialog = await DialogService.ShowDialogAsync<SecurityEditDialog>(security, new DialogParameters
@@ -131,6 +163,24 @@
         var result = await dialog.Result;
 
         // Always reload after dialog closes — edits are saved inline
+        await ReloadAsync();
+        StateHasChanged();
+    }
+
+    private async Task OpenPriceHistoryDialogAsync(SecurityCatalogItemResponse security)
+    {
+        var dialog = await DialogService.ShowDialogAsync<PriceHistoryDialog>(security, new DialogParameters
+        {
+            Title = $"Price history — {security.DisplaySymbol}",
+            Width = "900px",
+            PrimaryAction = null,
+            SecondaryAction = "Close",
+            PreventDismissOnOverlayClick = true,
+        });
+
+        await dialog.Result;
+
+        // Reload so Latest Price column reflects any manual changes
         await ReloadAsync();
         StateHasChanged();
     }

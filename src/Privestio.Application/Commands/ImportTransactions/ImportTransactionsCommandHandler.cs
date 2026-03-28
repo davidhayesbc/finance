@@ -1,5 +1,8 @@
 using System.Text.Json;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
@@ -17,6 +20,9 @@ public class ImportTransactionsCommandHandler
     private readonly IEnumerable<ITransactionImporter> _importers;
     private readonly TransactionFingerprintService _fingerprintService;
     private readonly SecurityResolutionService _securityResolutionService;
+    private readonly IPriceFeedProvider _priceFeedProvider;
+    private readonly PricingOptions _pricingOptions;
+    private readonly ILogger<ImportTransactionsCommandHandler> _logger;
 
     // Default keyword lists — match the original hardcoded values so existing imports
     // continue to work when no mapping-level overrides are configured.
@@ -31,13 +37,19 @@ public class ImportTransactionsCommandHandler
         IUnitOfWork unitOfWork,
         IEnumerable<ITransactionImporter> importers,
         TransactionFingerprintService fingerprintService,
-        SecurityResolutionService securityResolutionService
+        SecurityResolutionService securityResolutionService,
+        IPriceFeedProvider priceFeedProvider,
+        IOptions<PricingOptions> pricingOptions,
+        ILogger<ImportTransactionsCommandHandler> logger
     )
     {
         _unitOfWork = unitOfWork;
         _importers = importers;
         _fingerprintService = fingerprintService;
         _securityResolutionService = securityResolutionService;
+        _priceFeedProvider = priceFeedProvider;
+        _pricingOptions = pricingOptions.Value;
+        _logger = logger;
     }
 
     public async Task<ImportResultResponse> Handle(
@@ -262,6 +274,12 @@ public class ImportTransactionsCommandHandler
             }
         }
 
+        // Determine earliest investment row date for historical price fetch scope.
+        var earliestInvestmentDate = importedRows
+            .Where(r => !string.IsNullOrWhiteSpace(r.Symbol))
+            .Select(r => (DateOnly?)DateOnly.FromDateTime(r.Date))
+            .Min();
+
         // Update batch metrics and store error details for diagnostics
         batch.Complete(
             rowCount: parseResult.Rows.Count,
@@ -291,6 +309,17 @@ public class ImportTransactionsCommandHandler
             throw new InvalidOperationException($"Import persistence failed: {innerMessage}", ex);
         }
 
+        // After persisting, fetch historical prices for investment accounts so portfolio
+        // valuation has price data from the first transaction date forward.
+        if (account.AccountType == AccountType.Investment && earliestInvestmentDate.HasValue)
+        {
+            await FetchHistoricalPricesForImportedSecuritiesAsync(
+                request.AccountId,
+                earliestInvestmentDate.Value,
+                cancellationToken
+            );
+        }
+
         return new ImportResultResponse
         {
             ImportBatchId = batch.Id,
@@ -308,6 +337,88 @@ public class ImportTransactionsCommandHandler
                 })
                 .ToList(),
         };
+    }
+
+    private async Task FetchHistoricalPricesForImportedSecuritiesAsync(
+        Guid accountId,
+        DateOnly fromDate,
+        CancellationToken cancellationToken
+    )
+    {
+        var holdings = await _unitOfWork.Holdings.GetByAccountIdAsync(accountId, cancellationToken);
+        var securities = holdings
+            .Where(h => h.Quantity > 0m && h.Security is not null && !h.Security.IsCashEquivalent)
+            .Select(h => h.Security!)
+            .DistinctBy(s => s.Id)
+            .ToList();
+
+        if (securities.Count == 0)
+            return;
+
+        var toDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var allQuotes = new List<PriceQuote>();
+
+        foreach (var security in securities)
+        {
+            var order = security.PricingProviderOrder ?? _pricingOptions.ProviderOrder;
+            var lookup = _securityResolutionService.BuildPriceLookup(security, order);
+            try
+            {
+                var quotes = await _priceFeedProvider.GetHistoricalPricesAsync(
+                    lookup,
+                    fromDate,
+                    toDate,
+                    cancellationToken
+                );
+                allQuotes.AddRange(quotes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to fetch historical prices for {Symbol} during import",
+                    security.DisplaySymbol
+                );
+            }
+        }
+
+        var distinctQuotes = allQuotes
+            .Where(q => q.Price > 0m)
+            .GroupBy(q => (q.SecurityId, q.AsOfDate))
+            .Select(g => g.First())
+            .ToList();
+
+        if (distinctQuotes.Count == 0)
+            return;
+
+        var existingKeys = await _unitOfWork.PriceHistories.GetExistingKeysAsync(
+            distinctQuotes.Select(q => (q.SecurityId, q.AsOfDate)),
+            cancellationToken
+        );
+
+        var securityById = securities.ToDictionary(s => s.Id);
+        var newEntries = distinctQuotes
+            .Where(q => !existingKeys.Contains((q.SecurityId, q.AsOfDate)))
+            .Where(q => securityById.ContainsKey(q.SecurityId))
+            .Select(q =>
+            {
+                var security = securityById[q.SecurityId];
+                return new PriceHistory(
+                    q.SecurityId,
+                    security.DisplaySymbol,
+                    q.Symbol,
+                    new Money(q.Price, q.Currency),
+                    q.AsOfDate,
+                    q.Source ?? _priceFeedProvider.ProviderName
+                );
+            })
+            .ToList();
+
+        if (newEntries.Count > 0)
+        {
+            await _unitOfWork.PriceHistories.AddRangeAsync(newEntries, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private async Task UpsertInvestmentPositionsFromImportAsync(

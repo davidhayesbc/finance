@@ -1,6 +1,9 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Privestio.Application.Commands.ImportTransactions;
+using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Application.Tests;
@@ -20,6 +23,8 @@ public class ImportTransactionsCommandTests
     private readonly Mock<IAccountRepository> _accountRepo;
     private readonly Mock<IHoldingRepository> _holdingRepo;
     private readonly Mock<ILotRepository> _lotRepo;
+    private readonly Mock<IPriceHistoryRepository> _priceHistoryRepo;
+    private readonly Mock<IPriceFeedProvider> _priceFeedProvider;
     private readonly Mock<ITransactionImporter> _csvImporter;
     private readonly TransactionFingerprintService _fingerprintService;
     private readonly ImportTransactionsCommandHandler _handler;
@@ -35,6 +40,8 @@ public class ImportTransactionsCommandTests
         _accountRepo = new Mock<IAccountRepository>();
         _holdingRepo = new Mock<IHoldingRepository>();
         _lotRepo = new Mock<ILotRepository>();
+        _priceHistoryRepo = new Mock<IPriceHistoryRepository>();
+        _priceFeedProvider = new Mock<IPriceFeedProvider>();
         _unitOfWork = new Mock<IUnitOfWork>();
 
         _unitOfWork.Setup(u => u.Transactions).Returns(_transactionRepo.Object);
@@ -43,7 +50,31 @@ public class ImportTransactionsCommandTests
         _unitOfWork.Setup(u => u.Accounts).Returns(_accountRepo.Object);
         _unitOfWork.Setup(u => u.Holdings).Returns(_holdingRepo.Object);
         _unitOfWork.Setup(u => u.Lots).Returns(_lotRepo.Object);
+        _unitOfWork.Setup(u => u.PriceHistories).Returns(_priceHistoryRepo.Object);
         _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        // Default: price provider returns no quotes so investment imports don't fail
+        _priceFeedProvider
+            .Setup(p =>
+                p.GetHistoricalPricesAsync(
+                    It.IsAny<PriceLookup>(),
+                    It.IsAny<DateOnly>(),
+                    It.IsAny<DateOnly>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
+        _priceFeedProvider.SetupGet(p => p.ProviderName).Returns("YahooFinance");
+
+        // Default: no existing price keys
+        _priceHistoryRepo
+            .Setup(r =>
+                r.GetExistingKeysAsync(
+                    It.IsAny<IEnumerable<(Guid, DateOnly)>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(new HashSet<(Guid, DateOnly)>() as IReadOnlySet<(Guid, DateOnly)>);
 
         var account = new Account(
             "Chequing",
@@ -98,7 +129,10 @@ public class ImportTransactionsCommandTests
             _unitOfWork.Object,
             [_csvImporter.Object],
             _fingerprintService,
-            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork)
+            SecurityTestHelper.CreateSecurityResolutionService(_unitOfWork),
+            _priceFeedProvider.Object,
+            Options.Create(new PricingOptions()),
+            NullLogger<ImportTransactionsCommandHandler>.Instance
         );
     }
 

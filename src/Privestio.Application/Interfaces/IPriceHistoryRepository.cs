@@ -47,4 +47,10 @@ public interface IPriceHistoryRepository
         IEnumerable<Guid> securityIds,
         CancellationToken cancellationToken = default
     );
+
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<PriceHistory> UpdateAsync(
+        PriceHistory priceHistory,
+        CancellationToken cancellationToken = default
+    );
 }
