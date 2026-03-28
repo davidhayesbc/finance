@@ -123,7 +123,14 @@
                     </div>
 
                     <FluentDataGrid Items="_items.AsQueryable()" TGridItem="RecurringTransactionResponse"
-                                    Class="data-grid--elevated">
+                                    Class="data-grid--elevated"
+                                    ResizableColumns="true"
+                                    ResizeType="DataGridResizeType.Discrete"
+                                    HeaderCellAsButtonWithMenu="true"
+                                    ResizeColumnOnAllRows="false"
+                                    ShowHover="true"
+                                    DisplayMode="DataGridDisplayMode.Table"
+                                    RowSize="DataGridRowSize.Medium">
                         <PropertyColumn Property="@(r => r.Description)" Title="Description" Sortable="true" />
                         <TemplateColumn Title="Amount">
                             <FluentBadge

@@ -37,7 +37,7 @@
         <FluentCard Class="surface-card data-card">
             <h3 style="margin: 0 0 1rem 0;">Debt Details</h3>
 
-            <FluentDataGrid Items="_overview.Debts.AsQueryable()" TGridItem="DebtDetailItem" Class="data-grid--elevated">
+            <FluentDataGrid Items="_overview.Debts.AsQueryable()" TGridItem="DebtDetailItem" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                 <PropertyColumn Property="@(d => d.Name)" Title="Name" Sortable="true" />
                 <TemplateColumn Title="Balance" Sortable="true"
                                 SortBy="@(GridSort<DebtDetailItem>.ByDescending(d => d.Balance))">

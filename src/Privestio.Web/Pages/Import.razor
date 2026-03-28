@@ -49,7 +49,7 @@
                 {
                     <FluentMessageBar Intent="@MessageIntent.Info" style="margin-bottom: 0.75rem;">
                         Registered import formats: @string.Join(", ", _registeredImportFormats.OrderBy(f => f,
-                                    StringComparer.OrdinalIgnoreCase))
+                                                                                                            StringComparer.OrdinalIgnoreCase))
                     </FluentMessageBar>
                 }
 
@@ -122,11 +122,21 @@
                     <div>
                         <h3 class="section-heading">Sample data</h3>
                         <FluentDataGrid Items="_sampleRows.AsQueryable()" aria-label="File preview data" TGridItem="SampleRow"
-                                        Class="data-grid--elevated">
+                                        Class="data-grid--elevated data-grid--import-preview" ResizableColumns="true"
+                                        ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
+                                        ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                             @foreach (var (col, idx) in _filePreview.DetectedColumns.Select((c, i) => (c, i)))
                             {
                                 var colIndex = idx;
-                                <PropertyColumn Property="@(r => r.Values.Count > colIndex ? r.Values[colIndex] : "")" Title="@col" />
+                                <TemplateColumn Title="@col"
+                                                SortBy="@(GridSort<SampleRow>.ByAscending(r => r.Values.Count > colIndex ? r.Values[colIndex] : string.Empty))"
+                                                Width="200px">
+                                    @{
+                                        var cell = context.Values.Count > colIndex ? context.Values[colIndex] : string.Empty;
+                                    }
+                                    <span class="cell-truncate"
+                                          title="@(string.IsNullOrWhiteSpace(cell) ? "Empty value" : cell)">@cell</span>
+                                </TemplateColumn>
                             }
                         </FluentDataGrid>
                     </div>
@@ -183,57 +193,69 @@
                     {
                         <div>
                             <h3 class="section-heading">Errors</h3>
-                            <FluentDataGrid Items="_previewResult.Errors.AsQueryable()" aria-label="Import errors"
-                                            TGridItem="ImportErrorDetail" Class="data-grid--elevated">
-                                <PropertyColumn Property="@(e => e.RowNumber)" Title="Row" />
-                                <PropertyColumn Property="@(e => e.Message)" Title="Error" />
-                                <PropertyColumn Property="@(e => e.RawData ?? "")" Title="Raw Data" />
-                            </FluentDataGrid>
+                            <FluentDataGrid Items="_previewResult.Errors.OrderBy(e => e.RowNumber).AsQueryable()"
+                                            aria-label="Import errors" TGridItem="ImportErrorDetail"
+                                            Class="data-grid--elevated data-grid--import-errors" ResizableColumns="true"
+                                            ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
+                                            ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
+                                <PropertyColumn Property="@(e => e.RowNumber)" Title="Row" Sortable="true" Width="88px" />
+                                <TemplateColumn Title="Error" SortBy="@(GridSort<ImportErrorDetail>.ByAscending(e => e.Message))"
+                                                Width="320px">
+                                    <span class="cell-truncate"
+                                          title="@(string.IsNullOrWhiteSpace(context.Message) ? "No error message" : context.Message)">@context.Message</span>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Raw Data"
+                                                SortBy="@(GridSort<ImportErrorDetail>.ByAscending(e => e.RawData ?? string.Empty))" Width="420px">
+                                    <span class="cell-truncate cell-truncate--mono"
+                                          title="@(string.IsNullOrWhiteSpace(context.RawData) ? "No raw data" : context.RawData)">@(context.RawData
+                                                                                                        ?? string.Empty)</span>
+                                    </TemplateColumn>
+                                </FluentDataGrid>
+                            </div>
+                        }
+
+                        <div class="action-cluster">
+                            <FluentButton Appearance="Appearance.Accent" Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)"
+                                          Loading="_isLoading" OnClick="CommitImportAsync">
+                                Commit Import (@_previewResult.ImportedCount transactions)
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.ColumnMapping)">
+                                Back to Mapping
+                            </FluentButton>
                         </div>
-                    }
+                    </FluentCard>
+                }
 
-                    <div class="action-cluster">
-                        <FluentButton Appearance="Appearance.Accent" Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)"
-                                      Loading="_isLoading" OnClick="CommitImportAsync">
-                            Commit Import (@_previewResult.ImportedCount transactions)
-                        </FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.ColumnMapping)">
-                            Back to Mapping
-                        </FluentButton>
-                    </div>
-                </FluentCard>
-            }
+                @if (_step == ImportStep.Complete && _importResult is not null)
+                {
+                    <FluentCard Class="surface-card panel-stack" aria-label="Import complete">
+                        <div>
+                            <span class="eyebrow">Step 4</span>
+                            <h2 class="section-heading">Import complete</h2>
+                        </div>
 
-            @if (_step == ImportStep.Complete && _importResult is not null)
-            {
-                <FluentCard Class="surface-card panel-stack" aria-label="Import complete">
-                    <div>
-                        <span class="eyebrow">Step 4</span>
-                        <h2 class="section-heading">Import complete</h2>
-                    </div>
+                        <div class="detail-grid">
+                            <StatCard Label="Imported">@_importResult.ImportedCount</StatCard>
+                            <StatCard Label="Duplicates skipped">@_importResult.DuplicateCount</StatCard>
+                            <StatCard Label="Errors">@_importResult.ErrorCount</StatCard>
+                            <StatCard Label="Status">@_importResult.Status</StatCard>
+                        </div>
 
-                    <div class="detail-grid">
-                        <StatCard Label="Imported">@_importResult.ImportedCount</StatCard>
-                        <StatCard Label="Duplicates skipped">@_importResult.DuplicateCount</StatCard>
-                        <StatCard Label="Errors">@_importResult.ErrorCount</StatCard>
-                        <StatCard Label="Status">@_importResult.Status</StatCard>
-                    </div>
-
-                    <div class="action-cluster">
-                        <FluentButton Appearance="Appearance.Accent"
-                                      OnClick="@(() => Navigation.NavigateTo($"/accounts/{_selectedAccountId}"))">
-                            View Account
-                        </FluentButton>
-                        <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
-                            Import Another File
-                        </FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => Navigation.NavigateTo("/import/history"))">
-                            Import History
-                        </FluentButton>
-                    </div>
-                </FluentCard>
-            }
-        </section>
+                        <div class="action-cluster">
+                            <FluentButton Appearance="Appearance.Accent"
+                                          OnClick="@(() => Navigation.NavigateTo($"/accounts/{_selectedAccountId}"))">
+                                View Account
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
+                                Import Another File
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => Navigation.NavigateTo("/import/history"))">
+                                Import History
+                            </FluentButton>
+                        </div>
+                    </FluentCard>
+                }
+            </section>
 
 @code {
     private enum ImportStep { Upload, ColumnMapping, Preview, Complete }

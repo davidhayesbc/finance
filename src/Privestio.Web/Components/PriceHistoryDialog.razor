@@ -36,10 +36,17 @@
     else
     {
         <FluentCard Class="surface-card">
-            <FluentDataGrid Items="@(_entries.AsQueryable())" TGridItem="PriceHistoryRow"
-                            Class="data-grid--elevated" aria-label="Price history">
-                <PropertyColumn Property="@(r => r.AsOfDate)" Title="Date" Sortable="true" Format="yyyy-MM-dd" />
-                <TemplateColumn Title="Price">
+            <FluentDataGrid Items="@(_entries.OrderByDescending(e => e.AsOfDate).ThenByDescending(e => e.RecordedAt).AsQueryable())" TGridItem="PriceHistoryRow"
+                            Class="data-grid--elevated" aria-label="Price history"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
+                <PropertyColumn Property="@(r => r.AsOfDate)" Title="Date" Sortable="true" Format="yyyy-MM-dd" Width="128px" />
+                <TemplateColumn Title="Price" SortBy="@(GridSort<PriceHistoryRow>.ByDescending(r => r.Price))" Width="156px">
                     @if (_editingId == context.Id)
                     {
                         <FluentNumberField @bind-Value="_editPrice" Min="0" Step="0.01" TValue="decimal" Style="width: 120px;" />
@@ -49,10 +56,10 @@
                         <span>@context.Price.ToString("N4") @context.Currency</span>
                     }
                 </TemplateColumn>
-                <PropertyColumn Property="@(r => r.Source)" Title="Source" />
-                <PropertyColumn Property="@(r => r.RecordedAt)" Title="Recorded" Format="yyyy-MM-dd HH:mm" />
-                <TemplateColumn Title="">
-                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                <PropertyColumn Property="@(r => r.Source)" Title="Source" Sortable="true" Width="140px" />
+                <PropertyColumn Property="@(r => r.RecordedAt)" Title="Recorded" Format="yyyy-MM-dd HH:mm" Sortable="true" Width="170px" />
+                <TemplateColumn Title="" Width="170px">
+                    <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact">
                         @if (_editingId == context.Id)
                         {
                             <FluentButton Appearance="Appearance.Stealth" Disabled="@_isSaving"

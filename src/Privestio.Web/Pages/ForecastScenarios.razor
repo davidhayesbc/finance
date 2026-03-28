@@ -64,7 +64,14 @@
             <h3 style="margin: 0 0 1rem 0;">Scenarios</h3>
 
             <FluentDataGrid Items="_scenarios.AsQueryable()" TGridItem="ForecastScenarioResponse"
-                            Class="data-grid--elevated">
+                            Class="data-grid--elevated"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
                 <PropertyColumn Property="@(s => s.Name)" Title="Name" Sortable="true" />
                 <PropertyColumn Property="@(s => s.Description)" Title="Description" />
                 <TemplateColumn Title="Default">

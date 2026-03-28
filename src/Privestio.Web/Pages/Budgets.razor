@@ -117,7 +117,7 @@
                         </div>
                     </div>
 
-                    <FluentDataGrid Items="_summaries.AsQueryable()" TGridItem="BudgetSummaryResponse" Class="data-grid--elevated">
+                    <FluentDataGrid Items="_summaries.AsQueryable()" TGridItem="BudgetSummaryResponse" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                         <PropertyColumn Property="@(s => s.CategoryName)" Title="Category" Sortable="true" />
                         <TemplateColumn Title="Budgeted" Sortable="true"
                                         SortBy="@(GridSort<BudgetSummaryResponse>.ByAscending(s => s.BudgetedAmount))">
@@ -145,7 +145,7 @@
             <FluentCard Class="surface-card data-card">
                 <h3 style="margin: 0 0 1rem 0;">Budget Definitions</h3>
 
-                <FluentDataGrid Items="_budgets.AsQueryable()" TGridItem="BudgetResponse" Class="data-grid--elevated">
+                <FluentDataGrid Items="_budgets.AsQueryable()" TGridItem="BudgetResponse" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                     <PropertyColumn Property="@(b => b.CategoryName)" Title="Category" Sortable="true" />
                     <TemplateColumn Title="Amount">
                         @context.Amount.ToString("C") @context.Currency

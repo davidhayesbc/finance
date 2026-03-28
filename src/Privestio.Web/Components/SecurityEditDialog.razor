@@ -53,7 +53,14 @@
         {
             <FluentDataGrid Items="@(_security.Aliases.OrderBy(a => a.Source).ThenBy(a => a.Symbol).AsQueryable())"
                             TGridItem="SecurityAliasResponse" Class="data-grid--elevated" Style="margin-bottom: 1rem;"
-                            aria-label="@($"Aliases for {_security.DisplaySymbol}")">
+                            aria-label="@($"Aliases for {_security.DisplaySymbol}")"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
                 <TemplateColumn Title="Institution/Site">
                     @{
                         var sourceRow = GetAliasEditRow(context);

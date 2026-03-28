@@ -69,7 +69,14 @@ else
             @if (_transaction.IsSplit && !_isEditingSplits)
             {
                 <FluentDataGrid Items="_transaction.Splits.AsQueryable()" aria-label="Split lines"
-                                TGridItem="TransactionSplitResponse" Class="data-grid--elevated">
+                                TGridItem="TransactionSplitResponse" Class="data-grid--elevated"
+                                ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeColumnOnAllRows="false"
+                                ShowHover="true"
+                                DisplayMode="DataGridDisplayMode.Table"
+                                RowSize="DataGridRowSize.Medium">
                     <TemplateColumn Title="Category">
                         @(context.CategoryName ?? "—")
                     </TemplateColumn>

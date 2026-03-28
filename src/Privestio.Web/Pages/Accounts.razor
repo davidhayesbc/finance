@@ -10,10 +10,8 @@
     <PageHeader Eyebrow="Accounts" Title="Account workspace"
                 Description="Review balances, institutions, and account types in one consistently styled table.">
         <Actions>
-            <FluentButton Appearance="Appearance.Outline"
-                          Loading="_isSyncingHistory"
-                          @onclick="SyncHistoricalPricesAsync"
-                          aria-label="Sync historical prices from Yahoo Finance">
+            <FluentButton Appearance="Appearance.Outline" Loading="_isSyncingHistory"
+                          @onclick="SyncHistoricalPricesAsync" aria-label="Sync historical prices from Yahoo Finance">
                 Sync Market History
             </FluentButton>
             <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
@@ -50,61 +48,73 @@
                 <div class="section-heading-row" style="margin-bottom: 1rem;">
                     <div>
                         <h3 style="margin: 0 0 0.25rem 0;">Net Worth Growth</h3>
-                        <p class="section-copy">Trend line built from recorded balances, valuations, and persisted market prices.</p>
+                        <p class="section-copy">Trend line built from recorded balances, valuations, and persisted market
+                            prices.</p>
+                        </div>
+                        <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
+                                              Disabled="@(_isLoadingHistory || _isSyncingHistory)" OnChange="HandleHistoryRangeChangedAsync" />
                     </div>
-                    <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
-                                          Disabled="@(_isLoadingHistory || _isSyncingHistory)"
-                                          OnChange="HandleHistoryRangeChangedAsync" />
-                </div>
 
-                @if (_isLoadingHistory)
-                {
-                    <LoadingSpinner AriaLabel="Loading net worth history" />
-                }
-                else
-                {
-                <HistoricalValueChart Points="_netWorthHistory.Points"
-                                      SeriesName="Net Worth"
-                                      EmptyTitle="No net worth history yet."
-                                      EmptyMessage="Sync historical prices and keep account activity current to visualize growth over time." />
-                }
-            </FluentCard>
-        }
+                    @if (_isLoadingHistory)
+                    {
+                        <LoadingSpinner AriaLabel="Loading net worth history" />
+                    }
+                    else
+                    {
+                        <HistoricalValueChart Points="_netWorthHistory.Points" SeriesName="Net Worth"
+                                              EmptyTitle="No net worth history yet."
+                                              EmptyMessage="Sync historical prices and keep account activity current to visualize growth over time." />
+                    }
+                </FluentCard>
+            }
 
-        <FluentCard Class="surface-card data-card">
-            <div class="summary-strip">
-                <div>
-                    <span class="summary-strip__label">Total accounts</span>
-                    <strong>@_accounts.Count</strong>
-                </div>
-                <div>
-                    <span class="summary-strip__label">Institutions</span>
-                    <strong>@_accounts.Select(a => a.Institution).Where(i =>
-                                                                                            !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
+            <FluentCard Class="surface-card data-card">
+                <div class="summary-strip">
+                    <div>
+                        <span class="summary-strip__label">Total accounts</span>
+                        <strong>@_accounts.Count</strong>
                     </div>
-                </div>
+                    <div>
+                        <span class="summary-strip__label">Institutions</span>
+                        <strong>@_accounts.Select(a => a.Institution).Where(i =>
+                                                                                                                        !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
+                        </div>
+                    </div>
 
-                <FluentDataGrid Items="_accounts.AsQueryable()" aria-label="Accounts table" TGridItem="AccountResponse"
-                                Class="data-grid--elevated">
-                    <PropertyColumn Property="a => a.Name" Title="Account Name" />
-                    <PropertyColumn Property="a => a.AccountType" Title="Type" />
-                    <PropertyColumn Property="a => a.Institution ?? string.Empty" Title="Institution" />
-                    <TemplateColumn Title="Balance">
-                        <FluentBadge Appearance="Appearance.Neutral" Class="balance-badge">
-                            @context.CurrentBalance.ToString("C") @context.Currency
-                        </FluentBadge>
-                    </TemplateColumn>
-                    <TemplateColumn Title="">
-                        <FluentButton Appearance="Appearance.Outline" Class="account-view-button"
-                                      @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))"
-                                      aria-label="@($"View {context.Name}")">
-                            View
-                        </FluentButton>
-                    </TemplateColumn>
-                </FluentDataGrid>
-            </FluentCard>
-        }
-    </section>
+                    <FluentDataGrid Items="_accounts.OrderByDescending(a => a.CurrentBalance).ThenBy(a => a.Name).AsQueryable()"
+                                    aria-label="Accounts table" TGridItem="AccountResponse" Class="data-grid--elevated data-grid--accounts"
+                                    ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true"
+                                    ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table"
+                                    RowSize="DataGridRowSize.Medium">
+                        <TemplateColumn Title="Account Name" SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Name))"
+                                        Width="260px">
+                            <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(context.Name) ? "Unnamed account" : context.Name)">@context.Name</span>
+                        </TemplateColumn>
+                        <PropertyColumn Property="a => a.AccountType" Title="Type" Sortable="true" Width="150px" />
+                        <TemplateColumn Title="Institution"
+                                        SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Institution ?? string.Empty))" Width="200px">
+                            <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(context.Institution) ? "No institution" : context.Institution)">@(context.Institution ??
+                                         "-")</span>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Balance" SortBy="@(GridSort<AccountResponse>.ByDescending(a => a.CurrentBalance))"
+                                            Width="160px">
+                                <FluentBadge Appearance="Appearance.Neutral" Class="balance-badge">
+                                    @context.CurrentBalance.ToString("C") @context.Currency
+                                </FluentBadge>
+                            </TemplateColumn>
+                            <TemplateColumn Title="" Width="100px">
+                                <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact">
+                                    <FluentButton Appearance="Appearance.Outline" Class="account-view-button"
+                                                  @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))"
+                                                  aria-label="@($"View {context.Name}")">
+                                        View
+                                    </FluentButton>
+                                </FluentStack>
+                            </TemplateColumn>
+                        </FluentDataGrid>
+                    </FluentCard>
+                }
+            </section>
 
 @code {
     private List<AccountResponse> _accounts = new();

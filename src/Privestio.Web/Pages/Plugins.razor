@@ -30,7 +30,14 @@
             </div>
 
             <FluentDataGrid Items="_catalog.Plugins.AsQueryable()" TGridItem="RegisteredPluginResponse"
-                            Class="data-grid--elevated" aria-label="Registered plugins">
+                            Class="data-grid--elevated" aria-label="Registered plugins"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
                 <PropertyColumn Property="@(p => p.Kind)" Title="Kind" Sortable="true" />
                 <PropertyColumn Property="@(p => p.Name)" Title="Name" Sortable="true" />
                 <PropertyColumn Property="@(p => p.Key)" Title="Key" Sortable="true" />

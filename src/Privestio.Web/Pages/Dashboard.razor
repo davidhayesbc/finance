@@ -66,12 +66,20 @@
             <FluentCard Class="surface-card data-card">
                 <h3 style="margin: 0 0 1rem 0;">Account Summary</h3>
 
-                <FluentDataGrid Items="_summary.AccountSummaries.AsQueryable()" TGridItem="AccountSummary"
-                                Class="data-grid--elevated">
-                    <PropertyColumn Property="@(a => a.Name)" Title="Account" Sortable="true" />
-                    <PropertyColumn Property="@(a => a.AccountType)" Title="Type" Sortable="true" />
-                    <TemplateColumn Title="Balance" Sortable="true"
-                                    SortBy="@(GridSort<AccountSummary>.ByAscending(a => a.Balance))">
+                <FluentDataGrid Items="_summary.AccountSummaries.OrderByDescending(a => a.Balance).ThenBy(a => a.Name).AsQueryable()" TGridItem="AccountSummary"
+                                Class="data-grid--elevated data-grid--dashboard"
+                                ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeColumnOnAllRows="false"
+                                ShowHover="true"
+                                DisplayMode="DataGridDisplayMode.Table"
+                                RowSize="DataGridRowSize.Medium">
+                    <TemplateColumn Title="Account" SortBy="@(GridSort<AccountSummary>.ByAscending(a => a.Name))" Width="280px">
+                        <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(context.Name) ? "Unnamed account" : context.Name)">@context.Name</span>
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(a => a.AccountType)" Title="Type" Sortable="true" Width="150px" />
+                    <TemplateColumn Title="Balance" SortBy="@(GridSort<AccountSummary>.ByDescending(a => a.Balance))" Width="170px">
                         @context.Balance.ToString("C") @context.Currency
                     </TemplateColumn>
                 </FluentDataGrid>

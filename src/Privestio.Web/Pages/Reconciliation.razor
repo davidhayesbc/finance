@@ -89,7 +89,14 @@
             <h3 style="margin: 0 0 1rem 0;">Reconciliation Periods</h3>
 
             <FluentDataGrid Items="_periods.AsQueryable()" TGridItem="ReconciliationPeriodResponse"
-                            Class="data-grid--elevated">
+                            Class="data-grid--elevated"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
                 <TemplateColumn Title="Statement Date" Sortable="true"
                                 SortBy="@(GridSort<ReconciliationPeriodResponse>.ByDescending(p => p.StatementDate))">
                     @context.StatementDate.ToString("MMM dd, yyyy")

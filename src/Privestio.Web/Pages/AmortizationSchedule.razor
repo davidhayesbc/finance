@@ -112,7 +112,14 @@
                 <h3 style="margin: 0 0 1rem 0;">Payment Schedule</h3>
 
                 <FluentDataGrid Items="_schedule.Entries.AsQueryable()" TGridItem="AmortizationEntryResponse"
-                                Class="data-grid--elevated">
+                                Class="data-grid--elevated"
+                                ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeColumnOnAllRows="false"
+                                ShowHover="true"
+                                DisplayMode="DataGridDisplayMode.Table"
+                                RowSize="DataGridRowSize.Medium">
                     <PropertyColumn Property="@(e => e.PaymentNumber)" Title="#" Sortable="true" />
                     <TemplateColumn Title="Date">
                         @context.PaymentDate.ToString("MMM dd, yyyy")

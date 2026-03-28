@@ -111,7 +111,7 @@
                     </div>
                 </div>
 
-                <FluentDataGrid Items="_funds.AsQueryable()" TGridItem="SinkingFundResponse" Class="data-grid--elevated">
+                <FluentDataGrid Items="_funds.AsQueryable()" TGridItem="SinkingFundResponse" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                     <PropertyColumn Property="@(f => f.Name)" Title="Name" Sortable="true" />
                     <TemplateColumn Title="Progress">
                         <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"

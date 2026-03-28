@@ -687,17 +687,22 @@ fluent-anchor.brand-link::part(control) {
 }
 
 .data-grid--elevated {
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.data-grid--elevated {
     border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 16px 34px -28px rgba(14, 27, 47, 0.45);
     background: var(--surface-raised);
+    overflow: hidden;
 }
 
 .data-card ::deep table {
     background: var(--surface-raised);
+}
+
+.data-grid--elevated table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
 .data-grid--elevated table,
@@ -708,6 +713,8 @@ fluent-anchor.brand-link::part(control) {
 
 .data-grid--elevated th {
     font-weight: 700;
+    letter-spacing: 0.01em;
+    background: color-mix(in srgb, var(--surface-raised) 86%, white);
     border-bottom: 1px solid var(--surface-border);
 }
 
@@ -715,9 +722,124 @@ fluent-anchor.brand-link::part(control) {
     border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 82%, transparent);
 }
 
+.data-grid--elevated tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--surface-raised) 92%, var(--accent-soft));
+}
+
+.data-grid--elevated tbody tr:hover td {
+    background: color-mix(in srgb, var(--surface-raised) 84%, var(--accent-soft));
+}
+
+.data-grid--elevated th:last-child,
+.data-grid--elevated td:last-child {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.data-grid--elevated td>* {
+    min-width: 0;
+}
+
+.cell-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.cell-truncate[title] {
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+    text-decoration-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.cell-truncate[title]:hover,
+.cell-truncate[title]:focus-visible {
+    text-decoration-color: color-mix(in srgb, currentColor 60%, transparent);
+    cursor: help;
+}
+
+.cell-truncate--mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    font-size: 0.82rem;
+}
+
+.grid-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.grid-actions--compact {
+    gap: 4px;
+}
+
+.grid-actions--compact fluent-button::part(control) {
+    min-width: 0;
+    height: 30px;
+    padding-inline: 10px;
+    font-size: 0.79rem;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.data-grid--securities td:nth-child(2),
+.data-grid--securities td:nth-child(6),
+.data-grid--securities td:nth-child(7) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data-grid--import-preview th,
+.data-grid--import-preview td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.data-grid--import-errors td:nth-child(2),
+.data-grid--import-errors td:nth-child(3) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data-grid--import-errors td:nth-child(3) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    font-size: 0.82rem;
+}
+
+.data-grid--rules td:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data-grid--accounts td:nth-child(1),
+.data-grid--accounts td:nth-child(3),
+.data-grid--dashboard td:nth-child(1) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+    .grid-actions--compact fluent-button::part(control) {
+        height: 28px;
+        padding-inline: 8px;
+        font-size: 0.74rem;
+    }
+}
+
 :root[data-theme="dark"] .data-grid--elevated {
     border-color: rgba(135, 168, 216, 0.24);
     background: rgba(12, 24, 39, 0.98);
+    box-shadow: 0 22px 34px -26px rgba(0, 0, 0, 0.7);
 }
 
 :root[data-theme="dark"] .data-grid--elevated th {
@@ -729,6 +851,19 @@ fluent-anchor.brand-link::part(control) {
 :root[data-theme="dark"] .data-grid--elevated td {
     color: #dce9fb;
     border-bottom-color: rgba(135, 168, 216, 0.22);
+}
+
+:root[data-theme="dark"] .data-grid--elevated tbody tr:nth-child(even) td {
+    background: rgba(18, 34, 54, 0.88);
+}
+
+:root[data-theme="dark"] .data-grid--elevated tbody tr:hover td {
+    background: rgba(26, 47, 72, 0.94);
+}
+
+:root[data-theme="dark"] .grid-actions--compact fluent-button::part(control) {
+    background: rgba(23, 39, 61, 0.78);
+    border-color: rgba(145, 178, 223, 0.28);
 }
 
 .data-grid--elevated fluent-button::part(control) {

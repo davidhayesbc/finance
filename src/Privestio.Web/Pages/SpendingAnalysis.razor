@@ -64,7 +64,14 @@
                 <h3 style="margin: 0 0 1rem 0;">Payee Ranking</h3>
 
                 <FluentDataGrid Items="_analysis.PayeeRanking.AsQueryable()" TGridItem="PayeeRankingItem"
-                                Class="data-grid--elevated">
+                                Class="data-grid--elevated"
+                                ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeColumnOnAllRows="false"
+                                ShowHover="true"
+                                DisplayMode="DataGridDisplayMode.Table"
+                                RowSize="DataGridRowSize.Medium">
                     <PropertyColumn Property="@(p => p.PayeeName)" Title="Payee" Sortable="true" />
                     <TemplateColumn Title="Amount" Sortable="true"
                                     SortBy="@(GridSort<PayeeRankingItem>.ByDescending(p => p.Amount))">

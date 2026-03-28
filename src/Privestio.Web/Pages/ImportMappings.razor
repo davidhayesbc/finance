@@ -38,7 +38,14 @@
             }
 
             <FluentDataGrid Items="_mappings.AsQueryable()" aria-label="Saved import mappings"
-                            TGridItem="ImportMappingResponse" Class="data-grid--elevated">
+                            TGridItem="ImportMappingResponse" Class="data-grid--elevated"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
                 <PropertyColumn Property="@(m => m.Name)" Title="Name" />
                 <PropertyColumn Property="@(m => m.FileFormat)" Title="Format" />
                 <TemplateColumn Title="Registration">

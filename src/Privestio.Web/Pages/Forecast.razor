@@ -59,7 +59,7 @@
         <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
             <h3 style="margin: 0 0 1rem 0;">Monthly Breakdown</h3>
 
-            <FluentDataGrid Items="_forecast.Periods.AsQueryable()" TGridItem="CashFlowPeriod" Class="data-grid--elevated">
+            <FluentDataGrid Items="_forecast.Periods.AsQueryable()" TGridItem="CashFlowPeriod" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                 <TemplateColumn Title="Period">
                     @(new DateTime(context.Year, context.Month, 1).ToString("MMM yyyy"))
                 </TemplateColumn>

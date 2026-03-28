@@ -52,7 +52,14 @@
     {
         <FluentCard Class="surface-card data-card">
             <FluentDataGrid Items="_batches.AsQueryable()" aria-label="Import history" TGridItem="ImportBatchResponse"
-                            Class="data-grid--elevated">
+                            Class="data-grid--elevated"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
                 <PropertyColumn Property="@(b => b.FileName)" Title="File" />
                 <PropertyColumn Property="@(b => b.FileFormat)" Title="Format" />
                 <PropertyColumn Property="@(b => b.ImportDate)" Title="Date" Format="g" />
