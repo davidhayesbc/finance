@@ -25,6 +25,9 @@
     <ProjectReference Include="..\Privestio.Domain\Privestio.Domain.csproj" />
     <ProjectReference Include="..\Privestio.Application\Privestio.Application.csproj" />
     <ProjectReference Include="..\Privestio.Contracts\Privestio.Contracts.csproj" />
+    <ProjectReference Include="..\Privestio.PluginContracts\Privestio.PluginContracts.csproj" />
+    <ProjectReference Include="..\Privestio.Plugins.Importers\Privestio.Plugins.Importers.csproj" />
+    <ProjectReference Include="..\Privestio.Plugins.PriceSources\Privestio.Plugins.PriceSources.csproj" />
   </ItemGroup>
 
   <ItemGroup>

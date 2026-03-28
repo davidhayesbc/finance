@@ -9,7 +9,7 @@ namespace Privestio.Infrastructure.PriceFeeds;
 /// Price feed provider using the unofficial Yahoo Finance v8 chart API.
 /// No API key required; intended for personal self-hosted use.
 /// </summary>
-public class YahooFinancePriceFeedProvider : IPriceFeedProvider
+public class YahooFinancePriceFeedProvider : IPriceSourcePlugin
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<YahooFinancePriceFeedProvider> _logger;

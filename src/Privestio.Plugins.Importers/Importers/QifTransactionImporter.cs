@@ -1,5 +1,4 @@
 using System.Globalization;
-using Privestio.Domain.Entities;
 using Privestio.Domain.Interfaces;
 
 namespace Privestio.Infrastructure.Importers;
@@ -18,7 +17,7 @@ public class QifTransactionImporter : ITransactionImporter
 
     public async Task<ImportParseResult> ParseAsync(
         Stream fileStream,
-        ImportMapping? mapping = null,
+        TransactionImportMapping? mapping = null,
         CancellationToken cancellationToken = default
     )
     {

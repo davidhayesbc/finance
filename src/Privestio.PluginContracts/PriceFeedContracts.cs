@@ -22,8 +22,7 @@ public record PriceQuote(
 );
 
 /// <summary>
-/// Plugin interface for market price feed providers (e.g. Yahoo Finance, Alpha Vantage).
-/// Implementations live in the Infrastructure layer.
+/// Aggregated price feed interface consumed by application services.
 /// </summary>
 public interface IPriceFeedProvider
 {
@@ -41,3 +40,8 @@ public interface IPriceFeedProvider
         CancellationToken cancellationToken = default
     );
 }
+
+/// <summary>
+/// Marker contract for concrete price-source plugins.
+/// </summary>
+public interface IPriceSourcePlugin : IPriceFeedProvider;

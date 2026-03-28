@@ -117,7 +117,11 @@ public class ImportTransactionsCommandHandler
         }
 
         // Parse the file
-        var parseResult = await importer.ParseAsync(request.FileStream, mapping, cancellationToken);
+        var parseResult = await importer.ParseAsync(
+            request.FileStream,
+            ToPluginImportMapping(mapping),
+            cancellationToken
+        );
 
         // FailFast: abort if any parse errors
         if (request.Policy == ImportPolicy.FailFast && parseResult.Errors.Count > 0)
@@ -419,6 +423,23 @@ public class ImportTransactionsCommandHandler
             await _unitOfWork.PriceHistories.AddRangeAsync(newEntries, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private static TransactionImportMapping? ToPluginImportMapping(ImportMapping? mapping)
+    {
+        if (mapping is null)
+            return null;
+
+        return new TransactionImportMapping(
+            ColumnMappings: new Dictionary<string, string>(mapping.ColumnMappings),
+            HasHeaderRow: mapping.HasHeaderRow,
+            DateFormat: mapping.DateFormat,
+            AmountDebitColumn: mapping.AmountDebitColumn,
+            AmountCreditColumn: mapping.AmountCreditColumn,
+            AmountSignFlipped: mapping.AmountSignFlipped,
+            DefaultDate: mapping.DefaultDate,
+            IgnoreRowPatterns: mapping.IgnoreRowPatterns
+        );
     }
 
     private async Task UpsertInvestmentPositionsFromImportAsync(

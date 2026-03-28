@@ -1,7 +1,6 @@
 using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
-using Privestio.Domain.Entities;
 using Privestio.Domain.Interfaces;
 
 namespace Privestio.Infrastructure.Importers;
@@ -18,7 +17,7 @@ public class CsvTransactionImporter : ITransactionImporter
 
     public async Task<ImportParseResult> ParseAsync(
         Stream fileStream,
-        ImportMapping? mapping = null,
+        TransactionImportMapping? mapping = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -86,7 +85,7 @@ public class CsvTransactionImporter : ITransactionImporter
 
     private static bool IsIgnorableMetadataRow(
         CsvReader csv,
-        Dictionary<string, string> columnMap,
+        IReadOnlyDictionary<string, string> columnMap,
         IReadOnlyList<string> ignoreRowPatterns
     )
     {
@@ -104,7 +103,7 @@ public class CsvTransactionImporter : ITransactionImporter
 
     private static ImportedTransactionRow ParseRow(
         CsvReader csv,
-        Dictionary<string, string> columnMap,
+        IReadOnlyDictionary<string, string> columnMap,
         string? dateFormat,
         string? debitColumn,
         string? creditColumn,
@@ -129,6 +128,7 @@ public class CsvTransactionImporter : ITransactionImporter
         {
             throw new FormatException("Date field is missing");
         }
+
         var amount = ParseAmount(csv, columnMap, debitColumn, creditColumn);
 
         if (amountSignFlipped)
@@ -218,7 +218,7 @@ public class CsvTransactionImporter : ITransactionImporter
 
     private static decimal ParseAmount(
         CsvReader csv,
-        Dictionary<string, string> columnMap,
+        IReadOnlyDictionary<string, string> columnMap,
         string? debitColumn,
         string? creditColumn
     )
@@ -283,7 +283,7 @@ public class CsvTransactionImporter : ITransactionImporter
 
     private static string? GetMappedField(
         CsvReader csv,
-        Dictionary<string, string> columnMap,
+        IReadOnlyDictionary<string, string> columnMap,
         string targetField
     )
     {

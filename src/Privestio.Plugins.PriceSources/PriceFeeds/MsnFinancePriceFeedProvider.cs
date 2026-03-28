@@ -12,7 +12,7 @@ namespace Privestio.Infrastructure.PriceFeeds;
 /// Resolves ticker symbols to MSN instrument IDs via the Bing autosuggest
 /// endpoint, then fetches quotes and historical chart data.
 /// </summary>
-public class MsnFinancePriceFeedProvider : IPriceFeedProvider
+public class MsnFinancePriceFeedProvider : IPriceSourcePlugin
 {
     private const string ApiKey = "0QfOX3Vn51YCzitbLaRkTTBadtWpgTN8NZLW0C1SEM";
     private const string CommonParams = $"apikey={ApiKey}&cm=en-ca&it=web&wrapodata=false";
@@ -243,9 +243,7 @@ public class MsnFinancePriceFeedProvider : IPriceFeedProvider
         }
     }
 
-    // ── Private JSON DTOs ────────────────────────────────────────────────
-
-    // Quotes API
+    // Private JSON DTOs
 
     private sealed class MsnQuoteResponse
     {
@@ -261,8 +259,6 @@ public class MsnFinancePriceFeedProvider : IPriceFeedProvider
         [JsonPropertyName("timeLastTraded")]
         public string? TimeLastTraded { get; init; }
     }
-
-    // Charts API
 
     private sealed class MsnChartResponse
     {
@@ -281,8 +277,6 @@ public class MsnFinancePriceFeedProvider : IPriceFeedProvider
         [JsonPropertyName("prices")]
         public List<double?>? Prices { get; init; }
     }
-
-    // Autosuggest API
 
     private sealed class MsnAutosuggestResponse
     {

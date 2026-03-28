@@ -14,6 +14,7 @@ using Privestio.Infrastructure.Data.Services;
 using Privestio.Infrastructure.ExchangeRates;
 using Privestio.Infrastructure.Identity;
 using Privestio.Infrastructure.Importers;
+using Privestio.Infrastructure.Plugins;
 using Privestio.Infrastructure.PriceFeeds;
 using Privestio.Infrastructure.Rules;
 
@@ -65,11 +66,14 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserDataResetService, UserDataResetService>();
 
-        // Ingestion pipeline services (Phase 2)
-        services.AddScoped<ITransactionImporter, CsvTransactionImporter>();
-        services.AddScoped<ITransactionImporter, OfxTransactionImporter>();
-        services.AddScoped<ITransactionImporter, QifTransactionImporter>();
-        services.AddScoped<IHoldingsImporter, PdfHoldingsImporter>();
+        // Ingestion and pricing plugins
+        PluginModuleLoader.RegisterModules(
+            services,
+            configuration,
+            typeof(ImportersPluginModule).Assembly,
+            typeof(PriceSourcesPluginModule).Assembly
+        );
+
         services.AddSingleton<TransactionFingerprintService>();
         services.AddScoped<IRuleEvaluator, CategorizationRuleEvaluator>();
         services.AddScoped<IFilePreviewService, CsvFilePreviewService>();
@@ -77,38 +81,19 @@ public static class DependencyInjection
         // Price feed providers (Phase 5.4)
         services.Configure<PricingOptions>(configuration.GetSection("Pricing"));
 
-        services.AddHttpClient<YahooFinancePriceFeedProvider>(client =>
-        {
-            client.BaseAddress = new Uri("https://query1.finance.yahoo.com/");
-            client.DefaultRequestHeaders.Add(
-                "User-Agent",
-                "Privestio/1.0 (self-hosted personal finance tracker)"
-            );
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
-
-        services.AddHttpClient<MsnFinancePriceFeedProvider>(client =>
-        {
-            client.BaseAddress = new Uri("https://assets.msn.com/service/Finance/");
-            client.DefaultRequestHeaders.Add(
-                "User-Agent",
-                "Privestio/1.0 (self-hosted personal finance tracker)"
-            );
-            client.Timeout = TimeSpan.FromSeconds(15);
-        });
-
         services.AddScoped<IPriceFeedProvider>(sp =>
         {
-            var yahoo = sp.GetRequiredService<YahooFinancePriceFeedProvider>();
-            var msn = sp.GetRequiredService<MsnFinancePriceFeedProvider>();
+            var sources = sp.GetServices<IPriceSourcePlugin>();
             var options = sp.GetRequiredService<IOptions<PricingOptions>>();
             var logger = sp.GetRequiredService<ILogger<ChainedPriceFeedProvider>>();
 
-            var providers = new Dictionary<string, IPriceFeedProvider>
-            {
-                [yahoo.ProviderName] = yahoo,
-                [msn.ProviderName] = msn,
-            };
+            var providers = sources
+                .GroupBy(s => s.ProviderName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IPriceFeedProvider)g.First(),
+                    StringComparer.OrdinalIgnoreCase
+                );
 
             return new ChainedPriceFeedProvider(providers, options.Value.ProviderOrder, logger);
         });

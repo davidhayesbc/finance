@@ -91,7 +91,7 @@ internal sealed partial class SunLifePdfExtractor
                     || !TryParseDecimal(valueText, out var totalValue)
                 )
                 {
-                    // Rows with no numeric data are category separators (e.g. "Balanced", "Fixed income") — skip silently.
+                    // Rows with no numeric data are category separators (e.g. "Balanced", "Fixed income") - skip silently.
                     if (
                         string.IsNullOrEmpty(unitsText)
                         && string.IsNullOrEmpty(priceText)
@@ -151,7 +151,7 @@ internal sealed partial class SunLifePdfExtractor
 
         // Pattern 1: "Statement as of <Month> <Day>, <Year>"
         var match = StatementDateAsOfRegex().Match(allText);
-        // Pattern 2: "statement for/period <Month> <Day> to <Month> <Day>, <Year>" — extract end date
+        // Pattern 2: "statement for/period <Month> <Day> to <Month> <Day>, <Year>" - extract end date
         if (!match.Success)
             match = StatementDatePeriodRegex().Match(allText);
 
@@ -267,8 +267,8 @@ internal sealed partial class SunLifePdfExtractor
     )
     {
         // Use a 30pt inward offset so the name/units boundary aligns exactly with the units
-        // lower bound. This handles both old PDFs (NUMBER@X≈291, data as far left as X≈265)
-        // and new PDFs (NUMBER@X≈245, data starting at X≈253).
+        // lower bound. This handles both old PDFs (NUMBER@X~291, data as far left as X~265)
+        // and new PDFs (NUMBER@X~245, data starting at X~253).
         var columnWords = row.Where(w =>
                 w.BoundingBox.Left >= columnStartX - 30 && w.BoundingBox.Left < columnEndX - 30
             )

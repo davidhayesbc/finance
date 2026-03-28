@@ -1,5 +1,4 @@
 using System.Text;
-using Privestio.Domain.Entities;
 using Privestio.Domain.Interfaces;
 using Privestio.Infrastructure.Importers;
 
@@ -453,7 +452,7 @@ public class CsvTransactionImporterTests
         result.Rows[0].Description.Should().Be("iShares Core Equity ETF Portfolio");
     }
 
-    private static ImportMapping CreateMapping(
+    private static TransactionImportMapping CreateMapping(
         Dictionary<string, string> columnMappings,
         string? dateFormat = null,
         string? amountDebitColumn = null,
@@ -463,18 +462,19 @@ public class CsvTransactionImporterTests
         DateOnly? defaultDate = null
     )
     {
-        var mapping = new ImportMapping("Test", "CSV", Guid.NewGuid(), columnMappings);
-        mapping.DateFormat = dateFormat;
-        mapping.AmountDebitColumn = amountDebitColumn;
-        mapping.AmountCreditColumn = amountCreditColumn;
-        if (ignoreRowPatterns is not null)
-            mapping.IgnoreRowPatterns = ignoreRowPatterns;
-        mapping.AmountSignFlipped = amountSignFlipped;
-        mapping.DefaultDate = defaultDate;
-        return mapping;
+        return new TransactionImportMapping(
+            ColumnMappings: columnMappings,
+            HasHeaderRow: true,
+            DateFormat: dateFormat,
+            AmountDebitColumn: amountDebitColumn,
+            AmountCreditColumn: amountCreditColumn,
+            AmountSignFlipped: amountSignFlipped,
+            DefaultDate: defaultDate,
+            IgnoreRowPatterns: ignoreRowPatterns ?? []
+        );
     }
 
-    private async Task<ImportParseResult> ParseCsv(string csv, ImportMapping mapping)
+    private async Task<ImportParseResult> ParseCsv(string csv, TransactionImportMapping mapping)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
         return await _importer.ParseAsync(stream, mapping);

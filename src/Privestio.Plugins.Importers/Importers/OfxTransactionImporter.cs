@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using Privestio.Domain.Entities;
 using Privestio.Domain.Interfaces;
 
 namespace Privestio.Infrastructure.Importers;
@@ -18,7 +17,7 @@ public partial class OfxTransactionImporter : ITransactionImporter
 
     public async Task<ImportParseResult> ParseAsync(
         Stream fileStream,
-        ImportMapping? mapping = null,
+        TransactionImportMapping? mapping = null,
         CancellationToken cancellationToken = default
     )
     {

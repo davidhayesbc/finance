@@ -14,5 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Privestio.Domain\Privestio.Domain.csproj" />
     <ProjectReference Include="..\Privestio.Contracts\Privestio.Contracts.csproj" />
+    <ProjectReference Include="..\Privestio.PluginContracts\Privestio.PluginContracts.csproj" />
   </ItemGroup>
 </Project>

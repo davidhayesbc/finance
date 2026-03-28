@@ -948,7 +948,7 @@ public class ImportTransactionsCommandTests
             .Setup(i =>
                 i.ParseAsync(
                     It.IsAny<Stream>(),
-                    It.IsAny<ImportMapping?>(),
+                    It.IsAny<TransactionImportMapping?>(),
                     It.IsAny<CancellationToken>()
                 )
             )

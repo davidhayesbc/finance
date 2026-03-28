@@ -6,6 +6,9 @@
         <Project Path="src/Privestio.Contracts/Privestio.Contracts.csproj" />
         <Project Path="src/Privestio.Domain/Privestio.Domain.csproj" />
         <Project Path="src/Privestio.Infrastructure/Privestio.Infrastructure.csproj" />
+        <Project Path="src/Privestio.PluginContracts/Privestio.PluginContracts.csproj" />
+        <Project Path="src/Privestio.Plugins.Importers/Privestio.Plugins.Importers.csproj" />
+        <Project Path="src/Privestio.Plugins.PriceSources/Privestio.Plugins.PriceSources.csproj" />
         <Project Path="src/Privestio.ServiceDefaults/Privestio.ServiceDefaults.csproj" />
         <Project Path="src/Privestio.Web/Privestio.Web.csproj" />
     </Folder>
