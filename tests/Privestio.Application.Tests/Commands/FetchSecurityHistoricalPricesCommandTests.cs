@@ -24,9 +24,7 @@ public class FetchSecurityHistoricalPricesCommandTests
     {
         _unitOfWork.Setup(x => x.Lots).Returns(_lots.Object);
         _unitOfWork.Setup(x => x.PriceHistories).Returns(_priceHistories.Object);
-        _unitOfWork
-            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+        _unitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         _priceFeedProvider.SetupGet(x => x.ProviderName).Returns("YahooFinance");
 
@@ -227,10 +225,7 @@ public class FetchSecurityHistoricalPricesCommandTests
                 ),
             Times.Once
         );
-        _unitOfWork.Verify(
-            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
-            Times.Once
-        );
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -249,9 +244,16 @@ public class FetchSecurityHistoricalPricesCommandTests
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(
-                [new(security.Id, "XEQT.TO", 35.00m, "CAD", new DateOnly(2024, 1, 2), "YahooFinance")]
-            );
+            .ReturnsAsync([
+                new(
+                    security.Id,
+                    "XEQT.TO",
+                    35.00m,
+                    "CAD",
+                    new DateOnly(2024, 1, 2),
+                    "YahooFinance"
+                ),
+            ]);
 
         _priceHistories
             .Setup(x =>
@@ -281,10 +283,7 @@ public class FetchSecurityHistoricalPricesCommandTests
                 ),
             Times.Never
         );
-        _unitOfWork.Verify(
-            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
-            Times.Never
-        );
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -322,9 +321,6 @@ public class FetchSecurityHistoricalPricesCommandTests
         result.QuotesInserted.Should().Be(0);
         result.SecuritiesProcessed.Should().Be(1);
 
-        _unitOfWork.Verify(
-            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
-            Times.Never
-        );
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
