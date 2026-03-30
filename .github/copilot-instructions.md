@@ -19,9 +19,12 @@ src/
   Privestio.AppHost/           - .NET Aspire orchestrator (dev)
   Privestio.ServiceDefaults/   - Shared Aspire service defaults
   Privestio.Contracts/         - Shared DTOs/contracts (API ↔ Blazor WASM)
-  Privestio.Domain/            - Entities, value objects, interfaces (pure C#, no dependencies)
+  Privestio.PluginContracts/   - Plugin interface contracts (ITransactionImporter, IPriceFeedProvider, etc.)
+  Privestio.Domain/            - Entities, value objects, interfaces (pure C#, minimal deps — FluentResults only)
   Privestio.Application/       - Use cases, CQRS commands/queries, services
-  Privestio.Infrastructure/    - EF Core, importers, plugins, AI, encryption
+  Privestio.Infrastructure/    - EF Core, plugins, identity
+  Privestio.Plugins.Importers/ - Built-in importers (CSV, OFX, QIF, PDF)
+  Privestio.Plugins.PriceSources/ - Built-in price feeds (Yahoo Finance, MSN Finance)
   Privestio.Api/               - ASP.NET Core Minimal API host
   Privestio.Web/               - Blazor WebAssembly PWA
 tests/
@@ -29,7 +32,9 @@ tests/
   Privestio.Application.Tests/
   Privestio.Infrastructure.Tests/
   Privestio.Api.Tests/
-  Privestio.Web.Tests/
+  Privestio.E2E.Tests/
+tools/
+  Privestio.DataLoader/        - CLI tool for manifest-based data loading
 docker/
   docker-compose.yml          - Production deployment
   Dockerfile.api              - Multi-stage API build
@@ -37,9 +42,11 @@ docker/
 
 ## Layer Responsibilities
 
-- **Domain**: Pure C# entities, value objects, domain events, interfaces. NO external dependencies.
+- **Domain**: Pure C# entities, value objects, domain events, interfaces. Minimal external dependencies (FluentResults only).
 - **Application**: Use cases orchestrated as Commands/Queries. References Domain only.
-- **Infrastructure**: EF Core, file parsers, plugins, Ollama client. Implements Domain/Application interfaces.
+- **Infrastructure**: EF Core, plugin module loading, identity. Implements Domain/Application interfaces.
+- **PluginContracts**: Shared plugin interfaces (ITransactionImporter, IPriceFeedProvider, IPrivestioPluginModule). Referenced by plugin assemblies.
+- **Plugins.Importers / Plugins.PriceSources**: Built-in plugin implementations (CSV, OFX, QIF, PDF importers; Yahoo/MSN price feeds).
 - **Api**: Thin Minimal API layer. Maps HTTP to Application commands/queries. Handles auth, validation, error responses.
 - **Web**: Blazor WASM PWA. Calls API via typed HttpClient. Manages offline state in IndexedDB.
 

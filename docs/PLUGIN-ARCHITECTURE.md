@@ -69,7 +69,7 @@ Example registration:
 ```csharp
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Privestio.Domain.Interfaces;
+using Privestio.PluginContracts;
 using Privestio.PluginContracts.Hosting;
 
 public sealed class CustomImportersModule : IPrivestioPluginModule

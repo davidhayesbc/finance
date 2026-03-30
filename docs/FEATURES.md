@@ -3,8 +3,8 @@
 ## Feature Specification
 
 > **Version:** 0.2.0-draft
-> **Last Updated:** 2026-02-27
-> **Status:** Planning
+> **Last Updated:** 2026-03-30
+> **Status:** Active Development (Phases 1–4 complete, Phase 5 in progress)
 
 ---
 

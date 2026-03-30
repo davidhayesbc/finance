@@ -1,8 +1,8 @@
 # Privestio — Implementation Plan
 
 > **Version:** 0.2.0-draft
-> **Last Updated:** 2026-02-27
-> **Status:** Planning
+> **Last Updated:** 2026-03-30
+> **Status:** Active Development (Phases 1–4 complete, Phase 5 in progress)
 
 ---
 
@@ -24,7 +24,7 @@
 | Component | Technology | Rationale |
 |-----------|-----------|-----------|
 | **Runtime** | .NET 10 | Latest LTS, top performance, native AOT potential |
-| **Orchestration** | .NET Aspire 9.x | Service discovery, health checks, local dev dashboard, OpenTelemetry |
+| **Orchestration** | .NET Aspire 13.x | Service discovery, health checks, local dev dashboard, OpenTelemetry |
 | **API** | ASP.NET Core Minimal APIs | Low ceremony, high performance, good for resource-oriented design |
 | **Frontend** | Blazor WebAssembly (PWA) | Offline-first capable, C# full-stack, PWA installable |
 | **ORM** | Entity Framework Core 10 | Migrations, LINQ queries, PostgreSQL provider |
@@ -35,19 +35,20 @@
 | Library | Purpose |
 |---------|---------|
 | **MediatR** | CQRS pipeline: command/query dispatching with pipeline behaviors (validation, logging, transactions) |
-| **OneOf / FluentResults** | Option/Result discriminated union types for null-avoidance and explicit error handling |
+| **FluentResults** | Result types for explicit error handling and null-avoidance |
 | **Microsoft.RulesEngine** | User-configurable business rules for transaction categorization |
 | **FluentValidation** | Input validation across API and domain layers |
 | **Serilog + OpenTelemetry** | Structured logging with distributed tracing |
-| **OFXSharp / QIF parser** | OFX/QFX and QIF file format parsing |
+| **Custom OFX/SGML parser** | OFX/QFX file format parsing via hand-rolled regex parser |
 | **CsvHelper** | CSV parsing with configurable column mapping |
+| **PdfPig** | PDF parsing for holdings statement import |
 | **Microsoft.AspNetCore.Identity** | Local username/password authentication |
 | **Microsoft.AspNetCore.Authentication.OpenIdConnect** | Google/Microsoft SSO |
 | **IndexedDB abstraction (JS interop wrapper)** | Durable offline client storage for transactions, sync queue, and metadata |
-| **MudBlazor** or **Fluent UI Blazor** | Component library for the PWA UI |
+| **Fluent UI Blazor** | Component library for the PWA UI |
+| **Blazor-ApexCharts** | Data visualization charts |
 | **Microsoft.AspNetCore.DataProtection** | Application-level field encryption |
-| **Yarp** or Aspire built-in | Reverse proxy if needed |
-| **OllamaSharp** | .NET client for local Ollama LLM integration |
+| **Scalar.AspNetCore** | OpenAPI documentation UI |
 | **Bogus** | Realistic test and seed data generation |
 | **Asp.Versioning** | API versioning for safe rolling upgrades between PWA and server |
 
@@ -60,7 +61,7 @@
 | **Orchestration (Prod)** | Docker Compose |
 | **CI/CD** | GitHub Actions |
 | **Container Registry** | GitHub Container Registry (ghcr.io) |
-| **Reverse Proxy / TLS** | Caddy or Traefik (auto-HTTPS in Docker Compose) |
+| **Reverse Proxy / TLS** | Caddy (auto-HTTPS in Docker Compose) |
 
 ---
 
@@ -71,7 +72,7 @@
 ```mermaid
 graph TB
     subgraph Docker["Docker Compose"]
-        Caddy["Caddy / Traefik<br/>(TLS/HTTPS)"]
+        Caddy["Caddy<br/>(TLS/HTTPS)"]
         API["Privestio API Server<br/>(ASP.NET)"]
         PG["PostgreSQL<br/>(encrypted)"]
         Aspire["Aspire Dashboard<br/>(dev only)"]
@@ -102,7 +103,7 @@ graph TB
 graph TB
     A["API Layer (Presentation)<br/>Minimal API endpoints, DTOs, Validation, Auth"]
     B["Application Layer (CQRS with MediatR)<br/>Use cases, orchestration, Commands, Queries, Handlers"]
-    C["Domain Layer (Pure C#, no deps)<br/>Entities, Value Objects, Domain Events, Rules"]
+    C["Domain Layer (Pure C#, minimal deps)<br/>Entities, Value Objects, Domain Events, Rules"]
     D["Infrastructure Layer (Data Access, Plugins)<br/>EF Core, File parsing, External integrations"]
 
     A --> B
@@ -143,7 +144,10 @@ sequenceDiagram
 finance/
 ├── docs/
 │   ├── FEATURES.md
-│   └── IMPLEMENTATION-PLAN.md
+│   ├── IMPLEMENTATION-PLAN.md
+│   ├── PLUGIN-ARCHITECTURE.md
+│   ├── DATA-LOADER.md
+│   └── sync-spike-decision.md
 │
 ├── src/
 │   ├── Privestio.AppHost/                    # .NET Aspire orchestrator
@@ -160,7 +164,13 @@ finance/
 │   │   ├── Pagination/
 │   │   └── Privestio.Contracts.csproj
 │   │
-│   ├── Privestio.Domain/                     # Domain layer (pure C#, no dependencies)
+│   ├── Privestio.PluginContracts/            # Plugin interface contracts (shared with external plugins)
+│   │   ├── ImporterContracts.cs              # ITransactionImporter, IHoldingsImporter
+│   │   ├── PriceFeedContracts.cs             # IPriceFeedProvider, IPriceSourcePlugin
+│   │   ├── PluginModuleContracts.cs          # IPrivestioPluginModule
+│   │   └── Privestio.PluginContracts.csproj
+│   │
+│   ├── Privestio.Domain/                     # Domain layer (pure C#, minimal deps — FluentResults only)
 │   │   ├── Entities/
 │   │   │   ├── Account.cs                   # Base account entity
 │   │   │   ├── Transaction.cs
@@ -191,21 +201,23 @@ finance/
 │   │   ├── ValueObjects/
 │   │   │   ├── Money.cs                     # Currency + amount value object
 │   │   │   ├── DateRange.cs
-│   │   │   ├── AccountType.cs               # Smart enum (Investment, Banking, Credit, Property)
-│   │   │   └── TransactionCategory.cs
+│   │   │   └── GrowthAssumption.cs          # Per-account/asset-class growth rate
 │   │   ├── Enums/
+│   │   │   ├── AccountType.cs               # Investment, Banking, Credit, Property, Loan
 │   │   │   ├── AccountSubType.cs            # RRSP, TFSA, Chequing, etc.
 │   │   │   ├── TransactionType.cs           # Debit, Credit, Transfer
-│   │   │   └── CostBasisMethod.cs           # FIFO, AverageCost, SpecificLot
-│   │   ├── Events/
-│   │   │   ├── TransactionCreated.cs
-│   │   │   ├── AccountBalanceChanged.cs
-│   │   │   └── ImportCompleted.cs
+│   │   │   ├── CostBasisMethod.cs           # FIFO, AverageCost, SpecificLot
+│   │   │   ├── CategoryType.cs
+│   │   │   ├── ImportPolicy.cs
+│   │   │   ├── NotificationSeverity.cs
+│   │   │   ├── ReconciliationStatus.cs
+│   │   │   ├── RecurrenceFrequency.cs
+│   │   │   └── SecurityIdentifierType.cs
+│   │   ├── Services/
 │   │   ├── Interfaces/
 │   │   │   ├── IEntity.cs
 │   │   │   ├── IAuditableEntity.cs
-│   │   │   ├── ITransactionImporter.cs      # Plugin interface
-│   │   │   ├── IPriceFeedProvider.cs         # Plugin interface
+│   │   │   ├── IExchangeRateProvider.cs
 │   │   │   └── IRuleEvaluator.cs
 │   │   └── Privestio.Domain.csproj
 │   │
@@ -240,12 +252,13 @@ finance/
 │   │   │   ├── ContributionRoomService.cs     # Registered account room tracking
 │   │   │   ├── AuditService.cs                # Append-only audit event recording
 │   │   │   └── SyncService.cs
+│   │   ├── Behaviors/
+│   │   ├── Configuration/
 │   │   ├── Interfaces/
 │   │   │   ├── IAccountRepository.cs
 │   │   │   ├── ITransactionRepository.cs
 │   │   │   └── IUnitOfWork.cs
-│   │   ├── DTOs/
-│   │   ├── Mappings/
+│   │   ├── Mapping/
 │   │   └── Privestio.Application.csproj
 │   │
 │   ├── Privestio.Infrastructure/             # Infrastructure (data access, external)
@@ -254,25 +267,28 @@ finance/
 │   │   │   ├── Configurations/              # EF Core entity configurations
 │   │   │   ├── Migrations/
 │   │   │   └── Repositories/
-│   │   ├── Recovery/
-│   │   │   └── BackupRestoreVerification.cs  # Automated backup restore checks
 │   │   ├── Identity/
 │   │   │   ├── IdentityService.cs
 │   │   │   └── TokenService.cs
-│   │   ├── Encryption/
-│   │   │   └── FieldEncryptionService.cs
+│   │   ├── Plugins/
+│   │   │   ├── PluginModuleLoader.cs         # Assembly scanning and module bootstrap
+│   │   │   └── PluginRegistryService.cs      # Plugin service registry
+│   │   └── Privestio.Infrastructure.csproj
+│   │
+│   ├── Privestio.Plugins.Importers/          # Built-in importer plugins
 │   │   ├── Importers/
 │   │   │   ├── CsvTransactionImporter.cs
 │   │   │   ├── OfxTransactionImporter.cs
-│   │   │   └── QifTransactionImporter.cs
-│   │   ├── PriceFeeds/
-│   │   │   └── YahooFinancePriceFeed.cs
-│   │   ├── Plugins/
-│   │   │   ├── PluginLoader.cs
-│   │   │   └── PluginManager.cs
-│   │   ├── AI/
-│   │   │   └── OllamaCategorizer.cs
-│   │   └── Privestio.Infrastructure.csproj
+│   │   │   ├── QifTransactionImporter.cs
+│   │   │   └── PdfHoldingsImporter.cs
+│   │   ├── ImportersPluginModule.cs
+│   │   └── Privestio.Plugins.Importers.csproj
+│   │
+│   ├── Privestio.Plugins.PriceSources/       # Built-in price source plugins
+│   │   ├── YahooFinancePriceFeedProvider.cs
+│   │   ├── MsnFinancePriceFeedProvider.cs
+│   │   ├── PriceSourcesPluginModule.cs
+│   │   └── Privestio.Plugins.PriceSources.csproj
 │   │
 │   ├── Privestio.Api/                        # ASP.NET Core API host
 │   │   ├── Endpoints/
@@ -298,12 +314,12 @@ finance/
 │   └── Privestio.Web/                        # Blazor WASM PWA
 │       ├── wwwroot/
 │       │   ├── index.html
-│       │   ├── manifest.json
+│       │   ├── manifest.webmanifest
 │       │   ├── service-worker.js
+│       │   ├── js/                           # JS interop (IndexedDB, etc.)
 │       │   └── css/
 │       ├── Layout/
-│       │   ├── MainLayout.razor
-│       │   └── NavMenu.razor
+│       │   └── MainLayout.razor
 │       ├── Pages/
 │       │   ├── Dashboard.razor
 │       │   ├── Accounts/
@@ -332,33 +348,32 @@ finance/
 │   ├── Privestio.Domain.Tests/
 │   ├── Privestio.Application.Tests/
 │   ├── Privestio.Infrastructure.Tests/
-│   ├── Privestio.Api.Tests/                   # Integration tests
-│   └── Privestio.Web.Tests/                   # bUnit component tests
+│   ├── Privestio.Api.Tests/                   # Integration tests (WebApplicationFactory + Testcontainers)
+│   └── Privestio.E2E.Tests/                   # Playwright end-to-end UI tests
 │
-├── plugins/                                  # Example/community plugins
-│   └── Privestio.Plugin.Template/
+├── tools/
+│   └── Privestio.DataLoader/                  # CLI tool for manifest-based data loading
 │
 ├── docker/
-│   ├── docker-compose.yml                    # Production compose
-│   ├── docker-compose.dev.yml                # Development overrides
+│   ├── docker-compose.yml                    # Production compose (PostgreSQL + API + Caddy)
 │   ├── Dockerfile.api                        # Multi-stage API build
-│   └── caddy/
-│       └── Caddyfile                         # Auto-HTTPS reverse proxy config
+│   ├── Caddyfile                             # Auto-HTTPS reverse proxy config
+│   └── .env.example                          # Environment variable template
 │
 ├── .github/
 │   ├── workflows/
-│   │   ├── ci.yml                            # Build, test, lint
-│   │   ├── publish.yml                       # Build & push container images
-│   │   └── release.yml                       # Semantic versioning & release
-│   ├── instructions/                         # Copilot instruction files
+│   │   └── ci.yml                            # Build, test, lint
+│   ├── instructions/                         # Copilot instruction files (Blazor, REST APIs, Docker, etc.)
+│   ├── skills/                               # Copilot skill definitions (FluentUI, NuGet, testing)
 │   └── copilot-instructions.md
 │
-├── Privestio.sln
+├── Privestio.slnx                            # Solution file (.slnx format)
 ├── Directory.Build.props                     # Shared build properties
 ├── Directory.Packages.props                  # Central package management
+├── AGENTS.md                                 # Aspire/Copilot agent instructions
+├── LICENSE
 ├── .editorconfig
-├── .gitignore
-└── README.md
+└── .gitignore
 ```
 
 ---
@@ -715,8 +730,8 @@ classDiagram
 // Money: always pairs amount with currency
 public readonly record struct Money(decimal Amount, string CurrencyCode = "CAD");
 
-// Smart enum for account types - extensible per locale
-public record AccountType(string Code, string DisplayName, string Category);
+// AccountType is an enum (Investment, Banking, Credit, Property, Loan)
+// defined in Privestio.Domain.Enums
 ```
 
 ### Cross-Cutting Invariants
@@ -756,7 +771,7 @@ public record AccountType(string Code, string DisplayName, string Category);
 | 1.6a | Implement password policy, lockout, and reset flows with configurable policy settings | 2h | [x]  |
 | 1.7 | Build Minimal API endpoints: Accounts CRUD, Transactions CRUD with cursor-based pagination, filtering, and sorting | 5h | [x]  |
 | 1.7a | Set up API versioning (`/api/v1/...`) with Asp.Versioning | 2h | [x]  |
-| 1.8 | Scaffold Blazor WASM project with MudBlazor/Fluent UI, ErrorBoundary components, and responsive layout | 4h | [x]  |
+| 1.8 | Scaffold Blazor WASM project with Fluent UI Blazor, ErrorBoundary components, and responsive layout | 4h | [x]  |
 | 1.9 | Build basic pages: Login, Account List, Account Detail, Add Transaction | 6h | [x]  |
 | 1.10 | Set up Docker multi-stage build for API | 2h | [x]  |
 | 1.11 | Set up docker-compose.yml with PostgreSQL + API + Caddy (HTTPS) | 3h | [x]  |
@@ -956,22 +971,22 @@ public record AccountType(string Code, string DisplayName, string Category);
 ### Aspire AppHost (Development)
 
 ```csharp
-// Privestio.AppHost/Program.cs (conceptual)
+// Privestio.AppHost/Program.cs
 var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
-    .AddDatabase("prospero");
+    .WithDataVolume();
 
-var ollama = builder.AddContainer("ollama", "ollama/ollama")
-    .WithEndpoint(11434, 11434, name: "ollama-api");
+var privestioDb = postgres.AddDatabase("privestio");
 
-var api = builder.AddProject<Projects.Privestio_Api>("api")
-    .WithReference(postgres)
-    .WithReference(ollama);
+var api = builder.AddProject("api", "../Privestio.Api/Privestio.Api.csproj")
+    .WithReference(privestioDb)
+    .WaitFor(privestioDb);
 
-builder.AddProject<Projects.Privestio_Web>("web")
-    .WithReference(api);
+builder.AddProject("web", "../Privestio.Web/Privestio.Web.csproj")
+    .WithReference(api)
+    .WaitFor(api);
 
 builder.Build().Run();
 ```
@@ -979,46 +994,56 @@ builder.Build().Run();
 ### Docker Compose (Production)
 
 ```yaml
-# docker/docker-compose.yml (conceptual)
+# docker/docker-compose.yml
 services:
-  caddy:
-    image: caddy:2-alpine
-    ports: ["443:443", "80:80"]
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: privestio
+      POSTGRES_USER: privestio
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U privestio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
-    image: ghcr.io/davidhayesbc/prospero-api:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
     environment:
-      - ConnectionStrings__prospero=Host=postgres;Database=prospero;...
-      - Auth__Google__ClientId=${GOOGLE_CLIENT_ID}
-    depends_on: [postgres]
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__privestio: >-
+        Host=db;Port=5432;Database=privestio;Username=privestio;Password=${DB_PASSWORD:?}
+      Jwt__Key: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required (min 32 chars)}
+      Jwt__Issuer: ${APP_URL:-https://privestio.app}
+      Jwt__Audience: ${APP_URL:-https://privestio.app}
+      Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
 
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+  caddy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  ollama:  # Optional
-    image: ollama/ollama
-    profiles: ["ai"]
-    volumes:
-      - ollama_data:/root/.ollama
-
-  backup:  # Scheduled backups
-    image: prodrigestivill/postgres-backup-local
-    profiles: ["backup"]
-    depends_on: [postgres]
-    volumes:
-      - ./backups:/backups
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
-  pgdata:
+  postgres_data:
   caddy_data:
-  ollama_data:
 ```
 
 ### CI/CD Pipeline
@@ -1028,9 +1053,11 @@ graph LR
     Push["Push to main"] --> Build["Build<br/><code>dotnet build --configuration Release</code>"]
     Build --> Test["Test<br/><code>dotnet test</code><br/>(unit + integration)"]
     Test --> Lint["Lint<br/><code>dotnet format --verify-no-changes</code>"]
-    Lint --> Publish["Publish Image<br/><code>ghcr.io/davidhayesbc/prospero-api:sha</code>"]
+    Lint --> Publish["Publish Image<br/>(Phase 6 — ghcr.io)"]
     Publish --> Release["Release"]
 ```
+
+> **Note:** Currently only the CI pipeline (`ci.yml`) is implemented. Container image publishing and release workflows are planned for Phase 6.
 
 ---
 
