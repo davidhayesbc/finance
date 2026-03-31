@@ -59,6 +59,22 @@ jobs:
           --logger "trx;LogFileName=application-tests.trx"
           --results-directory TestResults
 
+      - name: Run Infrastructure unit tests
+        run: >
+          dotnet test tests/Privestio.Infrastructure.Tests/Privestio.Infrastructure.Tests.csproj
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=infrastructure-tests.trx"
+          --results-directory TestResults
+
+      - name: Run API integration tests
+        run: >
+          dotnet test tests/Privestio.Api.Tests/Privestio.Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=api-tests.trx"
+          --results-directory TestResults
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

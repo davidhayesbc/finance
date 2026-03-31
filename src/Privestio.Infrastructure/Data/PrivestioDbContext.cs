@@ -41,6 +41,7 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Holding> Holdings => Set<Holding>();
     public DbSet<HoldingSnapshot> HoldingSnapshots => Set<HoldingSnapshot>();
     public DbSet<Lot> Lots => Set<Lot>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     // Phase 4 entities
     public DbSet<ForecastScenario> ForecastScenarios => Set<ForecastScenario>();
@@ -100,15 +101,14 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<SyncConflict>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<IdempotencyRecord>().HasQueryFilter(e => !e.IsDeleted);
 
-        // Configure Version as concurrency token for all BaseEntity types
+        // Use PostgreSQL's xmin system column for optimistic concurrency on all entities.
+        // Unlike the previous application-level Version property (which was never incremented),
+        // xmin is managed automatically by PostgreSQL on every row update.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
             {
-                modelBuilder
-                    .Entity(entityType.ClrType)
-                    .Property(nameof(BaseEntity.Version))
-                    .IsConcurrencyToken();
+                modelBuilder.Entity(entityType.ClrType).UseXminAsConcurrencyToken();
             }
         }
     }

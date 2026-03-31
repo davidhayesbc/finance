@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Privestio.Api\Privestio.Api.csproj" />
+    <ProjectReference Include="..\..\src\Privestio.Contracts\Privestio.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

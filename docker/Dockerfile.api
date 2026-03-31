@@ -29,6 +29,9 @@ RUN dotnet publish "src/Privestio.Api/Privestio.Api.csproj" \
 # Runtime stage — minimal ASP.NET Core runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
+# Install wget for docker-compose health checks
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
+
 # Security: run as non-root user
 RUN addgroup --system appgroup && \
     adduser --system --ingroup appgroup appuser
@@ -43,7 +46,6 @@ USER appuser
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -f http://localhost:8080/healthz || exit 1
+# Health check is handled by docker-compose via wget (installed above).
 
 ENTRYPOINT ["dotnet", "Privestio.Api.dll"]

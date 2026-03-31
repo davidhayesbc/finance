@@ -26,6 +26,11 @@ public abstract class BaseEntity : IAuditableEntity
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// Legacy column — optimistic concurrency is now handled by PostgreSQL's xmin system column.
+    /// Retained temporarily for migration compatibility; will be removed in a future migration.
+    /// </summary>
     public long Version { get; set; }
 
     public void SoftDelete()

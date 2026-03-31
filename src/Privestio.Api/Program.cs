@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -178,6 +179,19 @@ try
         );
     });
 
+    // Rate limiting for auth endpoints (P0-4)
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+        options.AddFixedWindowLimiter("auth", opt =>
+        {
+            opt.PermitLimit = 10;
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.QueueLimit = 0;
+        });
+    });
+
     var app = builder.Build();
 
     // Auto-apply migrations on startup (Task 1.18)
@@ -203,6 +217,7 @@ try
 
     app.UseHttpsRedirection();
     app.UseCors("BlazorWasm");
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
 

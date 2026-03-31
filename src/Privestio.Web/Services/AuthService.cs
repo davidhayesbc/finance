@@ -22,6 +22,10 @@ public class AuthService : IAuthService
     private readonly HttpClient _httpClient;
     private readonly IJSRuntime _jsRuntime;
     private AuthResponse? _currentUser;
+    private bool _isRefreshing;
+
+    private const string AccessTokenKey = "privestio_token";
+    private const string RefreshTokenKey = "privestio_refresh_token";
 
     public AuthService(HttpClient httpClient, IJSRuntime jsRuntime)
     {
@@ -45,7 +49,7 @@ public class AuthService : IAuthService
             _currentUser = await response.Content.ReadFromJsonAsync<AuthResponse>();
             if (_currentUser is not null)
             {
-                await StoreTokenAsync(_currentUser.AccessToken);
+                await StoreTokensAsync(_currentUser.AccessToken, _currentUser.RefreshToken);
                 SetAuthorizationHeader(_currentUser.AccessToken);
             }
 
@@ -68,7 +72,7 @@ public class AuthService : IAuthService
             _currentUser = await response.Content.ReadFromJsonAsync<AuthResponse>();
             if (_currentUser is not null)
             {
-                await StoreTokenAsync(_currentUser.AccessToken);
+                await StoreTokensAsync(_currentUser.AccessToken, _currentUser.RefreshToken);
                 SetAuthorizationHeader(_currentUser.AccessToken);
             }
 
@@ -82,27 +86,114 @@ public class AuthService : IAuthService
 
     public async Task LogoutAsync()
     {
+        // Attempt to revoke the refresh token server-side
+        try
+        {
+            var refreshToken = await _jsRuntime.InvokeAsync<string?>(
+                "sessionStorage.getItem",
+                RefreshTokenKey
+            );
+
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                await _httpClient.PostAsJsonAsync(
+                    "/api/v1/auth/revoke",
+                    new RefreshTokenRequest { RefreshToken = refreshToken }
+                );
+            }
+        }
+        catch
+        {
+            // Best-effort revocation — don't block logout on failure
+        }
+
         _currentUser = null;
-        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "privestio_token");
+        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", AccessTokenKey);
+        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
         _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
     public async Task InitializeAsync()
     {
         var token = await _jsRuntime.InvokeAsync<string?>(
-            "localStorage.getItem",
-            "privestio_token"
+            "sessionStorage.getItem",
+            AccessTokenKey
         );
+
         if (!string.IsNullOrEmpty(token))
         {
             if (IsTokenExpired(token))
             {
-                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "privestio_token");
+                // Access token expired — try to refresh
+                var refreshed = await TryRefreshTokenAsync();
+                if (!refreshed)
+                {
+                    await ClearStoredTokensAsync();
+                }
                 return;
             }
 
             _currentUser = new AuthResponse { AccessToken = token };
             SetAuthorizationHeader(token);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to refresh the access token using the stored refresh token.
+    /// Returns true on success.
+    /// </summary>
+    public async Task<bool> TryRefreshTokenAsync()
+    {
+        if (_isRefreshing)
+            return false;
+
+        _isRefreshing = true;
+        try
+        {
+            var refreshToken = await _jsRuntime.InvokeAsync<string?>(
+                "sessionStorage.getItem",
+                RefreshTokenKey
+            );
+
+            if (string.IsNullOrEmpty(refreshToken))
+                return false;
+
+            // Remove auth header for the refresh call (it uses the refresh token, not JWT)
+            var savedAuth = _httpClient.DefaultRequestHeaders.Authorization;
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "/api/v1/auth/refresh",
+                    new RefreshTokenRequest { RefreshToken = refreshToken }
+                );
+
+                if (!response.IsSuccessStatusCode)
+                    return false;
+
+                _currentUser = await response.Content.ReadFromJsonAsync<AuthResponse>();
+                if (_currentUser is null)
+                    return false;
+
+                await StoreTokensAsync(_currentUser.AccessToken, _currentUser.RefreshToken);
+                SetAuthorizationHeader(_currentUser.AccessToken);
+                return true;
+            }
+            finally
+            {
+                // Restore auth header if refresh failed
+                if (_currentUser is null && savedAuth is not null)
+                    _httpClient.DefaultRequestHeaders.Authorization = savedAuth;
+            }
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            _isRefreshing = false;
         }
     }
 
@@ -132,8 +223,24 @@ public class AuthService : IAuthService
         }
     }
 
-    private async Task StoreTokenAsync(string token) =>
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "privestio_token", token);
+    private async Task StoreTokensAsync(string accessToken, string? refreshToken)
+    {
+        await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", AccessTokenKey, accessToken);
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            await _jsRuntime.InvokeVoidAsync(
+                "sessionStorage.setItem",
+                RefreshTokenKey,
+                refreshToken
+            );
+        }
+    }
+
+    private async Task ClearStoredTokensAsync()
+    {
+        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", AccessTokenKey);
+        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
+    }
 
     private void SetAuthorizationHeader(string token) =>
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
