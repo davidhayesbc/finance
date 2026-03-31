@@ -59,12 +59,21 @@
                 <FluentAnchor Href="/" Class="nav-pill">Overview</FluentAnchor>
                 @if (AuthService.IsAuthenticated)
                 {
+                    <FluentAnchor Href="/dashboard" Class="nav-pill">Dashboard</FluentAnchor>
                     <FluentAnchor Href="/accounts" Class="nav-pill">Accounts</FluentAnchor>
                     <FluentAnchor Href="/securities" Class="nav-pill">Security Pricing Sources</FluentAnchor>
+                    <FluentAnchor Href="/securities/review" Class="nav-pill">Security Review</FluentAnchor>
                     <FluentAnchor Href="/budgets" Class="nav-pill">Budgets</FluentAnchor>
                     <FluentAnchor Href="/sinking-funds" Class="nav-pill">Savings</FluentAnchor>
                     <FluentAnchor Href="/recurring-transactions" Class="nav-pill">Recurring</FluentAnchor>
+                    <FluentAnchor Href="/spending" Class="nav-pill">Spending</FluentAnchor>
+                    <FluentAnchor Href="/cash-flow" Class="nav-pill">Cash Flow</FluentAnchor>
+                    <FluentAnchor Href="/debt" Class="nav-pill">Debt</FluentAnchor>
                     <FluentAnchor Href="/forecast" Class="nav-pill">Forecast</FluentAnchor>
+                    <FluentAnchor Href="/forecast-scenarios" Class="nav-pill">Scenarios</FluentAnchor>
+                    <FluentAnchor Href="/contribution-room" Class="nav-pill">Contribution Room</FluentAnchor>
+                    <FluentAnchor Href="/reconciliation" Class="nav-pill">Reconciliation</FluentAnchor>
+                    <FluentAnchor Href="/sync/conflicts" Class="nav-pill">Sync Conflicts</FluentAnchor>
                     <FluentAnchor Href="/notifications" Class="nav-pill">Alerts</FluentAnchor>
                     <FluentAnchor Href="/import" Class="nav-pill">Import</FluentAnchor>
                     <FluentAnchor Href="/import/mappings" Class="nav-pill">Import Plugin Mappings</FluentAnchor>
