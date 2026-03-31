@@ -428,3 +428,6 @@ tests/**/obj/*
 # Handles malformed Windows-style folder names accidentally created on Linux (e.g. bin\Debug)
 **/bin\\*/
 **/obj\\*/
+
+# VS auto-generates .sln from .slnx — ignore the generated copy
+finance.sln
