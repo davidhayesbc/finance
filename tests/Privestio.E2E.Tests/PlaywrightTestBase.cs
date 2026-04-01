@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Playwright;
 
 namespace Privestio.E2E.Tests;
@@ -5,6 +6,12 @@ namespace Privestio.E2E.Tests;
 [Trait("Category", "E2E")]
 public abstract class PlaywrightTestBase : IAsyncLifetime
 {
+    private static readonly UiReviewViewport[] UiReviewViewports =
+    [
+        new("desktop", 1440, 1200),
+        new("mobile", 393, 1180),
+    ];
+
     private readonly AppHostFixture _appHostFixture;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
@@ -50,6 +57,39 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }
 
+    protected async Task WaitForTestIdAsync(string testId)
+    {
+        await Page.GetByTestId(testId).WaitForAsync();
+    }
+
+    protected async Task CaptureUiReviewPageAsync(
+        string relativePath,
+        string artifactPrefix,
+        string readyTestId
+    )
+    {
+        await GotoRelativeAsync(relativePath);
+        await WaitForTestIdAsync(readyTestId);
+        await CaptureUiReviewArtifactsAsync(artifactPrefix);
+    }
+
+    protected async Task CaptureCurrentUiReviewPageAsync(string artifactPrefix, string readyTestId)
+    {
+        await WaitForTestIdAsync(readyTestId);
+        await CaptureUiReviewArtifactsAsync(artifactPrefix);
+    }
+
+    protected string GetUiReviewArtifactsDirectory()
+    {
+        var configuredPath = Environment.GetEnvironmentVariable("UI_REVIEW_OUTPUT_DIR");
+        if (!string.IsNullOrWhiteSpace(configuredPath))
+        {
+            return Path.GetFullPath(configuredPath, GetRepositoryRoot());
+        }
+
+        return Path.Combine(GetRepositoryRoot(), "artifacts", "ui-review");
+    }
+
     protected async Task LoginIfConfiguredAsync()
     {
         var email = Environment.GetEnvironmentVariable("TEST_LOGIN_EMAIL");
@@ -86,4 +126,33 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
         await Page.ClickAsync("button[type=submit]");
         await Page.WaitForURLAsync($"{BaseUrl}/accounts");
     }
+
+    private async Task CaptureUiReviewArtifactsAsync(string artifactPrefix)
+    {
+        var outputDirectory = GetUiReviewArtifactsDirectory();
+        Directory.CreateDirectory(outputDirectory);
+
+        foreach (var viewport in UiReviewViewports)
+        {
+            await Page.SetViewportSizeAsync(viewport.Width, viewport.Height);
+            await Page.EvaluateAsync("window.scrollTo(0, 0)");
+            await Page.WaitForTimeoutAsync(150);
+
+            var outputPath = Path.Combine(outputDirectory, $"{artifactPrefix}-{viewport.Name}.png");
+            await Page.ScreenshotAsync(
+                new PageScreenshotOptions
+                {
+                    Path = outputPath,
+                    FullPage = true,
+                    Animations = ScreenshotAnimations.Disabled,
+                    Caret = ScreenshotCaret.Hide,
+                }
+            );
+        }
+    }
+
+    private static string GetRepositoryRoot() =>
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../"));
+
+    private sealed record UiReviewViewport(string Name, int Width, int Height);
 }

@@ -1,0 +1,59 @@
+name: UI Review Capture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  UI_REVIEW_OUTPUT_DIR: artifacts/ui-review
+
+jobs:
+  capture-ui-review:
+    name: Capture UI Review Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore NuGet packages
+        run: dotnet restore Privestio.slnx
+
+      - name: Build solution
+        run: dotnet build Privestio.slnx --no-restore --configuration Release
+
+      - name: Install Playwright Chromium
+        run: pwsh tests/Privestio.E2E.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Capture desktop and mobile screenshots
+        run: >
+          dotnet test tests/Privestio.E2E.Tests/Privestio.E2E.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter "Category=UIReview"
+
+      - name: Upload UI review packet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-review-packet
+          path: |
+            artifacts/ui-review/
+            docs/UI-REVIEW-GPT54.md
+            .github/prompts/ui-review-gpt-5-4.prompt.md
+          retention-days: 14
