@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/Privestio.AppHost/Privestio.AppHost.csproj"
+  }
+}
