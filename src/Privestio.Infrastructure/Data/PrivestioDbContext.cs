@@ -108,7 +108,11 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
         {
             if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
             {
-                modelBuilder.Entity(entityType.ClrType).UseXminAsConcurrencyToken();
+                modelBuilder
+                    .Entity(entityType.ClrType)
+                    .Property<uint>("xmin")
+                    .IsRowVersion()
+                    .ValueGeneratedOnAddOrUpdate();
             }
         }
     }
