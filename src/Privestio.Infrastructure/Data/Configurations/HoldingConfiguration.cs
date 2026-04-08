@@ -48,7 +48,10 @@ public class HoldingConfiguration : IEntityTypeConfiguration<Holding>
             .HasForeignKey(l => l.HoldingId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(h => new { h.AccountId, h.SecurityId }).IsUnique();
+        builder
+            .HasIndex(h => new { h.AccountId, h.SecurityId })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
         builder.HasIndex(h => h.AccountId);
     }
 }

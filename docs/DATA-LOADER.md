@@ -27,7 +27,7 @@ The `--clear-existing-data` flag clears existing loader-managed data for the aut
 All flags can alternatively be set via environment variables. CLI flags take precedence over environment variables.
 
 | Flag | Environment Variable |
-|------|---------------------|
+| ------ | --------------------- |
 | `--manifest` | `PRIVESTIO_MANIFEST` |
 | `--data-dir` | `PRIVESTIO_DATA_DIR` |
 | `--api-url` | `PRIVESTIO_API_URL` |
