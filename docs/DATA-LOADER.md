@@ -4,8 +4,8 @@ Use the data loader to import manifest-driven seed data into the running API.
 
 ## Run Command
 
-```bash
-dotnet run --project tools/Privestio.DataLoader -- --manifest ~/privestio-data/manifest.json --data-dir ~/privestio-data --clear-existing-data
+```powershell
+dotnet run --project tools/Privestio.DataLoader -- --manifest $env:OneDrive/privestio-data/manifest.json --data-dir $env:OneDrive/privestio-data --clear-existing-data
 ```
 
 The `--clear-existing-data` flag clears existing loader-managed data for the authenticated user before import starts.
