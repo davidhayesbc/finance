@@ -7,20 +7,56 @@
 <div class="app-shell">
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <header class="app-header">
-        <div class="app-header__inner">
-            <div class="app-header__top">
-                <div class="brand-block">
-                    <FluentAnchor Href="/" Appearance="Appearance.Hypertext" Class="brand-link">
+    <div class="app-frame @(UseProductShell ? "app-frame--workspace" : "app-frame--public")">
+        @if (UseProductShell)
+        {
+            <aside class="app-rail" aria-label="Primary navigation" data-testid="app-rail">
+                <div class="app-rail__inner">
+                    <FluentAnchor Href="/dashboard" Appearance="Appearance.Hypertext" Class="brand-link brand-link--rail">
                         <span class="brand-mark">P</span>
                         <span>
                             <strong>Privestio</strong>
-                            <span class="brand-tagline">Personal finance with clear signal</span>
+                            <span class="brand-tagline">Private household finance instrument</span>
                         </span>
                     </FluentAnchor>
+
+                    @foreach (var navSection in NavigationSections)
+                    {
+                        <section class="app-rail__section">
+                            <span class="app-rail__label">@navSection.Label</span>
+                            <nav class="app-rail__nav" aria-label="@navSection.Label">
+                                @foreach (var item in navSection.Items)
+                                {
+                                    <FluentAnchor Href="@item.Href" Class="@GetRailLinkClass(item.Href)">@item.Label</FluentAnchor>
+                                }
+                            </nav>
+                        </section>
+                    }
+                </div>
+            </aside>
+        }
+
+        <div class="app-workspace">
+            <header class="app-utility-strip" data-testid="app-utility-strip">
+                <div class="app-utility-strip__identity">
+                    @if (!UseProductShell)
+                    {
+                        <FluentAnchor Href="/" Appearance="Appearance.Hypertext" Class="brand-link">
+                            <span class="brand-mark">P</span>
+                            <span>
+                                <strong>Privestio</strong>
+                                <span class="brand-tagline">Private household finance instrument</span>
+                            </span>
+                        </FluentAnchor>
+                    }
+                    else
+                    {
+                        <span class="app-utility-strip__eyebrow">Stable shell</span>
+                        <strong class="app-utility-strip__title">@GetFrameTitle()</strong>
+                    }
                 </div>
 
-                <div class="app-header__controls">
+                <div class="app-utility-strip__controls">
                     <div class="status-cluster">
                         <OnlineIndicator />
                         <InstallPrompt />
@@ -53,64 +89,71 @@
                         <a href="/login" class="app-button app-button--primary header-cta">Sign in</a>
                     }
                 </div>
-            </div>
+            </header>
 
-            <nav class="primary-nav" aria-label="Primary navigation">
-                <FluentAnchor Href="/" Class="nav-pill">Overview</FluentAnchor>
-                @if (AuthService.IsAuthenticated)
-                {
-                    <FluentAnchor Href="/dashboard" Class="nav-pill">Dashboard</FluentAnchor>
-                    <FluentAnchor Href="/accounts" Class="nav-pill">Accounts</FluentAnchor>
-                    <FluentAnchor Href="/securities" Class="nav-pill">Security Pricing Sources</FluentAnchor>
-                    <FluentAnchor Href="/securities/review" Class="nav-pill">Security Review</FluentAnchor>
-                    <FluentAnchor Href="/budgets" Class="nav-pill">Budgets</FluentAnchor>
-                    <FluentAnchor Href="/sinking-funds" Class="nav-pill">Savings</FluentAnchor>
-                    <FluentAnchor Href="/recurring-transactions" Class="nav-pill">Recurring</FluentAnchor>
-                    <FluentAnchor Href="/spending" Class="nav-pill">Spending</FluentAnchor>
-                    <FluentAnchor Href="/cash-flow" Class="nav-pill">Cash Flow</FluentAnchor>
-                    <FluentAnchor Href="/debt" Class="nav-pill">Debt</FluentAnchor>
-                    <FluentAnchor Href="/forecast" Class="nav-pill">Forecast</FluentAnchor>
-                    <FluentAnchor Href="/forecast-scenarios" Class="nav-pill">Scenarios</FluentAnchor>
-                    <FluentAnchor Href="/contribution-room" Class="nav-pill">Contribution Room</FluentAnchor>
-                    <FluentAnchor Href="/reconciliation" Class="nav-pill">Reconciliation</FluentAnchor>
-                    <FluentAnchor Href="/sync/conflicts" Class="nav-pill">Sync Conflicts</FluentAnchor>
-                    <FluentAnchor Href="/notifications" Class="nav-pill">Alerts</FluentAnchor>
-                    <FluentAnchor Href="/import" Class="nav-pill">Import</FluentAnchor>
-                    <FluentAnchor Href="/import/mappings" Class="nav-pill">Import Plugin Mappings</FluentAnchor>
-                    <FluentAnchor Href="/plugins" Class="nav-pill">Plugin Catalog</FluentAnchor>
-                    <FluentAnchor Href="/rules" Class="nav-pill">Rules</FluentAnchor>
-                }
-            </nav>
+            <main id="main-content" class="app-main" role="main">
+                <ErrorBoundary>
+                    <ChildContent>
+                        @Body
+                    </ChildContent>
+                    <ErrorContent>
+                        <FluentCard Class="surface-card page-shell">
+                            <FluentMessageBar Intent="@MessageIntent.Error">
+                                An unexpected error occurred. Please refresh the page and try again.
+                            </FluentMessageBar>
+                        </FluentCard>
+                    </ErrorContent>
+                </ErrorBoundary>
+            </main>
+
+            <footer class="app-footer">
+                <p>Privestio keeps balances, workflows, and exceptions inside one stable household finance workspace.</p>
+            </footer>
         </div>
-    </header>
+    </div>
 
     <div class="app-backdrop" aria-hidden="true">
         <div class="app-backdrop__orb app-backdrop__orb--left"></div>
         <div class="app-backdrop__orb app-backdrop__orb--right"></div>
     </div>
-
-    <main id="main-content" class="app-main" role="main">
-        <ErrorBoundary>
-            <ChildContent>
-                @Body
-            </ChildContent>
-            <ErrorContent>
-                <FluentCard Class="surface-card page-shell">
-                    <FluentMessageBar Intent="@MessageIntent.Error">
-                        An unexpected error occurred. Please refresh the page and try again.
-                    </FluentMessageBar>
-                </FluentCard>
-            </ErrorContent>
-        </ErrorBoundary>
-    </main>
-
-    <footer class="app-footer">
-        <p>Privestio keeps budgets, imports, and account snapshots in one consistent workspace.</p>
-    </footer>
 </div>
 
 @code {
+    private static readonly IReadOnlyList<NavigationSection> NavigationSections =
+    [
+        new(
+            "Monitor",
+            [
+                new("/dashboard", "Dashboard"),
+                new("/accounts", "Accounts"),
+                new("/budgets", "Budgets"),
+                new("/forecast", "Forecast"),
+                new("/notifications", "Alerts"),
+            ]
+        ),
+        new(
+            "Workflow",
+            [
+                new("/import", "Import"),
+                new("/rules", "Rules"),
+                new("/reconciliation", "Reconciliation"),
+                new("/sync/conflicts", "Sync Conflicts"),
+            ]
+        ),
+        new(
+            "Market Data",
+            [
+                new("/securities", "Pricing Sources"),
+                new("/securities/review", "Security Review"),
+                new("/forecast-scenarios", "Scenarios"),
+                new("/plugins", "Plugin Catalog"),
+            ]
+        ),
+    ];
+
     private ThemeState _themeState = ThemeState.Default;
+
+    private bool UseProductShell => !IsPublicRoute();
 
     protected override async Task OnInitializedAsync()
     {
@@ -147,8 +190,54 @@
     private bool IsThemePreferenceSelected(string preference) =>
         string.Equals(_themeState.Preference, preference, StringComparison.OrdinalIgnoreCase);
 
+    private string GetRailLinkClass(string href) =>
+        IsActiveRoute(href)
+            ? "app-rail__link app-rail__link--active"
+            : "app-rail__link";
+
+    private string GetFrameTitle()
+    {
+        var relativePath = GetRelativePath();
+        return relativePath switch
+        {
+            "dashboard" => "Household dashboard",
+            "accounts" => "Account ledger",
+            "import" => "Import workbench",
+            "budgets" => "Budget review",
+            "forecast" => "Forecast plane",
+            _ => "Household finance workspace",
+        };
+    }
+
+    private bool IsPublicRoute()
+    {
+        var relativePath = GetRelativePath();
+        return string.Equals(relativePath, "login", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(relativePath, "register", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsActiveRoute(string href)
+    {
+        var relativePath = GetRelativePath();
+        var normalizedHref = href.Trim('/');
+
+        if (string.IsNullOrWhiteSpace(normalizedHref))
+        {
+            return string.IsNullOrWhiteSpace(relativePath);
+        }
+
+        return string.Equals(relativePath, normalizedHref, StringComparison.OrdinalIgnoreCase)
+            || relativePath.StartsWith($"{normalizedHref}/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetRelativePath() => Navigation.ToBaseRelativePath(Navigation.Uri).TrimEnd('/');
+
     public void Dispose()
     {
         ThemeService.ThemeChanged -= HandleThemeChanged;
     }
+
+    private sealed record NavigationItem(string Href, string Label);
+
+    private sealed record NavigationSection(string Label, IReadOnlyList<NavigationItem> Items);
 }

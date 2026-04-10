@@ -1,72 +1,253 @@
 @page "/dashboard"
 @inject IAnalyticsService AnalyticsService
+@inject IConflictResolutionWebService ConflictService
+@inject INotificationWebService NotificationService
+@inject IPortfolioService PortfolioService
+@inject IPriceHistoryService PriceHistoryService
+@inject ISecurityWebService SecurityService
+@inject NavigationManager Navigation
 
 <PageTitle>Dashboard — Privestio</PageTitle>
 
-<section class="page-shell">
-    <PageHeader Eyebrow="Analytics" Title="Dashboard" Description="Overview of your financial position at a glance." />
+<section class="dashboard-shell" data-testid="dashboard-page">
+    <div class="dashboard-orientation" data-testid="dashboard-orientation">
+        <PageHeader Eyebrow="Dashboard" Title="Dashboard"
+                    Description="Current financial position, recent movement, and active issues.">
+            <Actions>
+                <div class="action-cluster">
+                    <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
+                        Add transaction
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Accent" Loading="_isSyncingHistory" @onclick="SyncHistoricalPricesAsync">
+                        Sync prices
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/notifications"))">
+                        Alerts
+                    </FluentButton>
+                </div>
+            </Actions>
+        </PageHeader>
 
-    @if (_isLoading)
+        <div class="dashboard-orientation__context">
+            <div>
+                <span class="filter-label">Range</span>
+                <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
+                                      Disabled="@(_isLoading || _isHistoryLoading || _isSyncingHistory)"
+                                      OnChange="HandleHistoryRangeChangedAsync" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_syncMessage))
+            {
+                <FluentMessageBar Intent="@_syncMessageIntent">@_syncMessage</FluentMessageBar>
+            }
+        </div>
+    </div>
+
+    @if (_summary is null && _history is null && !_isLoading)
     {
-        <LoadingSpinner AriaLabel="Loading dashboard" />
+        <FluentMessageBar Intent="@MessageIntent.Warning">
+            Dashboard data is unavailable right now. The structure remains visible so you can still orient yourself.
+        </FluentMessageBar>
     }
-    else if (_summary is null)
-    {
-        <EmptyStateCard Message="Unable to load dashboard data. Please try again later." />
-    }
-    else
-    {
-        <div class="summary-strip" style="margin-bottom: 1.5rem;">
-            <FluentCard Class="surface-card">
-                <span class="summary-strip__label">Total Assets</span>
-                <strong style="color: #107c10;">@_summary.TotalAssets.ToString("C") @_summary.Currency</strong>
-            </FluentCard>
-            <FluentCard Class="surface-card">
-                <span class="summary-strip__label">Total Liabilities</span>
-                <strong style="color: #c50f1f;">@_summary.TotalLiabilities.ToString("C") @_summary.Currency</strong>
-            </FluentCard>
-            <FluentCard Class="surface-card">
-                <span class="summary-strip__label">Net Worth</span>
-                <strong>@_summary.NetWorth.ToString("C") @_summary.Currency</strong>
-            </FluentCard>
+
+    <section class="dashboard-posture" aria-label="Financial posture" data-testid="dashboard-posture">
+        @if (_isLoading)
+        {
+            @for (var index = 0; index < 5; index++)
+            {
+                <div class="dashboard-posture__item dashboard-posture__item--loading" aria-hidden="true">
+                    <span class="summary-strip__label">Loading</span>
+                    <span class="dashboard-skeleton dashboard-skeleton--label"></span>
+                    <span class="dashboard-skeleton dashboard-skeleton--value"></span>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="dashboard-posture__item">
+                <span class="summary-strip__label">Net worth</span>
+                <strong class="dashboard-posture__value dashboard-posture__value--serif">@FormatMoney(_summary?.NetWorth)</strong>
+            </div>
+            <div class="dashboard-posture__item">
+                <span class="summary-strip__label">Assets</span>
+                <strong class="dashboard-posture__value dashboard-posture__value--gain">@FormatMoney(_summary?.TotalAssets)</strong>
+            </div>
+            <div class="dashboard-posture__item">
+                <span class="summary-strip__label">Liabilities</span>
+                <strong class="dashboard-posture__value dashboard-posture__value--risk">@FormatMoney(_summary?.TotalLiabilities)</strong>
+            </div>
+            <div class="dashboard-posture__item">
+                <span class="summary-strip__label">Last refresh</span>
+                <strong class="dashboard-posture__value">@GetLastRefreshLabel()</strong>
+            </div>
+            <div class="dashboard-posture__item">
+                <span class="summary-strip__label">Unresolved alerts</span>
+                <strong class="dashboard-posture__value">@BuildWatchlistItems().Count(item => item.Intent != MessageIntent.Success)</strong>
+            </div>
+        }
+    </section>
+
+    <section class="dashboard-plane" aria-labelledby="dashboard-net-worth-heading" data-testid="dashboard-net-worth-plane">
+        <div class="dashboard-plane__header">
+            <div>
+                <h2 id="dashboard-net-worth-heading">Net worth</h2>
+                <p>Trajectory across the selected range with optional evidence from asset and liability movement.</p>
+            </div>
         </div>
 
-        @if (_history is not null)
-        {
-            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
-                <h3 style="margin: 0 0 1rem 0;">Net Worth Growth</h3>
-                @if (_history.Series.Count > 0)
+        <div class="dashboard-plane__body">
+            @if (_isLoading || _isHistoryLoading)
+            {
+                <div class="dashboard-chart-skeleton" aria-hidden="true">
+                    <span class="dashboard-skeleton dashboard-chart-skeleton__axis"></span>
+                    <span class="dashboard-skeleton dashboard-chart-skeleton__line"></span>
+                </div>
+            }
+            else if (_history is not null && _history.Series.Count > 0)
+            {
+                <StackedNetWorthChart Series="_history.Series"
+                                     EmptyTitle="No net worth history yet."
+                                     EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+            }
+            else if (_history is not null)
+            {
+                <HistoricalValueChart Points="_history.Points"
+                                      SeriesName="Net Worth"
+                                      EmptyTitle="No net worth history yet."
+                                      EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+            }
+            else
+            {
+                <div class="empty-inline">
+                    <strong>No net worth history yet.</strong>
+                    <span>Sync historical prices and keep account activity current to build a usable trend line.</span>
+                </div>
+            }
+        </div>
+    </section>
+
+    <div class="dashboard-support-grid">
+        <section class="dashboard-band" aria-labelledby="dashboard-composition-heading">
+            <div class="dashboard-band__header">
+                <div>
+                    <h2 id="dashboard-composition-heading">Composition</h2>
+                    <p>How the household is distributed across major account classes.</p>
+                </div>
+            </div>
+
+            @if (_isLoading)
+            {
+                <div class="dashboard-stack">
+                    @for (var index = 0; index < 3; index++)
+                    {
+                        <div class="dashboard-allocation-row" aria-hidden="true">
+                            <span class="dashboard-skeleton dashboard-skeleton--label"></span>
+                            <span class="dashboard-skeleton dashboard-skeleton--bar"></span>
+                        </div>
+                    }
+                </div>
+            }
+            else if (_summary is { AssetAllocation.Count: > 0 })
+            {
+                <div class="dashboard-stack">
+                    @foreach (var allocation in _summary.AssetAllocation.OrderByDescending(item => item.Percentage))
+                    {
+                        <div class="dashboard-allocation-row">
+                            <div class="dashboard-allocation-row__meta">
+                                <strong>@allocation.AccountType</strong>
+                                <span>@FormatMoney(allocation.Amount) · @allocation.Percentage.ToString("0.#")%</span>
+                            </div>
+                            <div class="dashboard-allocation-row__track" aria-hidden="true">
+                                <span style="@GetAllocationWidthStyle(allocation.Percentage)"></span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-inline">
+                    <strong>No composition data yet.</strong>
+                    <span>Add accounts and balances to populate the structural view.</span>
+                </div>
+            }
+        </section>
+
+        <section class="dashboard-band" aria-labelledby="dashboard-pressure-heading">
+            <div class="dashboard-band__header">
+                <div>
+                    <h2 id="dashboard-pressure-heading">Pressure</h2>
+                    <p>Compact structural signals that indicate concentration or funding stress.</p>
+                </div>
+            </div>
+
+            <div class="dashboard-pressure-grid">
+                @foreach (var metric in BuildPressureMetrics())
                 {
-                    <StackedNetWorthChart Series="_history.Series"
-                                         EmptyTitle="No net worth history yet."
-                                         EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+                    <div class="dashboard-pressure-item">
+                        <span class="summary-strip__label">@metric.Label</span>
+                        <strong>@metric.Value</strong>
+                        <span>@metric.Detail</span>
+                    </div>
                 }
-                else
+            </div>
+        </section>
+    </div>
+
+    <div class="dashboard-lower-grid">
+        <section class="dashboard-band dashboard-band--watchlist" aria-labelledby="dashboard-watchlist-heading">
+            <div class="dashboard-band__header">
+                <div>
+                    <h2 id="dashboard-watchlist-heading">Watchlist</h2>
+                    <p>Items that need review before they distort balances, budgets, or forecast confidence.</p>
+                </div>
+            </div>
+
+            <div class="dashboard-watchlist">
+                @foreach (var item in BuildWatchlistItems())
                 {
-                    <HistoricalValueChart Points="_history.Points" SeriesName="Net Worth" EmptyTitle="No net worth history yet."
-                                          EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
+                    <div class="dashboard-watchlist__row dashboard-watchlist__row--@GetIntentClass(item.Intent)">
+                        <div>
+                            <strong>@item.Title</strong>
+                            <p>@item.Detail</p>
+                        </div>
+                        <div class="dashboard-watchlist__actions">
+                            <span class="dashboard-watchlist__status">@GetIntentLabel(item.Intent)</span>
+                            @if (!string.IsNullOrWhiteSpace(item.Href) && !string.IsNullOrWhiteSpace(item.ActionLabel))
+                            {
+                                <button type="button"
+                                        class="dashboard-watchlist__link"
+                                        @onclick="() => Navigation.NavigateTo(item.Href)">
+                                    @item.ActionLabel
+                                </button>
+                            }
+                        </div>
+                    </div>
                 }
-            </FluentCard>
-        }
+            </div>
+        </section>
 
-        @if (_summary.AssetAllocation.Count > 0)
-        {
-            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
-                <h3 style="margin: 0 0 1rem 0;">Asset Allocation</h3>
-                <ApexChart TItem="AssetAllocationItem" Title="" Height="350">
-                    <ApexPointSeries TItem="AssetAllocationItem" Items="_summary.AssetAllocation.ToList()"
-                                     SeriesType="SeriesType.Donut" Name="Allocation" XValue="@(item => item.AccountType)"
-                                     YAggregate="@(items => items.Sum(i => i.Amount))" />
-                </ApexChart>
-            </FluentCard>
-        }
+        <section class="dashboard-band dashboard-band--accounts" aria-labelledby="dashboard-accounts-heading">
+            <div class="dashboard-band__header">
+                <div>
+                    <h2 id="dashboard-accounts-heading">Accounts</h2>
+                    <p>Largest balances and active account classes available for deeper review.</p>
+                </div>
+            </div>
 
-        @if (_summary.AccountSummaries.Count > 0)
-        {
-            <FluentCard Class="surface-card data-card">
-                <h3 style="margin: 0 0 1rem 0;">Account Summary</h3>
-
-                <FluentDataGrid Items="_summary.AccountSummaries.OrderByDescending(a => a.Balance).ThenBy(a => a.Name).AsQueryable()" TGridItem="AccountSummary"
+            @if (_isLoading)
+            {
+                <div class="dashboard-stack" aria-hidden="true">
+                    @for (var index = 0; index < 4; index++)
+                    {
+                        <span class="dashboard-skeleton dashboard-skeleton--row"></span>
+                    }
+                </div>
+            }
+            else if (_summary is { AccountSummaries.Count: > 0 })
+            {
+                <FluentDataGrid Items="_summary.AccountSummaries.OrderByDescending(a => a.Balance).ThenBy(a => a.Name).AsQueryable()"
+                                TGridItem="AccountSummary"
                                 Class="data-grid--elevated data-grid--dashboard"
                                 ResizableColumns="true"
                                 ResizeType="DataGridResizeType.Discrete"
@@ -75,32 +256,376 @@
                                 ShowHover="true"
                                 DisplayMode="DataGridDisplayMode.Table"
                                 RowSize="DataGridRowSize.Medium">
-                    <TemplateColumn Title="Account" SortBy="@(GridSort<AccountSummary>.ByAscending(a => a.Name))" Width="280px">
+                    <TemplateColumn Title="Account" SortBy="@(GridSort<AccountSummary>.ByAscending(a => a.Name))" Width="250px">
                         <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(context.Name) ? "Unnamed account" : context.Name)">@context.Name</span>
                     </TemplateColumn>
                     <PropertyColumn Property="@(a => a.AccountType)" Title="Type" Sortable="true" Width="150px" />
                     <TemplateColumn Title="Balance" SortBy="@(GridSort<AccountSummary>.ByDescending(a => a.Balance))" Width="170px">
-                        @context.Balance.ToString("C") @context.Currency
+                        @FormatMoney(context.Balance)
                     </TemplateColumn>
                 </FluentDataGrid>
-            </FluentCard>
-        }
-    }
+            }
+            else
+            {
+                <div class="empty-inline">
+                    <strong>No accounts yet.</strong>
+                    <span>Add your first account to turn this dashboard into a live working surface.</span>
+                </div>
+            }
+        </section>
+    </div>
 </section>
 
 @code {
     private NetWorthSummaryResponse? _summary;
     private NetWorthHistoryResponse? _history;
+    private CashFlowForecastResponse? _forecast;
     private bool _isLoading = true;
+    private bool _isHistoryLoading;
+    private bool _isSyncingHistory;
+    private IReadOnlyList<NotificationResponse> _notifications = [];
+    private IReadOnlyList<SyncConflictResponse> _syncConflicts = [];
+    private IReadOnlyList<SecurityConflictResponse> _securityConflicts = [];
+    private IReadOnlyList<HoldingPerformanceResponse> _staleHoldings = [];
+    private string _selectedHistoryRange = "1y";
+    private string? _syncMessage;
+    private MessageIntent _syncMessageIntent = MessageIntent.Success;
 
     protected override async Task OnInitializedAsync()
     {
-        var summaryTask = AnalyticsService.GetNetWorthSummaryAsync();
-        var historyTask = AnalyticsService.GetNetWorthHistoryAsync();
+        await LoadDashboardAsync();
+    }
 
-        await Task.WhenAll(summaryTask, historyTask);
+    private async Task LoadDashboardAsync()
+    {
+        _isLoading = true;
+        _isHistoryLoading = true;
+
+        var summaryTask = AnalyticsService.GetNetWorthSummaryAsync();
+        var (fromDate, toDate) = ResolveHistoryRange();
+        var historyTask = AnalyticsService.GetNetWorthHistoryAsync(fromDate, toDate);
+        var notificationsTask = NotificationService.GetNotificationsAsync(limit: 6);
+        var conflictsTask = ConflictService.GetPendingConflictsAsync();
+        var securityConflictsTask = SecurityService.GetConflictsAsync();
+        var forecastTask = NotificationService.GetCashFlowForecastAsync(6);
+
+        await Task.WhenAll(summaryTask, historyTask, notificationsTask, conflictsTask, securityConflictsTask, forecastTask);
         _summary = await summaryTask;
         _history = await historyTask;
+        _notifications = await notificationsTask;
+        _syncConflicts = await conflictsTask;
+        _securityConflicts = await securityConflictsTask;
+        _forecast = await forecastTask;
+        _staleHoldings = await LoadStaleHoldingsAsync(_summary);
         _isLoading = false;
+        _isHistoryLoading = false;
     }
+
+    private async Task HandleHistoryRangeChangedAsync(string rangeKey)
+    {
+        _selectedHistoryRange = rangeKey;
+        _isHistoryLoading = true;
+
+        var (fromDate, toDate) = ResolveHistoryRange();
+        _history = await AnalyticsService.GetNetWorthHistoryAsync(fromDate, toDate);
+
+        _isHistoryLoading = false;
+    }
+
+    private async Task SyncHistoricalPricesAsync()
+    {
+        _isSyncingHistory = true;
+        _syncMessage = null;
+
+        try
+        {
+            var result = await PriceHistoryService.SyncHistoricalPricesAsync();
+            if (result is null)
+            {
+                _syncMessageIntent = MessageIntent.Error;
+                _syncMessage = "Historical price sync failed.";
+                return;
+            }
+
+            _syncMessageIntent = MessageIntent.Success;
+            _syncMessage = $"Historical price sync complete. Inserted {result.QuotesInserted} quotes and skipped {result.QuotesSkipped}.";
+            await LoadDashboardAsync();
+        }
+        finally
+        {
+            _isSyncingHistory = false;
+        }
+    }
+
+    private string FormatMoney(decimal? value) => value.HasValue
+        ? $"{value.Value.ToString("C")} {CurrencyCode}"
+        : $"{0m.ToString("C")} {CurrencyCode}";
+
+    private string CurrencyCode => _summary?.Currency ?? _history?.Currency ?? "CAD";
+
+    private string GetLastRefreshLabel()
+    {
+        if (_history?.Points.Count > 0)
+        {
+            return _history.Points.Max(point => point.Date).ToString("dd MMM yyyy");
+        }
+
+        return "Not synced";
+    }
+
+    private IReadOnlyList<DashboardPressureMetric> BuildPressureMetrics()
+    {
+        if (_summary is null)
+        {
+            return
+            [
+                new("Debt share", "Pending", "Waiting for balance data."),
+                new("Cash concentration", "Pending", "Waiting for allocation data."),
+                new("Largest allocation", "Pending", "Waiting for allocation data."),
+                new("Forecast floor", "Pending", "Waiting for forecast signals."),
+            ];
+        }
+
+        var debtShare = _summary.TotalAssets <= 0m
+            ? 0m
+            : (_summary.TotalLiabilities / _summary.TotalAssets) * 100m;
+        var cashConcentration = _summary.AssetAllocation
+            .FirstOrDefault(item => string.Equals(item.AccountType, "Banking", StringComparison.OrdinalIgnoreCase))?.Percentage ?? 0m;
+        var largestAllocation = _summary.AssetAllocation
+            .OrderByDescending(item => item.Percentage)
+            .FirstOrDefault();
+        var lowestForecastNet = _forecast?.Periods.Count > 0
+            ? _forecast.Periods.Min(period => period.ProjectedNet)
+            : (decimal?)null;
+        var nextForecastPressure = _forecast?.Periods
+            .FirstOrDefault(period => period.ProjectedNet < 0m || period.ProjectedBalance < 0m);
+
+        return
+        [
+            new("Debt share", $"{debtShare:0.#}%", "Liabilities relative to current assets."),
+            new("Cash concentration", $"{cashConcentration:0.#}%", "Share currently held in banking accounts."),
+            new("Largest allocation", largestAllocation is null ? "0%" : $"{largestAllocation.Percentage:0.#}%", largestAllocation is null ? "No allocation data yet." : $"{largestAllocation.AccountType} is the largest current exposure."),
+            new(
+                "Forecast floor",
+                lowestForecastNet.HasValue ? FormatSignedMoney(lowestForecastNet.Value) : "No forecast",
+                nextForecastPressure is null
+                    ? "No negative month appears in the current forecast window."
+                    : $"Pressure appears by {FormatPeriodLabel(nextForecastPressure)} with projected balance {FormatMoney(nextForecastPressure.ProjectedBalance)}."
+            ),
+        ];
+    }
+
+    private IReadOnlyList<DashboardWatchItem> BuildWatchlistItems()
+    {
+        var items = new List<DashboardWatchItem>();
+
+        foreach (var notification in _notifications
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .Take(3))
+        {
+            items.Add(
+                new(
+                    notification.Title,
+                    notification.Message,
+                    ToIntent(notification.Severity),
+                    "/notifications",
+                    "Open"
+                )
+            );
+        }
+
+        if (_syncConflicts.Count > 0)
+        {
+            items.Add(
+                new(
+                    $"{_syncConflicts.Count} sync conflict(s) pending",
+                    "Local and server changes disagree and need a keep-local or keep-server decision.",
+                    MessageIntent.Error,
+                    "/sync/conflicts",
+                    "Resolve"
+                )
+            );
+        }
+
+        if (_securityConflicts.Count > 0)
+        {
+            items.Add(
+                new(
+                    $"{_securityConflicts.Count} security match issue(s)",
+                    "Ambiguous holdings still need symbol or identifier review before pricing and performance stay trustworthy.",
+                    MessageIntent.Warning,
+                    "/securities/review",
+                    "Review"
+                )
+            );
+        }
+
+        if (_staleHoldings.Count > 0)
+        {
+            var oldestStaleHolding = _staleHoldings
+                .OrderBy(holding => holding.PriceAsOfDate ?? DateOnly.MinValue)
+                .First();
+
+            items.Add(
+                new(
+                    $"{_staleHoldings.Count} stale holding price(s)",
+                    $"Oldest stale quote is {oldestStaleHolding.Symbol} from {FormatPriceDate(oldestStaleHolding.PriceAsOfDate)}.",
+                    MessageIntent.Warning,
+                    "/accounts",
+                    "Inspect"
+                )
+            );
+        }
+
+        var nextForecastPressure = _forecast?.Periods
+            .FirstOrDefault(period => period.ProjectedNet < 0m || period.ProjectedBalance < 0m);
+        if (nextForecastPressure is not null)
+        {
+            items.Add(
+                new(
+                    $"Forecast turns negative in {FormatPeriodLabel(nextForecastPressure)}",
+                    $"Projected net is {FormatSignedMoney(nextForecastPressure.ProjectedNet)} and projected balance is {FormatMoney(nextForecastPressure.ProjectedBalance)}.",
+                    MessageIntent.Warning,
+                    "/forecast",
+                    "Forecast"
+                )
+            );
+        }
+
+        if (items.Count == 0)
+        {
+            if (_summary is null && _history is null && _forecast is null)
+            {
+                items.Add(
+                    new(
+                        "Signals unavailable",
+                        "Dashboard services did not return actionable signals for this session.",
+                        MessageIntent.Info,
+                        "/notifications",
+                        "Review"
+                    )
+                );
+            }
+            else
+            {
+                items.Add(
+                    new(
+                        "No urgent issues",
+                        "Current dashboard signals are stable. Use accounts, alerts, or forecast for deeper review.",
+                        MessageIntent.Success,
+                        "/notifications",
+                        "Alerts"
+                    )
+                );
+            }
+        }
+
+        return items
+            .GroupBy(item => new { item.Title, item.Detail, item.Href })
+            .Select(group => group.First())
+            .Take(5)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<HoldingPerformanceResponse>> LoadStaleHoldingsAsync(NetWorthSummaryResponse? summary)
+    {
+        if (summary is null || summary.AccountSummaries.Count == 0)
+        {
+            return [];
+        }
+
+        var candidateAccounts = summary.AccountSummaries
+            .Where(CanLoadPortfolioSignals)
+            .ToList();
+
+        if (candidateAccounts.Count == 0)
+        {
+            return [];
+        }
+
+        var portfolioTasks = candidateAccounts
+            .Select(async account => await PortfolioService.GetPerformanceAsync(account.AccountId));
+
+        var performances = await Task.WhenAll(portfolioTasks);
+        return performances
+            .Where(performance => performance is not null)
+            .SelectMany(performance => performance!.Holdings)
+            .Where(holding => holding.IsPriceStale)
+            .OrderBy(holding => holding.PriceAsOfDate ?? DateOnly.MinValue)
+            .ToList();
+    }
+
+    private static bool CanLoadPortfolioSignals(AccountSummary account)
+    {
+        var accountType = account.AccountType;
+        return accountType.Contains("invest", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("rrsp", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("tfsa", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("resp", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("fhsa", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("registered", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("broker", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("crypto", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("portfolio", StringComparison.OrdinalIgnoreCase)
+            || accountType.Contains("security", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetAllocationWidthStyle(decimal percentage)
+    {
+        var clamped = Math.Clamp(percentage, 0m, 100m);
+        return $"width: {clamped.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}%;";
+    }
+
+    private string FormatSignedMoney(decimal value)
+    {
+        var absolute = Math.Abs(value);
+        var prefix = value > 0m ? "+" : value < 0m ? "-" : string.Empty;
+        return $"{prefix}{absolute.ToString("C")} {CurrencyCode}";
+    }
+
+    private static string FormatPeriodLabel(CashFlowPeriod period) =>
+        new DateTime(period.Year, period.Month, 1).ToString("MMM yyyy");
+
+    private static string FormatPriceDate(DateOnly? date) =>
+        date?.ToString("dd MMM yyyy") ?? "an unknown date";
+
+    private static MessageIntent ToIntent(string severity) => severity switch
+    {
+        "Critical" => MessageIntent.Error,
+        "Warning" => MessageIntent.Warning,
+        "Success" => MessageIntent.Success,
+        _ => MessageIntent.Info,
+    };
+
+    private static string GetIntentClass(MessageIntent intent) => intent switch
+    {
+        MessageIntent.Error => "error",
+        MessageIntent.Warning => "warning",
+        MessageIntent.Success => "success",
+        _ => "info",
+    };
+
+    private static string GetIntentLabel(MessageIntent intent) => intent switch
+    {
+        MessageIntent.Error => "Urgent",
+        MessageIntent.Warning => "Advisory",
+        MessageIntent.Success => "Stable",
+        _ => "Info",
+    };
+
+    private (DateOnly? FromDate, DateOnly ToDate) ResolveHistoryRange()
+    {
+        var toDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        return _selectedHistoryRange switch
+        {
+            "90d" => (toDate.AddDays(-89), toDate),
+            "1y" => (toDate.AddYears(-1), toDate),
+            "all" => (null, toDate),
+            _ => (toDate.AddYears(-1), toDate),
+        };
+    }
+
+    private sealed record DashboardPressureMetric(string Label, string Value, string Detail);
+
+    private sealed record DashboardWatchItem(string Title, string Detail, MessageIntent Intent, string? Href, string? ActionLabel);
 }

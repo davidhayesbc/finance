@@ -71,4 +71,24 @@ public class UiRegressionTests : PlaywrightTestBase
         Assert.Contains("Import transactions", heading);
         Assert.True(await Page.Locator("text=Step 1").IsVisibleAsync());
     }
+
+    [Fact]
+    public async Task DashboardPage_ShowsOperationalRegions()
+    {
+        await GotoRelativeAsync("/dashboard");
+
+        await Page.GetByTestId("app-rail").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+        await Page.GetByTestId("app-utility-strip").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
+        Assert.True(await Page.GetByTestId("app-rail").IsVisibleAsync());
+        Assert.True(await Page.GetByTestId("app-utility-strip").IsVisibleAsync());
+
+        var heading = await Page.TextContentAsync("h1");
+        Assert.Contains("Dashboard", heading);
+        Assert.True(await Page.Locator("text=Net worth").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Composition").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Pressure").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Watchlist").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Accounts").First.IsVisibleAsync());
+    }
 }
