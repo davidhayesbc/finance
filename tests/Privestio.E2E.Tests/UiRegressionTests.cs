@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Privestio.E2E.Tests;
 
 [Collection("E2E")]
@@ -7,16 +9,19 @@ public class UiRegressionTests : PlaywrightTestBase
         : base(appHostFixture) { }
 
     [Fact]
-    public async Task HomePage_ShowsHeroAndFeatureCards()
+    public async Task HomeRoute_ShowsOperationalDashboard()
     {
         await GotoRelativeAsync("/");
 
+        await Page
+            .GetByTestId("app-rail")
+            .WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
         var heading = await Page.TextContentAsync("h1");
-        Assert.Contains("See your money clearly", heading);
-        Assert.True(await Page.Locator("text=Offline-first personal finance").IsVisibleAsync());
-        Assert.True(
-            await Page.Locator("text=Track every balance with less friction").IsVisibleAsync()
-        );
+        Assert.Contains("Dashboard", heading);
+        Assert.True(await Page.Locator("text=Net worth").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Pressure").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Watchlist").First.IsVisibleAsync());
     }
 
     [Fact]
@@ -55,21 +60,84 @@ public class UiRegressionTests : PlaywrightTestBase
     [Fact]
     public async Task AccountsPage_ShowsWorkspaceHeader_WhenAuthenticated()
     {
-        await RegisterAndReachAccountsAsync();
+        await GotoRelativeAsync("/accounts");
 
         var heading = await Page.TextContentAsync("h1");
-        Assert.Contains("Account workspace", heading);
+        Assert.Contains("Accounts", heading);
+        Assert.True(await Page.Locator("text=Financial posture").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Net worth history").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Data quality").First.IsVisibleAsync());
+    }
+
+    [Fact]
+    public async Task AccountDetailPage_ShowsDossierStructure_WhenNavigatingFromAccounts()
+    {
+        var auth = await RegisterAndAuthenticateAsync(
+            displayName: "Account Detail Regression User"
+        );
+        var account = await CreateAccountViaApiAsync(
+            auth.AccessToken,
+            "Account Detail Regression Chequing",
+            "Banking",
+            "Chequing"
+        );
+
+        await GotoRelativeAsync($"/accounts/{account.Id}");
+
+        var heading = await Page.TextContentAsync("h1");
+        Assert.NotNull(heading);
+        Assert.Contains("Account Detail Regression Chequing", heading);
+        Assert.True(await Page.Locator("text=Identity").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=History").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Evidence").First.IsVisibleAsync());
     }
 
     [Fact]
     public async Task ImportPage_ShowsWorkflowHeader_WhenAuthenticated()
     {
-        await RegisterAndReachAccountsAsync();
         await GotoRelativeAsync("/import");
 
+        await Page
+            .GetByTestId("app-rail")
+            .WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
         var heading = await Page.TextContentAsync("h1");
-        Assert.Contains("Import transactions", heading);
-        Assert.True(await Page.Locator("text=Step 1").IsVisibleAsync());
+        Assert.Contains("Import", heading);
+        Assert.True(await Page.Locator("text=Workflow context").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Upload").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Errors and exceptions").First.IsVisibleAsync());
+    }
+
+    [Fact]
+    public async Task BudgetsPage_ShowsMonthReviewStructure_WhenAuthenticated()
+    {
+        await GotoRelativeAsync("/budgets");
+
+        await Page
+            .GetByTestId("app-rail")
+            .WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
+        var heading = await Page.TextContentAsync("h1");
+        Assert.Contains("Budgets", heading);
+        Assert.True(await Page.Locator("text=This month").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Category performance").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=At risk").First.IsVisibleAsync());
+    }
+
+    [Fact]
+    public async Task ForecastPage_ShowsProjectionPlane_WhenAuthenticated()
+    {
+        await GotoRelativeAsync("/forecast");
+
+        await Page
+            .GetByTestId("app-rail")
+            .WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
+        var heading = await Page.TextContentAsync("h1");
+        Assert.Contains("Forecast", heading);
+        Assert.True(await Page.Locator("text=Projection").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Drivers").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("text=Monthly periods").First.IsVisibleAsync());
     }
 
     [Fact]
@@ -77,8 +145,12 @@ public class UiRegressionTests : PlaywrightTestBase
     {
         await GotoRelativeAsync("/dashboard");
 
-        await Page.GetByTestId("app-rail").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
-        await Page.GetByTestId("app-utility-strip").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+        await Page
+            .GetByTestId("app-rail")
+            .WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+        await Page
+            .GetByTestId("app-utility-strip")
+            .WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
 
         Assert.True(await Page.GetByTestId("app-rail").IsVisibleAsync());
         Assert.True(await Page.GetByTestId("app-utility-strip").IsVisibleAsync());

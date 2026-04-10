@@ -6,125 +6,260 @@
 
 <PageTitle>Accounts — Privestio</PageTitle>
 
-<section class="page-shell" data-testid="accounts-page">
-    <PageHeader Eyebrow="Accounts" Title="Account workspace"
-                Description="Review balances, institutions, and account types in one consistently styled table.">
-        <Actions>
-            <FluentButton Appearance="Appearance.Outline" Loading="_isSyncingHistory"
-                          @onclick="SyncHistoricalPricesAsync" aria-label="Sync historical prices from Yahoo Finance">
-                Sync Market History
-            </FluentButton>
-            <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
-                          aria-label="Add new account">
-                Add Account
-            </FluentButton>
-        </Actions>
-    </PageHeader>
-
-    @if (_isLoading)
-    {
-        <LoadingSpinner AriaLabel="Loading accounts" />
-    }
-    else if (_accounts.Count == 0)
-    {
-        <EmptyStateCard Message="No accounts yet. Add your first account to get started.">
+<section class="page-shell accounts-shell" data-testid="accounts-page">
+    <section class="accounts-orientation" aria-labelledby="accounts-title">
+        <PageHeader Eyebrow="Accounts" Title="Accounts" Description="Review balances, institutions, types, and data freshness across the full account set.">
             <Actions>
-                <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))">
+                <FluentButton Appearance="Appearance.Outline" Loading="_isSyncingHistory"
+                              @onclick="SyncHistoricalPricesAsync" aria-label="Sync historical prices from Yahoo Finance">
+                    Sync Market History
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Accent" @onclick="@(() => Navigation.NavigateTo("/accounts/new"))"
+                              aria-label="Add new account">
                     Add Account
                 </FluentButton>
             </Actions>
-        </EmptyStateCard>
-    }
-    else
-    {
+        </PageHeader>
+
         @if (!string.IsNullOrWhiteSpace(_syncMessage))
         {
-            <FluentMessageBar Intent="@_syncMessageIntent" style="margin-bottom: 1rem;">@_syncMessage</FluentMessageBar>
+            <FluentMessageBar Intent="@_syncMessageIntent">@_syncMessage</FluentMessageBar>
         }
+    </section>
 
-        @if (_netWorthHistory is not null)
-        {
-            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
-                <div class="section-heading-row" style="margin-bottom: 1rem;">
-                    <div>
-                        <h3 style="margin: 0 0 0.25rem 0;">Net Worth Growth</h3>
-                        <p class="section-copy">Trend line built from recorded balances, valuations, and persisted market
-                            prices.</p>
-                        </div>
-                        <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
-                                              Disabled="@(_isLoadingHistory || _isSyncingHistory)" OnChange="HandleHistoryRangeChangedAsync" />
-                    </div>
+    <section class="accounts-posture" aria-labelledby="accounts-posture-title">
+        <div class="accounts-section-heading">
+            <h2 id="accounts-posture-title">Financial posture</h2>
+            <p>Show the shape of the account universe before the ledger detail.</p>
+        </div>
 
-                    @if (_isLoadingHistory)
-                    {
-                        <LoadingSpinner AriaLabel="Loading net worth history" />
-                    }
-                    else
-                    {
-                        <HistoricalValueChart Points="_netWorthHistory.Points" SeriesName="Net Worth"
-                                              EmptyTitle="No net worth history yet."
-                                              EmptyMessage="Sync historical prices and keep account activity current to visualize growth over time." />
-                    }
-                </FluentCard>
+        <div class="accounts-posture__grid">
+            <article class="accounts-posture__item">
+                <span class="accounts-posture__label">Accounts</span>
+                <strong>@_accounts.Count</strong>
+                <span>@BuildAccountsPostureDetail()</span>
+            </article>
+            <article class="accounts-posture__item">
+                <span class="accounts-posture__label">Institutions</span>
+                <strong>@InstitutionCount</strong>
+                <span>@BuildInstitutionPostureDetail()</span>
+            </article>
+            <article class="accounts-posture__item">
+                <span class="accounts-posture__label">Investment share</span>
+                <strong>@FormatPercent(InvestmentShare)</strong>
+                <span>@FormatMoney(InvestmentBalances, PrimaryCurrency)</span>
+            </article>
+            <article class="accounts-posture__item">
+                <span class="accounts-posture__label">Debt share</span>
+                <strong>@FormatPercent(DebtShare)</strong>
+                <span>@FormatMoney(TotalLiabilitiesAbsolute, PrimaryCurrency)</span>
+            </article>
+            <article class="accounts-posture__item">
+                <span class="accounts-posture__label">Stale data</span>
+                <strong>@StaleAccounts.Count</strong>
+                <span>@BuildStalePostureDetail()</span>
+            </article>
+        </div>
+    </section>
+
+    <section class="accounts-history" aria-labelledby="accounts-history-title">
+        <div class="accounts-section-heading accounts-section-heading--split">
+            <div>
+                <h2 id="accounts-history-title">Net worth history</h2>
+                <p>Compact trend evidence above the main ledger, with the frame kept stable during range changes.</p>
+            </div>
+            <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
+                                  Disabled="@(_isLoadingHistory || _isSyncingHistory)" OnChange="HandleHistoryRangeChangedAsync" />
+        </div>
+
+        <div class="accounts-history__body">
+            @if (_isLoading)
+            {
+                <LoadingSpinner AriaLabel="Loading accounts" />
             }
+            else if (_isLoadingHistory)
+            {
+                <LoadingSpinner AriaLabel="Loading net worth history" />
+            }
+            else if (_netWorthHistory is not null)
+            {
+                <HistoricalValueChart Points="_netWorthHistory.Points" SeriesName="Net Worth"
+                                      EmptyTitle="No net worth history yet."
+                                      EmptyMessage="Sync historical prices and keep account activity current to build the account trend line." />
+            }
+            else
+            {
+                <div class="accounts-inline-empty">
+                    <strong>History is unavailable right now.</strong>
+                    <p>The strip stays visible so the page still reads like one ledger workspace.</p>
+                </div>
+            }
+        </div>
+    </section>
 
-            <FluentCard Class="surface-card data-card">
-                <div class="summary-strip">
-                    <div>
-                        <span class="summary-strip__label">Total accounts</span>
-                        <strong>@_accounts.Count</strong>
-                    </div>
-                    <div>
-                        <span class="summary-strip__label">Institutions</span>
-                        <strong>@_accounts.Select(a => a.Institution).Where(i =>
-                                                                                                                        !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
-                        </div>
-                    </div>
+    <div class="accounts-support-grid">
+        <section class="accounts-filters" aria-labelledby="accounts-filters-title">
+            <div class="accounts-section-heading">
+                <h2 id="accounts-filters-title">Grouping support</h2>
+                <p>Reduce complexity without displacing the ledger.</p>
+            </div>
 
-                    <FluentDataGrid Items="_accounts.OrderByDescending(a => a.CurrentBalance).ThenBy(a => a.Name).AsQueryable()"
-                                    aria-label="Accounts table" TGridItem="AccountResponse" Class="data-grid--elevated data-grid--accounts"
-                                    ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true"
-                                    ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table"
-                                    RowSize="DataGridRowSize.Medium">
-                        <TemplateColumn Title="Account Name" SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Name))"
-                                        Width="260px">
-                            <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(context.Name) ? "Unnamed account" : context.Name)">@context.Name</span>
-                        </TemplateColumn>
-                        <PropertyColumn Property="a => a.AccountType" Title="Type" Sortable="true" Width="150px" />
-                        <TemplateColumn Title="Institution"
-                                        SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Institution ?? string.Empty))" Width="200px">
-                            <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(context.Institution) ? "No institution" : context.Institution)">@(context.Institution ??
-                                         "-")</span>
-                            </TemplateColumn>
-                            <TemplateColumn Title="Balance" SortBy="@(GridSort<AccountResponse>.ByDescending(a => a.CurrentBalance))"
-                                            Width="160px">
-                                <FluentBadge Appearance="Appearance.Neutral" Class="balance-badge">
-                                    @context.CurrentBalance.ToString("C") @context.Currency
-                                </FluentBadge>
-                            </TemplateColumn>
-                            <TemplateColumn Title="" Width="100px">
-                                <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact">
-                                    <FluentButton Appearance="Appearance.Outline" Class="account-view-button"
-                                                  @onclick="@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))"
-                                                  aria-label="@($"View {context.Name}")">
-                                        View
-                                    </FluentButton>
-                                </FluentStack>
-                            </TemplateColumn>
-                        </FluentDataGrid>
-                    </FluentCard>
+            <div class="accounts-filter-row">
+                @foreach (var filter in AccountFilters)
+                {
+                    <button type="button" class="@GetFilterButtonClass(filter.Key)" @onclick="() => _selectedFilter = filter.Key">
+                        <span>@filter.Label</span>
+                        <strong>@GetFilterCount(filter.Key)</strong>
+                    </button>
                 }
-            </section>
+            </div>
+        </section>
+
+        <section class="accounts-exceptions" aria-labelledby="accounts-exceptions-title">
+            <div class="accounts-section-heading">
+                <h2 id="accounts-exceptions-title">Data quality</h2>
+                <p>Visible maintenance work for missing balances, stale records, and dormant accounts.</p>
+            </div>
+
+            <div class="accounts-exceptions__list">
+                @foreach (var item in ExceptionItems)
+                {
+                    <article class="@GetExceptionClass(item.Tone)">
+                        <strong>@item.Title</strong>
+                        <p>@item.Detail</p>
+                    </article>
+                }
+            </div>
+        </section>
+    </div>
+
+    <section class="accounts-ledger" aria-labelledby="accounts-ledger-title">
+        <div class="accounts-section-heading accounts-section-heading--split">
+            <div>
+                <h2 id="accounts-ledger-title">Accounts</h2>
+                <p>Account name, type, institution, status, last updated, and current balance in one calm ledger.</p>
+            </div>
+            <span class="accounts-ledger__count">@FilteredAccounts.Count account@(FilteredAccounts.Count == 1 ? string.Empty : "s")</span>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingSpinner AriaLabel="Loading accounts ledger" />
+        }
+        else if (FilteredAccounts.Count == 0)
+        {
+            <div class="accounts-inline-empty">
+                <strong>No accounts yet.</strong>
+                <p>Add your first account to turn this shell into a live ledger.</p>
+            </div>
+        }
+        else
+        {
+            <div class="accounts-ledger__table-wrap">
+                <table class="accounts-ledger__table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Account</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Institution</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Last updated</th>
+                            <th scope="col" class="accounts-ledger__numeric">Balance</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var account in FilteredAccounts)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="accounts-ledger__identity">
+                                        <strong>@account.Name</strong>
+                                        <span>@BuildAccountSubline(account)</span>
+                                    </div>
+                                </td>
+                                <td>@account.AccountType</td>
+                                <td>@FormatInstitution(account)</td>
+                                <td>
+                                    <span class="@GetStatusBadgeClass(account)">@BuildStatusLabel(account)</span>
+                                </td>
+                                <td>@FormatUpdated(account.UpdatedAt)</td>
+                                <td class="accounts-ledger__numeric">@FormatMoney(account.CurrentBalance, account.Currency)</td>
+                                <td>
+                                    <button type="button" class="accounts-ledger__action" @onclick='() => Navigation.NavigateTo($"/accounts/{account.Id}")'>
+                                        View
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</section>
 
 @code {
+    private static readonly IReadOnlyList<AccountFilterOption> AccountFilters =
+    [
+        new("all", "All"),
+        new("investment", "Investment"),
+        new("debt", "Debt"),
+        new("shared", "Shared"),
+        new("stale", "Stale"),
+    ];
+
     private List<AccountResponse> _accounts = new();
     private NetWorthHistoryResponse? _netWorthHistory;
     private bool _isLoadingHistory = true;
     private bool _isLoading = true;
     private bool _isSyncingHistory;
     private string _selectedHistoryRange = "1y";
+    private string _selectedFilter = "all";
     private string? _syncMessage;
     private MessageIntent _syncMessageIntent = MessageIntent.Success;
+
+    private List<AccountResponse> FilteredAccounts =>
+        _accounts
+            .Where(MatchesSelectedFilter)
+            .OrderByDescending(account => Math.Abs(account.CurrentBalance))
+            .ThenBy(account => account.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private List<AccountResponse> StaleAccounts =>
+        _accounts.Where(IsStaleAccount).ToList();
+
+    private List<AccountIssueItem> ExceptionItems => BuildExceptionItems();
+
+    private int InstitutionCount =>
+        _accounts.Select(account => account.Institution)
+            .Where(institution => !string.IsNullOrWhiteSpace(institution))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+    private decimal TotalAssets => _accounts.Where(account => account.CurrentBalance > 0m).Sum(account => account.CurrentBalance);
+
+    private decimal TotalLiabilitiesAbsolute =>
+        Math.Abs(_accounts.Where(account => account.CurrentBalance < 0m).Sum(account => account.CurrentBalance));
+
+    private decimal InvestmentBalances =>
+        _accounts.Where(IsInvestmentAccount).Where(account => account.CurrentBalance > 0m).Sum(account => account.CurrentBalance);
+
+    private decimal InvestmentShare => TotalAssets <= 0m ? 0m : InvestmentBalances / TotalAssets;
+
+    private decimal DebtShare
+    {
+        get
+        {
+            var grossExposure = TotalAssets + TotalLiabilitiesAbsolute;
+            return grossExposure <= 0m ? 0m : TotalLiabilitiesAbsolute / grossExposure;
+        }
+    }
+
+    private string PrimaryCurrency =>
+        _accounts.Select(account => account.Currency)
+            .FirstOrDefault(currency => !string.IsNullOrWhiteSpace(currency))
+        ?? "CAD";
 
     protected override async Task OnInitializedAsync()
     {
@@ -180,6 +315,7 @@
         }
     }
 
+
     private (DateOnly? FromDate, DateOnly ToDate) ResolveHistoryRange()
     {
         var toDate = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -191,4 +327,193 @@
             _ => (toDate.AddYears(-1), toDate),
         };
     }
+
+    private string BuildAccountsPostureDetail() =>
+        _accounts.Count == 0
+            ? "No accounts on file yet."
+            : $"{FilteredAccounts.Count} shown in the current filter.";
+
+    private string BuildInstitutionPostureDetail() =>
+        InstitutionCount == 0 ? "No institutions assigned yet." : "Distinct institutions represented in the ledger.";
+
+    private string BuildStalePostureDetail() =>
+        StaleAccounts.Count == 0 ? "No stale account records detected." : "Accounts older than 30 days need review.";
+
+    private bool MatchesSelectedFilter(AccountResponse account) => _selectedFilter switch
+    {
+        "investment" => IsInvestmentAccount(account),
+        "debt" => IsLiabilityAccount(account),
+        "shared" => account.IsShared,
+        "stale" => IsStaleAccount(account),
+        _ => true,
+    };
+
+    private int GetFilterCount(string key) =>
+        _accounts.Count(account => key switch
+        {
+            "investment" => IsInvestmentAccount(account),
+            "debt" => IsLiabilityAccount(account),
+            "shared" => account.IsShared,
+            "stale" => IsStaleAccount(account),
+            _ => true,
+        });
+
+    private string GetFilterButtonClass(string key) =>
+        string.Equals(_selectedFilter, key, StringComparison.OrdinalIgnoreCase)
+            ? "accounts-filter accounts-filter--active"
+            : "accounts-filter";
+
+    private static bool IsInvestmentAccount(AccountResponse account)
+    {
+        var descriptor = $"{account.AccountType} {account.AccountSubType}";
+        return ContainsAny(descriptor, "invest", "rrsp", "tfsa", "resp", "fhsa", "broker", "security", "crypto", "lira", "pension");
+    }
+
+    private static bool IsLiabilityAccount(AccountResponse account)
+    {
+        var descriptor = $"{account.AccountType} {account.AccountSubType}";
+        return ContainsAny(descriptor, "mortgage", "credit", "loan", "debt", "line of credit", "liability");
+    }
+
+    private static bool ContainsAny(string value, params string[] candidates) =>
+        candidates.Any(candidate => value.Contains(candidate, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsStaleAccount(AccountResponse account) =>
+        account.UpdatedAt <= DateTime.UtcNow.AddDays(-30);
+
+    private static string FormatPercent(decimal value) => $"{value:P0}";
+
+    private static string FormatMoney(decimal amount, string currency) => $"{amount:C} {currency}";
+
+    private static string FormatInstitution(AccountResponse account) =>
+        string.IsNullOrWhiteSpace(account.Institution) ? "No institution" : account.Institution;
+
+    private static string FormatUpdated(DateTime updatedAt)
+    {
+        var age = DateTime.UtcNow - updatedAt;
+        if (age.TotalDays < 1)
+        {
+            return "Today";
+        }
+
+        if (age.TotalDays < 30)
+        {
+            return $"{Math.Floor(age.TotalDays)}d ago";
+        }
+
+        return updatedAt.ToString("yyyy-MM-dd");
+    }
+
+    private static string BuildAccountSubline(AccountResponse account)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(account.AccountSubType))
+        {
+            parts.Add(account.AccountSubType);
+        }
+
+        if (account.IsShared)
+        {
+            parts.Add("Shared");
+        }
+
+        if (!account.IsActive)
+        {
+            parts.Add("Inactive");
+        }
+
+        return parts.Count == 0 ? "Household ledger entry" : string.Join(" · ", parts);
+    }
+
+    private static string BuildStatusLabel(AccountResponse account)
+    {
+        if (!account.IsActive)
+        {
+            return "Inactive";
+        }
+
+        if (IsStaleAccount(account))
+        {
+            return "Stale";
+        }
+
+        if (string.IsNullOrWhiteSpace(account.Institution))
+        {
+            return "Review";
+        }
+
+        return "Current";
+    }
+
+    private static string GetStatusBadgeClass(AccountResponse account) =>
+        BuildStatusLabel(account) switch
+        {
+            "Inactive" => "accounts-status-badge accounts-status-badge--muted",
+            "Stale" => "accounts-status-badge accounts-status-badge--warning",
+            "Review" => "accounts-status-badge accounts-status-badge--risk",
+            _ => "accounts-status-badge accounts-status-badge--ok",
+        };
+
+    private static string GetExceptionClass(string tone) =>
+        tone switch
+        {
+            "risk" => "accounts-exception accounts-exception--risk",
+            "warning" => "accounts-exception accounts-exception--warning",
+            _ => "accounts-exception",
+        };
+
+    private List<AccountIssueItem> BuildExceptionItems()
+    {
+        if (_accounts.Count == 0)
+        {
+            return
+            [
+                new("No account data yet", "Add an account to start the maintenance workflow and populate the ledger.", "neutral"),
+            ];
+        }
+
+        var missingOpeningBalances = _accounts.Count(account => account.OpeningBalance == 0m);
+        var missingInstitutions = _accounts.Count(account => string.IsNullOrWhiteSpace(account.Institution));
+        var staleAccounts = StaleAccounts.Count;
+        var inactiveAccounts = _accounts.Count(account => !account.IsActive);
+        var emptyAccounts = _accounts.Count(account => account.CurrentBalance == 0m);
+
+        var items = new List<AccountIssueItem>
+        {
+            new(
+                "Missing opening balance",
+                missingOpeningBalances == 0
+                    ? "All accounts currently have an opening balance on file."
+                    : $"{missingOpeningBalances} account{(missingOpeningBalances == 1 ? string.Empty : "s")} still need an opening balance.",
+                missingOpeningBalances == 0 ? "neutral" : "warning"
+            ),
+            new(
+                "Stale account state",
+                staleAccounts == 0
+                    ? "No accounts are older than the freshness threshold."
+                    : $"{staleAccounts} account{(staleAccounts == 1 ? string.Empty : "s")} have not refreshed in the last 30 days.",
+                staleAccounts == 0 ? "neutral" : "risk"
+            ),
+            new(
+                "Institution coverage",
+                missingInstitutions == 0
+                    ? "Every account is assigned to an institution."
+                    : $"{missingInstitutions} account{(missingInstitutions == 1 ? string.Empty : "s")} still need an institution name.",
+                missingInstitutions == 0 ? "neutral" : "warning"
+            ),
+            new(
+                "Dormant or empty accounts",
+                inactiveAccounts + emptyAccounts == 0
+                    ? "No dormant or zero-balance accounts require cleanup."
+                    : $"{inactiveAccounts} inactive and {emptyAccounts} zero-balance account entries should be reviewed.",
+                inactiveAccounts + emptyAccounts == 0 ? "neutral" : "warning"
+            ),
+        };
+
+        return items;
+    }
+
+    private sealed record AccountFilterOption(string Key, string Label);
+
+    private sealed record AccountIssueItem(string Title, string Detail, string Tone);
 }

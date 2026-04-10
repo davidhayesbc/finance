@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Http.Json;
 using Microsoft.Playwright;
 
 namespace Privestio.E2E.Tests;
@@ -6,6 +7,7 @@ namespace Privestio.E2E.Tests;
 [Trait("Category", "E2E")]
 public abstract class PlaywrightTestBase : IAsyncLifetime
 {
+    private const string DefaultApiBaseUrl = "https://localhost:7292";
     private static readonly UiReviewViewport[] UiReviewViewports =
     [
         new("desktop", 1440, 1200),
@@ -13,6 +15,12 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
     ];
 
     private readonly AppHostFixture _appHostFixture;
+    private readonly HttpClient _apiClient = new(
+        new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+        }
+    );
     private IPlaywright? _playwright;
     private IBrowser? _browser;
     private IBrowserContext? _context;
@@ -24,6 +32,7 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
     }
 
     protected string BaseUrl => _appHostFixture.BaseUrl;
+    protected string ApiBaseUrl => Environment.GetEnvironmentVariable("API_BASE_URL") ?? DefaultApiBaseUrl;
 
     protected IPage Page =>
         _page ?? throw new InvalidOperationException("Playwright page not initialized.");
@@ -48,6 +57,7 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
             await _context.CloseAsync();
         if (_browser is not null)
             await _browser.CloseAsync();
+        _apiClient.Dispose();
         _playwright?.Dispose();
     }
 
@@ -115,16 +125,82 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
         string? password = null
     )
     {
+        await RegisterAndAuthenticateAsync(displayName, email, password);
+        await GotoRelativeAsync("/accounts");
+        await Page.WaitForURLAsync($"{BaseUrl}/accounts");
+    }
+
+    protected async Task<TestAuthResponse> RegisterAndAuthenticateAsync(
+        string? displayName = null,
+        string? email = null,
+        string? password = null
+    )
+    {
         var resolvedDisplayName = displayName ?? "E2E Test User";
         var resolvedEmail = email ?? $"e2e.{Guid.NewGuid():N}@example.test";
         var resolvedPassword = password ?? "Admin@Privestio123!";
 
-        await GotoRelativeAsync("/register");
-        await Page.FillAsync("input#displayName", resolvedDisplayName);
-        await Page.FillAsync("input#email", resolvedEmail);
-        await Page.FillAsync("input#password", resolvedPassword);
-        await Page.ClickAsync("button[type=submit]");
-        await Page.WaitForURLAsync($"{BaseUrl}/accounts");
+        var authResponse = await _apiClient.PostAsJsonAsync(
+            $"{ApiBaseUrl}/api/v1/auth/register",
+            new TestRegisterRequest
+            {
+                DisplayName = resolvedDisplayName,
+                Email = resolvedEmail,
+                Password = resolvedPassword,
+            }
+        );
+
+        authResponse.EnsureSuccessStatusCode();
+
+        var auth = await authResponse.Content.ReadFromJsonAsync<TestAuthResponse>();
+        if (auth is null)
+        {
+            throw new InvalidOperationException("Registration did not return an auth payload.");
+        }
+
+        await GotoRelativeAsync("/login");
+        await Page.EvaluateAsync(
+            "tokens => { sessionStorage.setItem('privestio_token', tokens.accessToken); if (tokens.refreshToken) { sessionStorage.setItem('privestio_refresh_token', tokens.refreshToken); } }",
+            new { accessToken = auth.AccessToken, refreshToken = auth.RefreshToken }
+        );
+
+        return auth;
+    }
+
+    protected async Task<TestAccountResponse> CreateAccountViaApiAsync(
+        string accessToken,
+        string name,
+        string accountType,
+        string accountSubType,
+        decimal openingBalance = 0m,
+        string currency = "CAD"
+    )
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{ApiBaseUrl}/api/v1/accounts/")
+        {
+            Content = JsonContent.Create(
+                new TestCreateAccountRequest
+                {
+                    Name = name,
+                    AccountType = accountType,
+                    AccountSubType = accountSubType,
+                    Currency = currency,
+                    OpeningBalance = openingBalance,
+                    OpeningDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                }
+            ),
+        };
+
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            accessToken
+        );
+
+        using var response = await _apiClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+    return await response.Content.ReadFromJsonAsync<TestAccountResponse>()
+            ?? throw new InvalidOperationException("Account creation did not return an account payload.");
     }
 
     private async Task CaptureUiReviewArtifactsAsync(string artifactPrefix)
@@ -155,4 +231,33 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../"));
 
     private sealed record UiReviewViewport(string Name, int Width, int Height);
+
+    protected sealed record TestAuthResponse
+    {
+        public string AccessToken { get; init; } = string.Empty;
+        public string? RefreshToken { get; init; }
+    }
+
+    protected sealed record TestRegisterRequest
+    {
+        public string Email { get; init; } = string.Empty;
+        public string Password { get; init; } = string.Empty;
+        public string DisplayName { get; init; } = string.Empty;
+    }
+
+    protected sealed record TestCreateAccountRequest
+    {
+        public string Name { get; init; } = string.Empty;
+        public string AccountType { get; init; } = string.Empty;
+        public string AccountSubType { get; init; } = string.Empty;
+        public string Currency { get; init; } = "CAD";
+        public decimal OpeningBalance { get; init; }
+        public DateOnly OpeningDate { get; init; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    }
+
+    protected sealed record TestAccountResponse
+    {
+        public Guid Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+    }
 }

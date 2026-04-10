@@ -1,175 +1,279 @@
 @page "/budgets"
 @inject IBudgetService BudgetService
 @inject ICategoryService CategoryService
-@inject NavigationManager Navigation
 
 <PageTitle>Budgets — Privestio</PageTitle>
 
-<section class="page-shell">
-    <PageHeader Eyebrow="Budgets" Title="Monthly budgets" Description="Set and track spending limits per category.">
-        <Actions>
-            <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">
-                Add Budget
-            </FluentButton>
-        </Actions>
-    </PageHeader>
-
-    <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
-                     Style="gap: 1rem;">
-            <FluentSelect TOption="string" @bind-Value="_selectedYearStr" Label="Year" Style="min-width: 120px;">
-                @for (var y = DateTime.Today.Year + 1; y >= DateTime.Today.Year - 2; y--)
-                {
-                    <FluentOption TOption="string" Value="@y.ToString()">@y</FluentOption>
-                }
-            </FluentSelect>
-            <FluentSelect TOption="string" @bind-Value="_selectedMonthStr" Label="Month" Style="min-width: 150px;">
-                @for (var m = 1; m <= 12; m++)
-                {
-                    <FluentOption TOption="string" Value="@m.ToString()">@(new DateTime(2000, m, 1).ToString("MMMM"))
-                    </FluentOption>
-                }
-            </FluentSelect>
-            <FluentButton Appearance="Appearance.Outline" OnClick="LoadDataAsync" Style="align-self: flex-end;">
-                Refresh
-            </FluentButton>
-        </FluentStack>
-    </FluentCard>
-
-    @if (_showForm)
-    {
-        <FluentCard Class="surface-card form-card" style="margin-bottom: 1.5rem;">
-            <h3>@(_editingBudgetId.HasValue ? "Edit Budget" : "New Budget")</h3>
-
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <FluentMessageBar Intent="@MessageIntent.Error">
-                    @_errorMessage
-                </FluentMessageBar>
-            }
-
-            <EditForm Model="_form" OnValidSubmit="SaveBudgetAsync" aria-label="Budget form">
-                <DataAnnotationsValidator />
-                <FluentValidationSummary />
-
-                <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                    <CategorySelect Categories="_categories" @bind-Value="_form.CategoryId" NoneLabel="Select category..."
-                                    Required="true" />
-                    <FluentValidationMessage For="@(() => _form.CategoryId)" />
-
-                    <FluentNumberField @bind-Value="_form.Amount" Label="Budget amount" Step="0.01m" Required="true" />
-                    <FluentValidationMessage For="@(() => _form.Amount)" />
-
-                    <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
-
-                    <FluentCheckbox @bind-Value="_form.RolloverEnabled"
-                                    Label="Enable rollover (carry unused budget to next month)" />
-
-                    <FluentTextArea @bind-Value="_form.Notes" Label="Notes" Rows="2" />
-
-                    <FluentStack Orientation="Orientation.Horizontal" Class="form-actions">
-                        <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isSaving">
-                            @(_editingBudgetId.HasValue ? "Update Budget" : "Create Budget")
-                        </FluentButton>
-                        <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Cancel</FluentButton>
-                    </FluentStack>
-                </FluentStack>
-            </EditForm>
-        </FluentCard>
-    }
-
-    @if (_isLoading)
-    {
-        <LoadingSpinner AriaLabel="Loading budgets" />
-    }
-    else if (_summaries.Count == 0 && _budgets.Count == 0)
-    {
-        <EmptyStateCard Message="No budgets set for this period. Add a budget to start tracking spending.">
+<section class="page-shell budgets-shell" data-testid="budgets-page">
+    <section class="budgets-orientation">
+        <PageHeader Eyebrow="Budgets" Title="Budgets"
+                    Description="Track the current month against category limits, rollover rules, and actual spend.">
             <Actions>
-                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">Add Budget</FluentButton>
+                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">
+                    Add Budget
+                </FluentButton>
             </Actions>
-        </EmptyStateCard>
-    }
-    else
-    {
-        @if (_summaries.Count > 0)
+        </PageHeader>
+    </section>
+
+    <section class="budgets-period-strip" aria-labelledby="budgets-period-title">
+        <div class="budgets-section-heading budgets-section-heading--split">
+            <div>
+                <h2 id="budgets-period-title">This month</h2>
+                <p>@PeriodLabel with quick period navigation and local refresh controls.</p>
+            </div>
+            <div class="action-cluster">
+                <FluentButton Appearance="Appearance.Stealth" OnClick="ShowPreviousMonthAsync">Previous</FluentButton>
+                <FluentButton Appearance="Appearance.Outline" OnClick="JumpToCurrentPeriodAsync">Current period</FluentButton>
+                <FluentButton Appearance="Appearance.Stealth" OnClick="ShowNextMonthAsync">Next</FluentButton>
+                <FluentButton Appearance="Appearance.Outline" OnClick="LoadDataAsync">Refresh</FluentButton>
+            </div>
+        </div>
+    </section>
+
+    <section class="budgets-posture" aria-labelledby="budgets-posture-title">
+        <div class="budgets-section-heading">
+            <h2 id="budgets-posture-title">Monthly posture</h2>
+            <p>Read the month before drilling into individual categories.</p>
+        </div>
+
+        @if (_isLoading)
         {
-            <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
-                <h3 style="margin: 0 0 1rem 0;">Budget vs Actual — @(new DateTime(_selectedYear, _selectedMonth,
-                                1).ToString("MMMM yyyy"))</h3>
+            <LoadingSpinner AriaLabel="Loading budget posture" />
+        }
+        else
+        {
+            <div class="budgets-posture__grid">
+                <article class="budgets-posture__item">
+                    <span>Total budgeted</span>
+                    <strong>@FormatMoney(TotalBudgeted)</strong>
+                    <p>@_budgets.Count definition@(_budgets.Count == 1 ? string.Empty : "s") in scope.</p>
+                </article>
+                <article class="budgets-posture__item">
+                    <span>Total spent</span>
+                    <strong>@FormatMoney(TotalSpent)</strong>
+                    <p>@_summaries.Count category performance row@(_summaries.Count == 1 ? string.Empty : "s").</p>
+                </article>
+                <article class="budgets-posture__item">
+                    <span>Remaining</span>
+                    <strong>@FormatMoney(TotalRemaining)</strong>
+                    <p>@BuildRemainingDetail()</p>
+                </article>
+                <article class="budgets-posture__item">
+                    <span>Over budget</span>
+                    <strong>@OverBudgetCount</strong>
+                    <p>@BuildOverBudgetDetail()</p>
+                </article>
+                <article class="budgets-posture__item">
+                    <span>Rollover exposure</span>
+                    <strong>@FormatMoney(RolloverExposure)</strong>
+                    <p>@BuildRolloverDetail()</p>
+                </article>
+            </div>
+        }
+    </section>
 
-                    <div class="summary-strip">
-                        <div>
-                            <span class="summary-strip__label">Total budgeted</span>
-                            <strong>@_summaries.Sum(s => s.BudgetedAmount).ToString("C")</strong>
-                        </div>
-                        <div>
-                            <span class="summary-strip__label">Total spent</span>
-                            <strong>@_summaries.Sum(s => s.ActualAmount).ToString("C")</strong>
-                        </div>
-                        <div>
-                            <span class="summary-strip__label">Remaining</span>
-                            <strong>@_summaries.Sum(s => s.RemainingAmount).ToString("C")</strong>
-                        </div>
-                        <div>
-                            <span class="summary-strip__label">Over budget</span>
-                            <strong>@_summaries.Count(s => s.IsOverBudget)</strong>
-                        </div>
-                    </div>
+    <div class="budgets-review-grid">
+        <section class="budgets-performance" aria-labelledby="budgets-performance-title">
+            <div class="budgets-section-heading budgets-section-heading--split">
+                <div>
+                    <h2 id="budgets-performance-title">Category performance</h2>
+                    <p>The category table is the primary judgment surface for the month.</p>
+                </div>
+                <span class="budgets-meta">@_summaries.Count categor@(_summaries.Count == 1 ? "y" : "ies")</span>
+            </div>
 
-                    <FluentDataGrid Items="_summaries.AsQueryable()" TGridItem="BudgetSummaryResponse" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
-                        <PropertyColumn Property="@(s => s.CategoryName)" Title="Category" Sortable="true" />
-                        <TemplateColumn Title="Budgeted" Sortable="true"
-                                        SortBy="@(GridSort<BudgetSummaryResponse>.ByAscending(s => s.BudgetedAmount))">
-                            @context.BudgetedAmount.ToString("C") @context.Currency
-                        </TemplateColumn>
-                        <TemplateColumn Title="Actual" Sortable="true"
-                                        SortBy="@(GridSort<BudgetSummaryResponse>.ByAscending(s => s.ActualAmount))">
-                            @context.ActualAmount.ToString("C") @context.Currency
-                        </TemplateColumn>
-                        <TemplateColumn Title="Remaining">
-                            <FluentBadge Appearance="@(context.IsOverBudget? Appearance.Accent: Appearance.Neutral)"
-                                         BackgroundColor="@(context.IsOverBudget ? "#c50f1f" : null)"
-                                         Color="@(context.IsOverBudget ? "white" : null)">
-                                @context.RemainingAmount.ToString("C")
-                            </FluentBadge>
-                        </TemplateColumn>
-                        <TemplateColumn Title="Used">
-                            <FluentProgress Value="@((int)Math.Min(context.PercentageUsed, 100))" Min="0" Max="100" />
-                            <span style="font-size: 0.85rem; margin-left: 0.5rem;">@context.PercentageUsed.ToString("F0")%</span>
-                        </TemplateColumn>
-                    </FluentDataGrid>
-                </FluentCard>
+            @if (_isLoading)
+            {
+                <LoadingSpinner AriaLabel="Loading category performance" />
             }
-
-            <FluentCard Class="surface-card data-card">
-                <h3 style="margin: 0 0 1rem 0;">Budget Definitions</h3>
-
-                <FluentDataGrid Items="_budgets.AsQueryable()" TGridItem="BudgetResponse" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
-                    <PropertyColumn Property="@(b => b.CategoryName)" Title="Category" Sortable="true" />
-                    <TemplateColumn Title="Amount">
-                        @context.Amount.ToString("C") @context.Currency
-                    </TemplateColumn>
-                    <TemplateColumn Title="Period">
-                        @(new DateTime(context.Year, context.Month, 1).ToString("MMMM yyyy"))
-                    </TemplateColumn>
-                    <TemplateColumn Title="Rollover">
-                        <FluentBadge Appearance="@(context.RolloverEnabled? Appearance.Accent: Appearance.Neutral)">
-                            @(context.RolloverEnabled ? "Yes" : "No")
-                        </FluentBadge>
-                    </TemplateColumn>
-                    <TemplateColumn Title="">
-                        <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => EditBudget(context))">Edit
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => DeleteBudgetAsync(context.Id))">
-                                Delete</FluentButton>
-                            </FluentStack>
-                        </TemplateColumn>
-                    </FluentDataGrid>
-                </FluentCard>
+            else if (_summaries.Count == 0)
+            {
+                <div class="budgets-inline-empty">
+                    <strong>No category performance yet.</strong>
+                    <p>Add a budget definition for this period to turn the month review into a live ledger.</p>
+                </div>
+            }
+            else
+            {
+                <div class="budgets-table-wrap">
+                    <table class="budgets-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Category</th>
+                                <th scope="col" class="budgets-table__numeric">Budgeted</th>
+                                <th scope="col" class="budgets-table__numeric">Actual</th>
+                                <th scope="col" class="budgets-table__numeric">Remaining</th>
+                                <th scope="col">Percent used</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var summary in OrderedSummaries)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="budgets-table__identity">
+                                            <strong>@summary.CategoryName</strong>
+                                            <span>@BuildCategorySubline(summary)</span>
+                                        </div>
+                                    </td>
+                                    <td class="budgets-table__numeric">@FormatMoney(summary.BudgetedAmount, summary.Currency)</td>
+                                    <td class="budgets-table__numeric">@FormatMoney(summary.ActualAmount, summary.Currency)</td>
+                                    <td class="budgets-table__numeric">@FormatMoney(summary.RemainingAmount, summary.Currency)</td>
+                                    <td>
+                                        <div class="budgets-pressure-meter" aria-label="@($"{summary.PercentageUsed:F0}% used")">
+                                            <span class="budgets-pressure-meter__bar" style="@BuildPressureMeterStyle(summary)"></span>
+                                        </div>
+                                        <span class="budgets-pressure-meter__label">@summary.PercentageUsed.ToString("F0")%</span>
+                                    </td>
+                                    <td>
+                                        <span class="@GetStatusClass(summary)">@GetStatusLabel(summary)</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
         </section>
+
+        <section class="budgets-pressure" aria-labelledby="budgets-pressure-title">
+            <div class="budgets-section-heading">
+                <h2 id="budgets-pressure-title">At risk</h2>
+                <p>Isolate interventions without burying the main performance table.</p>
+            </div>
+
+            <div class="budgets-pressure__list">
+                @foreach (var item in PressureItems)
+                {
+                    <article class="@GetPressureClass(item.Tone)">
+                        <strong>@item.Title</strong>
+                        <p>@item.Detail</p>
+                    </article>
+                }
+            </div>
+        </section>
+    </div>
+
+    <section class="budgets-definitions" aria-labelledby="budgets-definitions-title">
+        <div class="budgets-section-heading budgets-section-heading--split">
+            <div>
+                <h2 id="budgets-definitions-title">Budget definitions</h2>
+                <p>Keep setup subordinate to the current-month judgment surface.</p>
+            </div>
+            <span class="budgets-meta">@_budgets.Count saved definition@(_budgets.Count == 1 ? string.Empty : "s")</span>
+        </div>
+
+        @if (_showForm)
+        {
+            <section class="budgets-edit-band" aria-labelledby="budgets-edit-title">
+                <div class="budgets-section-heading budgets-section-heading--split">
+                    <div>
+                        <h3 id="budgets-edit-title">@(_editingBudgetId.HasValue ? "Edit budget" : "New budget")</h3>
+                        <p>Adjust one definition without losing the surrounding month context.</p>
+                    </div>
+                    <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Close</FluentButton>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <FluentMessageBar Intent="@MessageIntent.Error">@_errorMessage</FluentMessageBar>
+                }
+
+                <EditForm Model="_form" OnValidSubmit="SaveBudgetAsync" aria-label="Budget form">
+                    <DataAnnotationsValidator />
+                    <FluentValidationSummary />
+
+                    <div class="budgets-form-grid">
+                        <label class="budgets-form-field">
+                            <span>Category</span>
+                            <select @bind="_form.CategoryId" class="budgets-native-select" aria-label="Category" disabled="@(_categories.Count == 0)">
+                                <option value="">Select category...</option>
+                                @foreach (var category in OrderedCategories)
+                                {
+                                    <option value="@category.Id.ToString()">@category.Name</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="budgets-form-field">
+                            <span>Budget amount</span>
+                            <InputNumber @bind-Value="_form.Amount" class="budgets-native-input" />
+                        </label>
+
+                        <label class="budgets-form-field">
+                            <span>Currency</span>
+                            <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
+                        </label>
+
+                        <label class="budgets-form-field budgets-form-field--wide">
+                            <span>Notes</span>
+                            <InputTextArea @bind-Value="_form.Notes" class="budgets-native-textarea" />
+                        </label>
+                    </div>
+
+                    <div class="budgets-form-actions">
+                        <FluentCheckbox @bind-Value="_form.RolloverEnabled" Label="Enable rollover for this category" />
+                        <div class="action-cluster">
+                            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isSaving">
+                                @(_editingBudgetId.HasValue ? "Update Budget" : "Create Budget")
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Cancel</FluentButton>
+                        </div>
+                    </div>
+                </EditForm>
+            </section>
+        }
+
+        @if (_isLoading)
+        {
+            <LoadingSpinner AriaLabel="Loading budget definitions" />
+        }
+        else if (_budgets.Count == 0)
+        {
+            <div class="budgets-inline-empty">
+                <strong>No budget definitions saved for @PeriodLabel.</strong>
+                <p>Use the add action to create the first budget definition for this period.</p>
+            </div>
+        }
+        else
+        {
+            <div class="budgets-table-wrap">
+                <table class="budgets-table budgets-table--definitions">
+                    <thead>
+                        <tr>
+                            <th scope="col">Category</th>
+                            <th scope="col" class="budgets-table__numeric">Amount</th>
+                            <th scope="col">Period</th>
+                            <th scope="col">Rollover</th>
+                            <th scope="col">Notes</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var budget in OrderedBudgets)
+                        {
+                            <tr>
+                                <td>@budget.CategoryName</td>
+                                <td class="budgets-table__numeric">@FormatMoney(budget.Amount, budget.Currency)</td>
+                                <td>@(new DateTime(budget.Year, budget.Month, 1).ToString("MMMM yyyy"))</td>
+                                <td>@(budget.RolloverEnabled ? "Enabled" : "Off")</td>
+                                <td>@(string.IsNullOrWhiteSpace(budget.Notes) ? "-" : budget.Notes)</td>
+                                <td>
+                                    <div class="budgets-actions">
+                                        <button type="button" class="budgets-link-action" @onclick="() => EditBudget(budget)">Edit</button>
+                                        <button type="button" class="budgets-link-action budgets-link-action--danger" @onclick="() => DeleteBudgetAsync(budget.Id)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</section>
 
 @code {
     private List<BudgetResponse> _budgets = [];
@@ -180,12 +284,44 @@
     private bool _showForm;
     private Guid? _editingBudgetId;
     private string? _errorMessage;
-    private string _selectedYearStr = DateTime.Today.Year.ToString();
-    private string _selectedMonthStr = DateTime.Today.Month.ToString();
-    private int _selectedYear => int.TryParse(_selectedYearStr, out var y) ? y : DateTime.Today.Year;
-    private int _selectedMonth => int.TryParse(_selectedMonthStr, out var m) ? m : DateTime.Today.Month;
+    private int _selectedYear = DateTime.Today.Year;
+    private int _selectedMonth = DateTime.Today.Month;
 
     private CreateBudgetFormModel _form = new();
+
+    private string PeriodLabel => new DateTime(_selectedYear, _selectedMonth, 1).ToString("MMMM yyyy");
+
+    private decimal TotalBudgeted => _summaries.Sum(summary => summary.BudgetedAmount);
+
+    private decimal TotalSpent => _summaries.Sum(summary => summary.ActualAmount);
+
+    private decimal TotalRemaining => _summaries.Sum(summary => summary.RemainingAmount);
+
+    private int OverBudgetCount => _summaries.Count(summary => summary.IsOverBudget);
+
+    private decimal RolloverExposure => _budgets.Where(budget => budget.RolloverEnabled).Sum(budget => budget.Amount);
+
+    private string PrimaryCurrency => _summaries.FirstOrDefault()?.Currency ?? _budgets.FirstOrDefault()?.Currency ?? "CAD";
+
+    private List<BudgetSummaryResponse> OrderedSummaries =>
+        _summaries
+            .OrderByDescending(summary => summary.IsOverBudget)
+            .ThenByDescending(summary => summary.PercentageUsed)
+            .ThenBy(summary => summary.CategoryName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private List<BudgetResponse> OrderedBudgets =>
+        _budgets
+            .OrderBy(budget => budget.CategoryName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private List<CategoryResponse> OrderedCategories =>
+        _categories
+            .OrderBy(category => category.SortOrder)
+            .ThenBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private List<BudgetAlert> PressureItems => BuildPressureItems();
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,18 +332,51 @@
     private async Task LoadDataAsync()
     {
         _isLoading = true;
-        var budgetTask = BudgetService.GetBudgetsAsync(_selectedYear, _selectedMonth);
-        var summaryTask = BudgetService.GetBudgetSummaryAsync(_selectedYear, _selectedMonth);
-        await Task.WhenAll(budgetTask, summaryTask);
-        _budgets = (await budgetTask).ToList();
-        _summaries = (await summaryTask).ToList();
-        _isLoading = false;
+
+        try
+        {
+            var budgetTask = BudgetService.GetBudgetsAsync(_selectedYear, _selectedMonth);
+            var summaryTask = BudgetService.GetBudgetSummaryAsync(_selectedYear, _selectedMonth);
+            await Task.WhenAll(budgetTask, summaryTask);
+            _budgets = (await budgetTask).ToList();
+            _summaries = (await summaryTask).ToList();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ShowPreviousMonthAsync()
+    {
+        ShiftMonth(-1);
+        await LoadDataAsync();
+    }
+
+    private async Task ShowNextMonthAsync()
+    {
+        ShiftMonth(1);
+        await LoadDataAsync();
+    }
+
+    private async Task JumpToCurrentPeriodAsync()
+    {
+        _selectedYear = DateTime.Today.Year;
+        _selectedMonth = DateTime.Today.Month;
+        await LoadDataAsync();
+    }
+
+    private void ShiftMonth(int delta)
+    {
+        var next = new DateTime(_selectedYear, _selectedMonth, 1).AddMonths(delta);
+        _selectedYear = next.Year;
+        _selectedMonth = next.Month;
     }
 
     private void ShowCreateForm()
     {
         _editingBudgetId = null;
-        _form = new CreateBudgetFormModel { Year = _selectedYear, Month = _selectedMonth };
+        _form = new CreateBudgetFormModel { Year = _selectedYear, Month = _selectedMonth, Currency = PrimaryCurrency };
         _errorMessage = null;
         _showForm = true;
     }
@@ -223,7 +392,7 @@
             Amount = budget.Amount,
             Currency = budget.Currency,
             RolloverEnabled = budget.RolloverEnabled,
-            Notes = budget.Notes
+            Notes = budget.Notes,
         };
         _errorMessage = null;
         _showForm = true;
@@ -240,48 +409,49 @@
         _isSaving = true;
         _errorMessage = null;
 
-        if (_editingBudgetId.HasValue)
+        try
         {
-            var result = await BudgetService.UpdateBudgetAsync(
-                _editingBudgetId.Value,
-                new UpdateBudgetRequest(
-                    _form.Amount,
-                    _form.Currency,
-                    _form.RolloverEnabled,
-                    _form.Notes
-                )
-            );
-            if (result is null)
+            if (_editingBudgetId.HasValue)
             {
-                _errorMessage = "Failed to update budget.";
-                _isSaving = false;
-                return;
-            }
-        }
-        else
-        {
-            var result = await BudgetService.CreateBudgetAsync(
-                new CreateBudgetRequest(
-                    Guid.Parse(_form.CategoryId),
-                    _form.Year,
-                    _form.Month,
-                    _form.Amount,
-                    _form.Currency,
-                    _form.RolloverEnabled,
-                    _form.Notes
-                )
-            );
-            if (result is null)
-            {
-                _errorMessage = "Failed to create budget. It may already exist for this category and period.";
-                _isSaving = false;
-                return;
-            }
-        }
+                var updated = await BudgetService.UpdateBudgetAsync(
+                    _editingBudgetId.Value,
+                    new UpdateBudgetRequest(_form.Amount, _form.Currency, _form.RolloverEnabled, _form.Notes)
+                );
 
-        _isSaving = false;
-        _showForm = false;
-        await LoadDataAsync();
+                if (updated is null)
+                {
+                    _errorMessage = "Failed to update budget.";
+                    return;
+                }
+            }
+            else
+            {
+                var created = await BudgetService.CreateBudgetAsync(
+                    new CreateBudgetRequest(
+                        Guid.Parse(_form.CategoryId),
+                        _selectedYear,
+                        _selectedMonth,
+                        _form.Amount,
+                        _form.Currency,
+                        _form.RolloverEnabled,
+                        _form.Notes
+                    )
+                );
+
+                if (created is null)
+                {
+                    _errorMessage = "Failed to create budget. It may already exist for this category and period.";
+                    return;
+                }
+            }
+
+            _showForm = false;
+            await LoadDataAsync();
+        }
+        finally
+        {
+            _isSaving = false;
+        }
     }
 
     private async Task DeleteBudgetAsync(Guid id)
@@ -289,4 +459,102 @@
         await BudgetService.DeleteBudgetAsync(id);
         await LoadDataAsync();
     }
+
+    private string BuildRemainingDetail() =>
+        TotalRemaining >= 0m ? "Headroom left before the month goes negative." : "Current spend has already exhausted the month.";
+
+    private string BuildOverBudgetDetail() =>
+        OverBudgetCount == 0 ? "No categories are over budget right now." : "Categories needing immediate intervention.";
+
+    private string BuildRolloverDetail()
+    {
+        var rolloverCount = _budgets.Count(budget => budget.RolloverEnabled);
+        return rolloverCount == 0
+            ? "No definitions are carrying exposure into the next month."
+            : $"{rolloverCount} definition{(rolloverCount == 1 ? string.Empty : "s")} can carry unused balances forward.";
+    }
+
+    private string BuildCategorySubline(BudgetSummaryResponse summary)
+    {
+        if (summary.IsOverBudget)
+        {
+            return "Over budget and needs action.";
+        }
+
+        if (summary.PercentageUsed >= 85m)
+        {
+            return "Approaching limit this month.";
+        }
+
+        return "Within budget target.";
+    }
+
+    private static string GetStatusLabel(BudgetSummaryResponse summary)
+    {
+        if (summary.IsOverBudget)
+        {
+            return "Over budget";
+        }
+
+        if (summary.PercentageUsed >= 85m)
+        {
+            return "At risk";
+        }
+
+        return "On track";
+    }
+
+    private static string GetStatusClass(BudgetSummaryResponse summary) =>
+        summary.IsOverBudget
+            ? "budgets-status budgets-status--risk"
+            : summary.PercentageUsed >= 85m
+                ? "budgets-status budgets-status--warning"
+                : "budgets-status budgets-status--ok";
+
+    private static string BuildPressureMeterStyle(BudgetSummaryResponse summary)
+    {
+        var clamped = Math.Min(summary.PercentageUsed, 100m);
+        var tone = summary.IsOverBudget ? "var(--danger-soft)" : summary.PercentageUsed >= 85m ? "#8b661f" : "var(--accent-strong)";
+        return $"width: {clamped:F0}%; background: {tone};";
+    }
+
+    private List<BudgetAlert> BuildPressureItems()
+    {
+        var items = new List<BudgetAlert>();
+
+        foreach (var summary in OrderedSummaries.Where(summary => summary.IsOverBudget).Take(3))
+        {
+            items.Add(new(summary.CategoryName, $"{FormatMoney(Math.Abs(summary.RemainingAmount), summary.Currency)} over the monthly limit.", "risk"));
+        }
+
+        foreach (var summary in OrderedSummaries.Where(summary => !summary.IsOverBudget && summary.PercentageUsed >= 85m).Take(3))
+        {
+            items.Add(new(summary.CategoryName, $"{summary.PercentageUsed:F0}% used with {FormatMoney(summary.RemainingAmount, summary.Currency)} left.", "warning"));
+        }
+
+        var budgetedCategoryIds = _budgets.Select(budget => budget.CategoryId).ToHashSet();
+        foreach (var category in OrderedCategories.Where(category => !budgetedCategoryIds.Contains(category.Id)).Take(3))
+        {
+            items.Add(new(category.Name, "Activity can land here without a budget definition for the selected month.", "warning"));
+        }
+
+        if (items.Count == 0)
+        {
+            items.Add(new("No acute pressure", "The month is currently tracking without over-budget or missing-budget exceptions.", "ok"));
+        }
+
+        return items.Take(6).ToList();
+    }
+
+    private static string GetPressureClass(string tone) => tone switch
+    {
+        "risk" => "budgets-pressure-item budgets-pressure-item--risk",
+        "warning" => "budgets-pressure-item budgets-pressure-item--warning",
+        "ok" => "budgets-pressure-item budgets-pressure-item--ok",
+        _ => "budgets-pressure-item",
+    };
+
+    private string FormatMoney(decimal amount, string? currency = null) => $"{amount:C} {currency ?? PrimaryCurrency}";
+
+    private sealed record BudgetAlert(string Title, string Detail, string Tone);
 }

@@ -1,122 +1,213 @@
 @page "/forecast"
 @inject INotificationWebService NotificationService
 
-<PageTitle>Cash Flow Forecast — Privestio</PageTitle>
+<PageTitle>Forecast — Privestio</PageTitle>
 
-<section class="page-shell">
-    <PageHeader Eyebrow="Forecasting" Title="Cash flow forecast"
-                Description="Project future income, expenses, and balances based on recurring transactions and budgets." />
+<section class="page-shell forecast-shell" data-testid="forecast-page">
+    <section class="forecast-orientation">
+        <PageHeader Eyebrow="Forecast" Title="Forecast"
+                    Description="Project balances from recurring income, expenses, budgets, and sinking-fund contributions.">
+            <Actions>
+                <div class="action-cluster">
+                    @foreach (var horizon in HorizonOptions)
+                    {
+                        <FluentButton Appearance="@GetHorizonAppearance(horizon)" OnClick="() => ChangeHorizonAsync(horizon)">
+                            @GetHorizonLabel(horizon)
+                        </FluentButton>
+                    }
+                    <FluentButton Appearance="Appearance.Outline" OnClick="LoadForecastAsync">Refresh</FluentButton>
+                </div>
+            </Actions>
+        </PageHeader>
+    </section>
 
-    <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
-                     Style="gap: 1rem;">
-            <FluentSelect TOption="string" @bind-Value="_monthsStr" Label="Forecast period" Style="min-width: 150px;">
-                <FluentOption TOption="string" Value="3">3 months</FluentOption>
-                <FluentOption TOption="string" Value="6">6 months</FluentOption>
-                <FluentOption TOption="string" Value="12">12 months</FluentOption>
-                <FluentOption TOption="string" Value="24">24 months</FluentOption>
-            </FluentSelect>
-            <FluentButton Appearance="Appearance.Outline" OnClick="LoadForecastAsync" Style="align-self: flex-end;">
-                Refresh
-            </FluentButton>
-        </FluentStack>
-    </FluentCard>
+    <section class="forecast-posture" aria-labelledby="forecast-posture-title">
+        <div class="forecast-section-heading">
+            <h2 id="forecast-posture-title">Forecast posture</h2>
+            <p>Summarize the selected horizon before reading the trajectory itself.</p>
+        </div>
 
-    @if (_isLoading)
-    {
-        <LoadingSpinner AriaLabel="Loading forecast" />
-    }
-    else if (_forecast is null || _forecast.Periods.Count == 0)
-    {
-        <EmptyStateCard
-        Message="No forecast data available. Add recurring transactions and budgets to generate a forecast." />
-    }
-    else
-    {
-        <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
-            <h3 style="margin: 0 0 1rem 0;">Forecast Summary</h3>
-
-            <div class="summary-strip">
-                <div>
-                    <span class="summary-strip__label">Total projected income</span>
-                    <strong>@_forecast.Periods.Sum(p => p.ProjectedIncome).ToString("C")</strong>
-                </div>
-                <div>
-                    <span class="summary-strip__label">Total projected expenses</span>
-                    <strong>@_forecast.Periods.Sum(p => p.ProjectedExpenses).ToString("C")</strong>
-                </div>
-                <div>
-                    <span class="summary-strip__label">Net projected</span>
-                    <strong>@_forecast.Periods.Sum(p => p.ProjectedNet).ToString("C")</strong>
-                </div>
-                <div>
-                    <span class="summary-strip__label">End balance</span>
-                    <strong>@_forecast.Periods.Last().ProjectedBalance.ToString("C")</strong>
-                </div>
+        @if (_isLoading)
+        {
+            <LoadingSpinner AriaLabel="Loading forecast posture" />
+        }
+        else
+        {
+            <div class="forecast-posture__grid">
+                <article class="forecast-posture__item">
+                    <span>Total projected income</span>
+                    <strong>@FormatMoney(TotalProjectedIncome)</strong>
+                    <p>Incoming cash across @Periods.Count projected month@(Periods.Count == 1 ? string.Empty : "s").</p>
+                </article>
+                <article class="forecast-posture__item">
+                    <span>Total projected expenses</span>
+                    <strong>@FormatMoney(TotalProjectedExpenses)</strong>
+                    <p>Recurring outflow plus budget and sinking-fund pressure.</p>
+                </article>
+                <article class="forecast-posture__item">
+                    <span>Net projected</span>
+                    <strong class="@(NetProjected >= 0m ? "forecast-posture__value--gain" : "forecast-posture__value--risk")">@FormatMoney(NetProjected)</strong>
+                    <p>@BuildNetDetail()</p>
+                </article>
+                <article class="forecast-posture__item">
+                    <span>End balance</span>
+                    <strong>@FormatMoney(EndBalance)</strong>
+                    <p>@BuildEndBalanceDetail()</p>
+                </article>
+                <article class="forecast-posture__item">
+                    <span>Lowest projected balance</span>
+                    <strong class="@(LowestProjectedBalance >= 0m ? string.Empty : "forecast-posture__value--risk")">@FormatMoney(LowestProjectedBalance)</strong>
+                    <p>@BuildLowestBalanceDetail()</p>
+                </article>
             </div>
-        </FluentCard>
+        }
+    </section>
 
-        <FluentCard Class="surface-card data-card" style="margin-bottom: 1.5rem;">
-            <h3 style="margin: 0 0 1rem 0;">Monthly Breakdown</h3>
+    <div class="forecast-core-grid">
+        <section class="forecast-plane" aria-labelledby="forecast-plane-title">
+            <div class="forecast-section-heading forecast-section-heading--split">
+                <div>
+                    <h2 id="forecast-plane-title">Projection</h2>
+                    <p>The balance trajectory owns the page and marks the months that matter.</p>
+                </div>
+                <span class="forecast-meta">@GetHorizonLabel(_months)</span>
+            </div>
 
-            <FluentDataGrid Items="_forecast.Periods.AsQueryable()" TGridItem="CashFlowPeriod" Class="data-grid--elevated" ResizableColumns="true" ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false" ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
-                <TemplateColumn Title="Period">
-                    @(new DateTime(context.Year, context.Month, 1).ToString("MMM yyyy"))
-                </TemplateColumn>
-                <TemplateColumn Title="Income" SortBy="@(GridSort<CashFlowPeriod>.ByAscending(p => p.ProjectedIncome))">
-                    <span style="color: #107c10;">@context.ProjectedIncome.ToString("C")</span>
-                </TemplateColumn>
-                <TemplateColumn Title="Expenses" SortBy="@(GridSort<CashFlowPeriod>.ByAscending(p => p.ProjectedExpenses))">
-                    <span style="color: #c50f1f;">@context.ProjectedExpenses.ToString("C")</span>
-                </TemplateColumn>
-                <TemplateColumn Title="Budgeted Expenses">
-                    @context.BudgetedExpenses.ToString("C")
-                </TemplateColumn>
-                <TemplateColumn Title="Sinking Funds">
-                    @context.SinkingFundContributions.ToString("C")
-                </TemplateColumn>
-                <TemplateColumn Title="Net">
-                    <FluentBadge Appearance="@(context.ProjectedNet >= 0 ? Appearance.Accent : Appearance.Neutral)"
-                                 BackgroundColor="@(context.ProjectedNet < 0 ? "#c50f1f" : null)"
-                                 Color="@(context.ProjectedNet < 0 ? "white" : null)">
-                        @context.ProjectedNet.ToString("C")
-                    </FluentBadge>
-                </TemplateColumn>
-                <TemplateColumn Title="Balance">
-                    <strong>@context.ProjectedBalance.ToString("C")</strong>
-                </TemplateColumn>
-            </FluentDataGrid>
-        </FluentCard>
+            @if (_isLoading)
+            {
+                <LoadingSpinner AriaLabel="Loading forecast projection" />
+            }
+            else if (Periods.Count == 0)
+            {
+                <div class="forecast-inline-empty">
+                    <strong>No projection data is available yet.</strong>
+                    <p>Add recurring transactions and budgets to generate a balance trajectory.</p>
+                </div>
+            }
+            else
+            {
+                <div class="forecast-plane__canvas">
+                    <svg class="forecast-plane__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                        @if (ZeroLineY.HasValue)
+                        {
+                            <line x1="0" y1="@FormatNumber(ZeroLineY.Value)" x2="100" y2="@FormatNumber(ZeroLineY.Value)" class="forecast-plane__zero-line"></line>
+                        }
+                        <polyline points="@ProjectionPolyline" class="forecast-plane__polyline"></polyline>
+                    </svg>
 
-        <FluentCard Class="surface-card" style="margin-bottom: 1.5rem;">
-            <h3 style="margin: 0 0 1rem 0;">Balance Trend</h3>
-            <div style="display: flex; align-items: flex-end; gap: 2px; height: 200px; padding: 0.5rem;">
-                @{
-                    var maxBalance = _forecast.Periods.Max(p => Math.Abs(p.ProjectedBalance));
-                }
-                @foreach (var period in _forecast.Periods)
+                    @foreach (var marker in ProjectionMarkers)
+                    {
+                        <article class="@GetProjectionMarkerClass(marker.Tone)" style="@BuildProjectionMarkerStyle(marker)" title="@marker.Tooltip">
+                            <span class="forecast-plane__marker-dot"></span>
+                            <span class="forecast-plane__marker-label">@marker.Label</span>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="forecast-drivers" aria-labelledby="forecast-drivers-title">
+            <div class="forecast-section-heading">
+                <h2 id="forecast-drivers-title">Drivers</h2>
+                <p>Explain why the line bends instead of leaving the trajectory as a black box.</p>
+            </div>
+
+            <div class="forecast-driver__list">
+                @foreach (var driver in DriverItems)
                 {
-                    var heightPercent = maxBalance > 0 ? Math.Abs(period.ProjectedBalance) / maxBalance * 100 : 0;
-                    var barColor = period.ProjectedBalance >= 0 ? "#107c10" : "#c50f1f";
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <div style="width: 100%; max-width: 60px; height: @(heightPercent)%; background: @barColor; border-radius: 4px 4px 0 0; min-height: 2px;"
-                             title="@(new DateTime(period.Year, period.Month, 1).ToString("MMM yyyy")): @period.ProjectedBalance.ToString("C")">
-                        </div>
-                        <span style="font-size: 0.7rem; margin-top: 4px; writing-mode: vertical-lr; transform: rotate(180deg);">
-                            @(new DateTime(period.Year, period.Month, 1).ToString("MMM"))
-                        </span>
-                    </div>
+                    <article class="@GetDriverClass(driver.Tone)">
+                        <strong>@driver.Title</strong>
+                        <p>@driver.Detail</p>
+                    </article>
                 }
             </div>
-        </FluentCard>
-    }
+        </section>
+    </div>
+
+    <section class="forecast-ledger" aria-labelledby="forecast-ledger-title">
+        <div class="forecast-section-heading forecast-section-heading--split">
+            <div>
+                <h2 id="forecast-ledger-title">Monthly periods</h2>
+                <p>Keep the audit trail directly below the projection plane.</p>
+            </div>
+            <span class="forecast-meta">Base projection</span>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingSpinner AriaLabel="Loading forecast periods" />
+        }
+        else if (Periods.Count == 0)
+        {
+            <div class="forecast-inline-empty">
+                <strong>No forecast ledger exists for this horizon.</strong>
+                <p>The projection plane and ledger will populate once forecast inputs are available.</p>
+            </div>
+        }
+        else
+        {
+            <div class="forecast-table-wrap">
+                <table class="forecast-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Period</th>
+                            <th scope="col" class="forecast-table__numeric">Income</th>
+                            <th scope="col" class="forecast-table__numeric">Expenses</th>
+                            <th scope="col" class="forecast-table__numeric">Budgeted</th>
+                            <th scope="col" class="forecast-table__numeric">Sinking funds</th>
+                            <th scope="col" class="forecast-table__numeric">Net</th>
+                            <th scope="col" class="forecast-table__numeric">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var period in Periods)
+                        {
+                            <tr>
+                                <td>@(new DateTime(period.Year, period.Month, 1).ToString("MMM yyyy"))</td>
+                                <td class="forecast-table__numeric">@FormatMoney(period.ProjectedIncome)</td>
+                                <td class="forecast-table__numeric">@FormatMoney(period.ProjectedExpenses)</td>
+                                <td class="forecast-table__numeric">@FormatMoney(period.BudgetedExpenses)</td>
+                                <td class="forecast-table__numeric">@FormatMoney(period.SinkingFundContributions)</td>
+                                <td class="forecast-table__numeric">
+                                    <span class="@GetNetClass(period.ProjectedNet)">@FormatMoney(period.ProjectedNet)</span>
+                                </td>
+                                <td class="forecast-table__numeric"><strong>@FormatMoney(period.ProjectedBalance)</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 </section>
 
 @code {
+    private static readonly IReadOnlyList<int> HorizonOptions = [3, 6, 12, 24];
     private CashFlowForecastResponse? _forecast;
     private bool _isLoading = true;
-    private string _monthsStr = "6";
-    private int _months => int.TryParse(_monthsStr, out var m) ? m : 6;
+    private int _months = 6;
+
+    private IReadOnlyList<CashFlowPeriod> Periods => _forecast?.Periods ?? [];
+
+    private decimal TotalProjectedIncome => Periods.Sum(period => period.ProjectedIncome);
+
+    private decimal TotalProjectedExpenses => Periods.Sum(period => period.ProjectedExpenses);
+
+    private decimal NetProjected => Periods.Sum(period => period.ProjectedNet);
+
+    private decimal EndBalance => Periods.LastOrDefault()?.ProjectedBalance ?? 0m;
+
+    private decimal LowestProjectedBalance => Periods.Count == 0 ? 0m : Periods.Min(period => period.ProjectedBalance);
+
+    private string Currency => _forecast?.Currency ?? "CAD";
+
+    private string ProjectionPolyline => BuildProjectionPolyline();
+
+    private decimal? ZeroLineY => BuildZeroLineY();
+
+    private List<ProjectionMarker> ProjectionMarkers => BuildProjectionMarkers();
+
+    private List<ForecastDriver> DriverItems => BuildDriverItems();
 
     protected override async Task OnInitializedAsync()
     {
@@ -126,7 +217,193 @@
     private async Task LoadForecastAsync()
     {
         _isLoading = true;
-        _forecast = await NotificationService.GetCashFlowForecastAsync(_months);
-        _isLoading = false;
+
+        try
+        {
+            _forecast = await NotificationService.GetCashFlowForecastAsync(_months);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
+
+    private async Task ChangeHorizonAsync(int months)
+    {
+        if (_months == months)
+        {
+            return;
+        }
+
+        _months = months;
+        await LoadForecastAsync();
+    }
+
+    private Appearance GetHorizonAppearance(int months) => _months == months ? Appearance.Accent : Appearance.Outline;
+
+    private static string GetHorizonLabel(int months) => months == 1 ? "1 month" : $"{months} months";
+
+    private string BuildNetDetail() =>
+        NetProjected >= 0m ? "The horizon stays net positive on current assumptions." : "Projected outflow exceeds projected inflow across the selected horizon.";
+
+    private string BuildEndBalanceDetail() =>
+        Periods.Count == 0 ? "No end-period balance yet." : $"Ends in {new DateTime(Periods.Last().Year, Periods.Last().Month, 1):MMMM yyyy}.";
+
+    private string BuildLowestBalanceDetail()
+    {
+        if (Periods.Count == 0)
+        {
+            return "No low point exists without a forecast horizon.";
+        }
+
+        var lowPoint = Periods.OrderBy(period => period.ProjectedBalance).First();
+        return $"Lowest point arrives in {new DateTime(lowPoint.Year, lowPoint.Month, 1):MMMM yyyy}.";
+    }
+
+    private string BuildProjectionPolyline()
+    {
+        if (Periods.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var min = Periods.Min(period => period.ProjectedBalance);
+        var max = Periods.Max(period => period.ProjectedBalance);
+        min = Math.Min(min, 0m);
+        max = Math.Max(max, 0m);
+        var range = max - min;
+        if (range == 0m)
+        {
+            range = 1m;
+        }
+
+        var points = Periods.Select((period, index) =>
+        {
+            var x = Periods.Count == 1 ? 50m : index * 100m / (Periods.Count - 1);
+            var y = 100m - ((period.ProjectedBalance - min) / range * 100m);
+            return $"{FormatNumber(x)},{FormatNumber(y)}";
+        });
+
+        return string.Join(" ", points);
+    }
+
+    private decimal? BuildZeroLineY()
+    {
+        if (Periods.Count == 0)
+        {
+            return null;
+        }
+
+        var min = Periods.Min(period => period.ProjectedBalance);
+        var max = Periods.Max(period => period.ProjectedBalance);
+        if (min >= 0m || max <= 0m)
+        {
+            return null;
+        }
+
+        var range = max - min;
+        return 100m - ((0m - min) / range * 100m);
+    }
+
+    private List<ProjectionMarker> BuildProjectionMarkers()
+    {
+        if (Periods.Count == 0)
+        {
+            return [];
+        }
+
+        var min = Periods.Min(period => period.ProjectedBalance);
+        var max = Periods.Max(period => period.ProjectedBalance);
+        min = Math.Min(min, 0m);
+        max = Math.Max(max, 0m);
+        var range = max - min;
+        if (range == 0m)
+        {
+            range = 1m;
+        }
+
+        return Periods.Select((period, index) =>
+        {
+            var left = Periods.Count == 1 ? 50m : index * 100m / (Periods.Count - 1);
+            var top = 100m - ((period.ProjectedBalance - min) / range * 100m);
+            var tone = period.ProjectedBalance < 0m || period.ProjectedNet < 0m ? "risk" : "ok";
+            return new ProjectionMarker(
+                left,
+                top,
+                new DateTime(period.Year, period.Month, 1).ToString("MMM"),
+                $"{new DateTime(period.Year, period.Month, 1):MMMM yyyy}: {FormatMoney(period.ProjectedBalance)} balance",
+                tone
+            );
+        }).ToList();
+    }
+
+    private List<ForecastDriver> BuildDriverItems()
+    {
+        if (Periods.Count == 0)
+        {
+            return [new("No drivers yet", "Add forecast inputs to surface pressure months and turning points.", "ok")];
+        }
+
+        var items = new List<ForecastDriver>();
+
+        var mostExpensive = Periods.OrderByDescending(period => period.ProjectedExpenses).First();
+        items.Add(new(
+            "Largest expense pressure",
+            $"{new DateTime(mostExpensive.Year, mostExpensive.Month, 1):MMMM yyyy} carries the heaviest projected expense load at {FormatMoney(mostExpensive.ProjectedExpenses)}.",
+            "warning"
+        ));
+
+        var negativeMonths = Periods.Where(period => period.ProjectedNet < 0m).ToList();
+        if (negativeMonths.Count > 0)
+        {
+            var firstNegative = negativeMonths.First();
+            items.Add(new(
+                "Negative net months",
+                $"{negativeMonths.Count} projected month{(negativeMonths.Count == 1 ? string.Empty : "s")} go net negative, starting in {new DateTime(firstNegative.Year, firstNegative.Month, 1):MMMM yyyy}.",
+                "risk"
+            ));
+        }
+
+        var sinkingPeak = Periods.OrderByDescending(period => period.SinkingFundContributions).First();
+        items.Add(new(
+            "Sinking-fund spike",
+            $"Peak sinking-fund pressure lands in {new DateTime(sinkingPeak.Year, sinkingPeak.Month, 1):MMMM yyyy} at {FormatMoney(sinkingPeak.SinkingFundContributions)}.",
+            sinkingPeak.SinkingFundContributions > 0m ? "warning" : "ok"
+        ));
+
+        var incomeShift = Periods.OrderByDescending(period => period.ProjectedIncome).First();
+        items.Add(new(
+            "Income high point",
+            $"Projected income is strongest in {new DateTime(incomeShift.Year, incomeShift.Month, 1):MMMM yyyy} at {FormatMoney(incomeShift.ProjectedIncome)}.",
+            "ok"
+        ));
+
+        return items.Take(4).ToList();
+    }
+
+    private static string GetDriverClass(string tone) => tone switch
+    {
+        "risk" => "forecast-driver forecast-driver--risk",
+        "warning" => "forecast-driver forecast-driver--warning",
+        "ok" => "forecast-driver forecast-driver--ok",
+        _ => "forecast-driver",
+    };
+
+    private static string GetProjectionMarkerClass(string tone) => tone switch
+    {
+        "risk" => "forecast-plane__marker forecast-plane__marker--risk",
+        _ => "forecast-plane__marker",
+    };
+
+    private static string BuildProjectionMarkerStyle(ProjectionMarker marker) => $"left: calc({FormatNumber(marker.Left)}% - 7px); top: calc({FormatNumber(marker.Top)}% - 7px);";
+
+    private static string GetNetClass(decimal net) => net >= 0m ? "forecast-net forecast-net--gain" : "forecast-net forecast-net--risk";
+
+    private string FormatMoney(decimal amount) => $"{amount:C} {Currency}";
+
+    private static string FormatNumber(decimal value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private sealed record ProjectionMarker(decimal Left, decimal Top, string Label, string Tooltip, string Tone);
+
+    private sealed record ForecastDriver(string Title, string Detail, string Tone);
 }

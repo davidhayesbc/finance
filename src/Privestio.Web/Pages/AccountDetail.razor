@@ -13,55 +13,85 @@
 }
 else if (_account is null)
 {
-    <EmptyStateCard Message="Account not found." Intent="MessageIntent.Error" AriaLive="assertive">
-        <Actions>
-            <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
-                Back to Accounts
-            </FluentButton>
-        </Actions>
-    </EmptyStateCard>
+    <section class="page-shell account-dossier-shell">
+        <section class="account-dossier-orientation">
+            <PageHeader Eyebrow="Account dossier" Title="Account not found"
+                        Description="The requested account could not be loaded, but the dossier shell stays intact so you can recover context.">
+                <Actions>
+                    <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
+                        Back to Accounts
+                    </FluentButton>
+                </Actions>
+            </PageHeader>
+        </section>
+    </section>
 }
 else
 {
-    <section class="page-shell panel-stack" aria-labelledby="account-name">
-        <FluentBreadcrumb aria-label="Breadcrumb navigation">
-            <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
-            <FluentBreadcrumbItem>@_account.Name</FluentBreadcrumbItem>
-        </FluentBreadcrumb>
+    <section class="page-shell account-dossier-shell" aria-labelledby="account-name" data-testid="account-detail-page">
+        <section class="account-dossier-orientation">
+            <PageHeader Eyebrow="Account dossier" Title="@_account.Name"
+                        Description="Review identity, value history, and the supporting evidence for this account without leaving the dossier frame."
+                        Compact="true">
+                <Actions>
+                    <div class="action-cluster">
+                        <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
+                            Back to Accounts
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Accent"
+                                      @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
+                                      aria-label="Add a transaction to this account">
+                            Add Transaction
+                        </FluentButton>
+                        @if (IsInvestmentAccount)
+                        {
+                            <FluentButton Appearance="Appearance.Outline"
+                                          Loading="_isSyncingHistoricalPrices"
+                                          @onclick="SyncHistoricalPricesAsync"
+                                          aria-label="Sync historical prices from Yahoo Finance">
+                                Sync Market History
+                            </FluentButton>
+                        }
+                    </div>
+                </Actions>
+            </PageHeader>
+        </section>
 
-        <PageHeader Eyebrow="Account detail" Title="@_account.Name"
-                    Description="Review account metadata, balance context, and continue into transaction capture from the same workspace."
-                    Compact="true">
-            <Actions>
-                <FluentButton Appearance="Appearance.Accent"
-                              @onclick="@(() => Navigation.NavigateTo($"/accounts/{Id}/transactions/new"))"
-                              aria-label="Add a transaction to this account">
-                    Add Transaction
-                </FluentButton>
-                @if (IsInvestmentAccount)
-                {
-                    <FluentButton Appearance="Appearance.Outline"
-                                  Loading="_isSyncingHistoricalPrices"
-                                  @onclick="SyncHistoricalPricesAsync"
-                                  aria-label="Sync historical prices from Yahoo Finance">
-                        Sync Market History
-                    </FluentButton>
-                }
-            </Actions>
-        </PageHeader>
+        <section class="account-dossier-identity" aria-labelledby="account-identity-title">
+            <div class="account-dossier-heading">
+                <h2 id="account-identity-title">Identity</h2>
+                <p>Core account facts first, so the rest of the dossier reads in context.</p>
+            </div>
 
-        <div class="detail-grid">
-            <StatCard Label="Type" AriaLabel="Account type">@_account.AccountType — @_account.AccountSubType</StatCard>
-            <StatCard Label="Institution">@(_account.Institution ?? "—")</StatCard>
-            <StatCard Label="Current balance">@GetDisplayedCurrentBalance().ToString("C") @_account.Currency</StatCard>
-            <StatCard Label="Opened" AriaLabel="Opening date">@_account.OpeningDate.ToString("MMMM d, yyyy")</StatCard>
-        </div>
+            <div class="account-dossier-identity__grid">
+                <article class="account-dossier-identity__item">
+                    <span>Type</span>
+                    <strong>@_account.AccountType</strong>
+                    <p>@(string.IsNullOrWhiteSpace(_account.AccountSubType) ? "No subtype recorded." : _account.AccountSubType)</p>
+                </article>
+                <article class="account-dossier-identity__item">
+                    <span>Institution</span>
+                    <strong>@FormatInstitution()</strong>
+                    <p>@BuildOwnershipDetail()</p>
+                </article>
+                <article class="account-dossier-identity__item">
+                    <span>Current balance</span>
+                    <strong>@FormatMoney(GetDisplayedCurrentBalance())</strong>
+                    <p>@BuildBalanceDetail()</p>
+                </article>
+                <article class="account-dossier-identity__item">
+                    <span>Opened</span>
+                    <strong>@_account.OpeningDate.ToString("MMM d, yyyy")</strong>
+                    <p>@BuildFreshnessDetail()</p>
+                </article>
+            </div>
+        </section>
 
-        <FluentCard Class="surface-card transaction-panel" aria-labelledby="history-title">
-            <div class="section-heading-row">
+        <section class="account-dossier-history" aria-labelledby="account-history-title">
+            <div class="account-dossier-heading account-dossier-heading--split">
                 <div>
-                    <h2 id="history-title" class="section-heading">@(IsInvestmentAccount ? "Market value growth" : "Account value history")</h2>
-                    <p class="section-copy">Historical trend based on recorded activity, valuations, and persisted market prices.</p>
+                    <h2 id="account-history-title">History</h2>
+                    <p>@(IsInvestmentAccount ? "Market value growth built from holdings and persisted prices." : "Account value history built from recorded activity and stored balances.")</p>
                 </div>
                 <HistoryRangeSelector CurrentKey="@_selectedValueHistoryRange"
                                       Disabled="@(_isLoadingValueHistory || _isSyncingHistoricalPrices)"
@@ -70,9 +100,7 @@ else
 
             @if (!string.IsNullOrWhiteSpace(_historicalPriceSyncMessage))
             {
-                <FluentMessageBar Intent="@_historicalPriceSyncIntent" style="margin-bottom:1rem;">
-                    @_historicalPriceSyncMessage
-                </FluentMessageBar>
+                <FluentMessageBar Intent="@_historicalPriceSyncIntent">@_historicalPriceSyncMessage</FluentMessageBar>
             }
 
             @if (_isLoadingValueHistory)
@@ -90,28 +118,41 @@ else
                                       EmptyTitle="No historical values yet."
                                       EmptyMessage="Record transactions, valuations, or price history to build this chart." />
             }
-        </FluentCard>
+        </section>
 
-        @if (IsPropertyAccount)
-        {
-            <PropertyValuationsSection AccountId="Id" Currency="@_account.Currency"
-                                       DefaultAmount="@(_account.CurrentBalance)"
-                                       OnValuationSaved="HandleValuationSaved" />
-            <PropertyExpensesSection AccountId="Id" Currency="@_account.Currency" />
-            <MortgageAmortizationSection />
-        }
-        else if (IsInvestmentAccount)
-        {
-            <PortfolioPerformanceSection Performance="_performance"
-                                         IsLoading="_isLoadingPerformance"
-                                         ErrorMessage="@_performanceErrorMessage" />
-            <HoldingsLotsSection AccountId="Id" OnAliasChanged="HandleAliasChanged" />
-            <InvestmentTransactionsSection Transactions="_transactions" IsLoading="_isLoadingTransactions" />
-        }
-        else
-        {
-            <TransactionListSection AccountId="Id" />
-        }
+        <section class="account-dossier-evidence" aria-labelledby="account-evidence-title">
+            <div class="account-dossier-heading">
+                <h2 id="account-evidence-title">Evidence</h2>
+                <p>Keep the supporting transactions, holdings, and property records below the history plane.</p>
+            </div>
+
+            @if (IsPropertyAccount)
+            {
+                <div class="account-dossier-evidence__stack">
+                    <PropertyValuationsSection AccountId="Id" Currency="@_account.Currency"
+                                               DefaultAmount="@(_account.CurrentBalance)"
+                                               OnValuationSaved="HandleValuationSaved" />
+                    <PropertyExpensesSection AccountId="Id" Currency="@_account.Currency" />
+                    <MortgageAmortizationSection />
+                </div>
+            }
+            else if (IsInvestmentAccount)
+            {
+                <div class="account-dossier-evidence__stack">
+                    <PortfolioPerformanceSection Performance="_performance"
+                                                 IsLoading="_isLoadingPerformance"
+                                                 ErrorMessage="@_performanceErrorMessage" />
+                    <HoldingsLotsSection AccountId="Id" OnAliasChanged="HandleAliasChanged" />
+                    <InvestmentTransactionsSection Transactions="_transactions" IsLoading="_isLoadingTransactions" />
+                </div>
+            }
+            else
+            {
+                <div class="account-dossier-evidence__stack">
+                    <TransactionListSection AccountId="Id" />
+                </div>
+            }
+        </section>
     </section>
 }
 
@@ -300,4 +341,31 @@ else
     {
         await LoadPerformanceAsync();
     }
+
+    private string FormatInstitution() =>
+        string.IsNullOrWhiteSpace(_account?.Institution) ? "No institution" : _account.Institution;
+
+    private string BuildOwnershipDetail() => _account?.IsShared == true ? "Shared household account." : "Single-owner account context.";
+
+    private string BuildBalanceDetail() =>
+        IsInvestmentAccount
+            ? "Displayed as current market value when performance data is available."
+            : "Displayed from the current account balance record.";
+
+    private string BuildFreshnessDetail()
+    {
+        if (_account is null)
+        {
+            return string.Empty;
+        }
+
+        var age = DateTime.UtcNow - _account.UpdatedAt;
+        return age.TotalDays < 1
+            ? "Updated today."
+            : age.TotalDays < 30
+                ? $"Updated {Math.Floor(age.TotalDays)} days ago."
+                : $"Last updated on {_account.UpdatedAt:MMM d, yyyy}.";
+    }
+
+    private string FormatMoney(decimal amount) => $"{amount:C} {_account?.Currency ?? "CAD"}";
 }

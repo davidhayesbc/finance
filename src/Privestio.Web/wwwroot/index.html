@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Privestio</title>
     <base href="/" />
+    <link rel="preload" id="webassembly" />
     <script>
         (function () {
             const storageKey = "privestio-theme";
@@ -23,6 +24,7 @@
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
     <link rel="manifest" href="manifest.webmanifest" />
+    <script type="importmap"></script>
 </head>
 
 <body>
@@ -43,12 +45,7 @@
     <script src="js/connectivity.js"></script>
     <script src="js/pwa-install.js"></script>
     <script src="js/theme.js"></script>
-    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
-    <script>
-        Blazor.start({
-            environment: "Production"
-        });
-    </script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 
 </html>

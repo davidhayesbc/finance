@@ -15,6 +15,10 @@ var api = builder
     .WaitFor(privestioDb);
 
 // Web (Blazor WASM PWA)
-builder.AddProject("web", "../Privestio.Web/Privestio.Web.csproj").WithReference(api).WaitFor(api);
+builder
+    .AddProject("web", "../Privestio.Web/Privestio.Web.csproj")
+    .WithReference(api)
+    .WithExternalHttpEndpoints()
+    .WaitFor(api);
 
 builder.Build().Run();

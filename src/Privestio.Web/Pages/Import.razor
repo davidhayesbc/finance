@@ -6,86 +6,92 @@
 
 <PageTitle>Import Transactions — Privestio</PageTitle>
 
-<section class="page-shell panel-stack" data-testid="import-page">
-    <FluentBreadcrumb aria-label="Breadcrumb navigation">
-        <FluentBreadcrumbItem Href="/accounts">Accounts</FluentBreadcrumbItem>
-        <FluentBreadcrumbItem>Import</FluentBreadcrumbItem>
-    </FluentBreadcrumb>
+<section class="page-shell import-shell" data-testid="import-page">
+    <section class="import-orientation">
+        <PageHeader Eyebrow="Import" Title="Import"
+                    Description="Upload, map, preview, and commit transaction files with full visibility before write."
+                    Compact="true">
+            <Actions>
+                <div class="action-cluster">
+                    <FluentButton Appearance="Appearance.Outline"
+                                  OnClick="@(() => Navigation.NavigateTo("/import/mappings"))">
+                        Saved Mappings
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Outline"
+                                  OnClick="@(() => Navigation.NavigateTo("/import/history"))">
+                        Import History
+                    </FluentButton>
+                </div>
+            </Actions>
+        </PageHeader>
+    </section>
 
-    <PageHeader Eyebrow="Import" Title="Import transactions"
-                Description="Move from file upload to mapping, preview, and commit in a workflow that keeps context visible at each step."
-                Compact="true">
-        <Actions>
-            <div class="action-cluster">
-                <FluentButton Appearance="Appearance.Outline"
-                              OnClick="@(() => Navigation.NavigateTo("/import/mappings"))">
-                    Saved Mappings
-                </FluentButton>
-                <FluentButton Appearance="Appearance.Outline"
-                              OnClick="@(() => Navigation.NavigateTo("/import/history"))">
-                    Import History
-                </FluentButton>
+    <div class="import-workbench">
+        <aside class="import-step-rail" aria-labelledby="import-step-rail-title">
+            <div class="import-section-heading">
+                <h2 id="import-step-rail-title">Step rail</h2>
+                <p>Keep upload, mapping, preview, and commit visible at all times.</p>
             </div>
-        </Actions>
-    </PageHeader>
 
-    <MessageStack ErrorMessage="@_errorMessage" SuccessMessage="@_successMessage" />
-
-    @if (_step == ImportStep.Upload)
-    {
-        <FluentCard Class="surface-card form-card" aria-label="Upload file">
-            <span class="eyebrow">Step 1</span>
-            <h2 class="section-heading">Choose account and file</h2>
-            <p class="section-copy">Attach one supported file and preview the detected structure before any import writes
-                happen.</p>
-
-                @if (_registeredImportFormats.Count == 0)
+            <ol class="import-step-rail__list">
+                @foreach (var step in ImportSteps)
                 {
-                    <FluentMessageBar Intent="@MessageIntent.Error" style="margin-bottom: 0.75rem;">
-                        No registered transaction-import plugins are available.
-                    </FluentMessageBar>
+                    <li class="@GetStepClass(step.Step)">
+                        <span class="import-step-rail__index">@step.Index</span>
+                        <div>
+                            <strong>@step.Label</strong>
+                            <p>@step.Description</p>
+                        </div>
+                    </li>
                 }
-                else
-                {
-                    <FluentMessageBar Intent="@MessageIntent.Info" style="margin-bottom: 0.75rem;">
-                        Registered import formats: @string.Join(", ", _registeredImportFormats.OrderBy(f => f,
-                                                                                                            StringComparer.OrdinalIgnoreCase))
-                    </FluentMessageBar>
-                }
+            </ol>
+        </aside>
 
-                <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack">
-                    <AccountSelect Accounts="_accounts" @bind-Value="_selectedAccountIdStr" Required="true" />
-
-                    <FluentInputFile @ref="_fileInput" Mode="InputFileMode.Stream" Accept=".csv,.ofx,.qfx,.qif"
-                                     MaximumFileCount="1" MaximumFileSize="@(10 * 1024 * 1024)" Label="Select file to import"
-                                     OnFileUploaded="HandleFileSelectedAsync" aria-label="Choose a file to import" />
-
-                    @if (_selectedFile is not null)
-                    {
-                        <FluentBadge Appearance="Appearance.Neutral">
-                            @_selectedFileName
-                        </FluentBadge>
-                    }
-
-                    <div class="action-cluster">
-                        <FluentButton Appearance="Appearance.Accent"
-                                      Disabled="@(_selectedAccountId is null || _selectedFile is null || _isLoading)" Loading="_isLoading"
-                                      OnClick="PreviewFileAsync">
-                            Preview Import
-                        </FluentButton>
+        <section class="import-workspace" aria-labelledby="import-workspace-title">
+            @if (_step == ImportStep.Upload)
+            {
+                <section class="import-stage">
+                    <div class="import-section-heading import-section-heading--split">
+                        <div>
+                            <h2 id="import-workspace-title">Source file</h2>
+                            <p>Choose the target account, attach one file, and inspect the detected format before anything writes.</p>
+                        </div>
+                        <span class="import-stage__eyebrow">Step 1 · Upload</span>
                     </div>
-                </FluentStack>
-            </FluentCard>
-        }
 
-        @if (_step == ImportStep.ColumnMapping && _filePreview is not null)
-        {
-            <FluentCard Class="surface-card panel-stack" aria-label="Column mapping">
-                <div>
-                    <span class="eyebrow">Step 2</span>
-                    <h2 class="section-heading">Map source columns</h2>
-                    <p class="section-copy">@_filePreview.TotalRows rows detected. Confirm the field mapping before previewing
-                        the import outcome.</p>
+                    <div class="import-stage__body">
+                        <AccountSelect Accounts="_accounts" @bind-Value="_selectedAccountIdStr" Required="true" />
+
+                        <FluentInputFile @ref="_fileInput" Mode="InputFileMode.Stream" Accept=".csv,.ofx,.qfx,.qif"
+                                         MaximumFileCount="1" MaximumFileSize="@(10 * 1024 * 1024)" Label="Select file to import"
+                                         OnFileUploaded="HandleFileSelectedAsync" aria-label="Choose a file to import" />
+
+                        @if (_selectedFile is not null)
+                        {
+                            <FluentBadge Appearance="Appearance.Neutral">@_selectedFileName</FluentBadge>
+                        }
+
+                        <div class="action-cluster">
+                            <FluentButton Appearance="Appearance.Accent"
+                                          Disabled="@(_selectedAccountId is null || _selectedFile is null || _isLoading)"
+                                          Loading="_isLoading"
+                                          OnClick="PreviewFileAsync">
+                                Preview Import
+                            </FluentButton>
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @if (_step == ImportStep.ColumnMapping && _filePreview is not null)
+            {
+                <section class="import-stage">
+                    <div class="import-section-heading import-section-heading--split">
+                        <div>
+                            <h2 id="import-workspace-title">Column mapping</h2>
+                            <p>@_filePreview.TotalRows rows detected. Confirm required fields and inspect sample rows before preview.</p>
+                        </div>
+                        <span class="import-stage__eyebrow">Step 2 · Mapping</span>
                     </div>
 
                     <div class="mapping-grid">
@@ -94,7 +100,7 @@
                             <div class="mapping-row">
                                 <FluentLabel Class="mapping-row__label">@column</FluentLabel>
                                 <FluentSelect TOption="string" Value="@GetMappingValue(column)"
-                                              ValueChanged="@(val => SetMappingValue(column, val))">
+                                              ValueChanged="@(value => SetMappingValue(column, value))">
                                     <FluentOption TOption="string" Value="">Skip</FluentOption>
                                     <FluentOption TOption="string" Value="Date">Date</FluentOption>
                                     <FluentOption TOption="string" Value="Amount">Amount</FluentOption>
@@ -119,49 +125,41 @@
                         }
                     </div>
 
-                    <div>
-                        <h3 class="section-heading">Sample data</h3>
+                    <section class="import-stage__panel">
+                        <h3 class="section-heading">Sample rows</h3>
                         <FluentDataGrid Items="_sampleRows.AsQueryable()" aria-label="File preview data" TGridItem="SampleRow"
                                         Class="data-grid--elevated data-grid--import-preview" ResizableColumns="true"
                                         ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
                                         ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
-                            @foreach (var (col, idx) in _filePreview.DetectedColumns.Select((c, i) => (c, i)))
+                            @foreach (var (columnName, index) in _filePreview.DetectedColumns.Select((value, idx) => (value, idx)))
                             {
-                                var colIndex = idx;
-                                <TemplateColumn Title="@col"
-                                                SortBy="@(GridSort<SampleRow>.ByAscending(r => r.Values.Count > colIndex ? r.Values[colIndex] : string.Empty))"
+                                var columnIndex = index;
+                                <TemplateColumn Title="@columnName"
+                                                SortBy="@(GridSort<SampleRow>.ByAscending(row => row.Values.Count > columnIndex ? row.Values[columnIndex] : string.Empty))"
                                                 Width="200px">
                                     @{
-                                        var cell = context.Values.Count > colIndex ? context.Values[colIndex] : string.Empty;
+                                        var cell = context.Values.Count > columnIndex ? context.Values[columnIndex] : string.Empty;
                                     }
-                                    <span class="cell-truncate"
-                                          title="@(string.IsNullOrWhiteSpace(cell) ? "Empty value" : cell)">@cell</span>
+                                    <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(cell) ? "Empty value" : cell)">@cell</span>
                                 </TemplateColumn>
                             }
                         </FluentDataGrid>
-                    </div>
+                    </section>
 
-                    <details>
-                        <summary style="cursor:pointer;padding:0.5rem 0;font-weight:600">Advanced Settings</summary>
+                    <details class="import-advanced-panel">
+                        <summary>Advanced settings</summary>
                         <FluentStack Orientation="Orientation.Vertical" Width="100%" Class="form-stack" style="margin-top:0.75rem">
-                            <FluentTextField Label="Buy keywords (comma-separated)" @bind-Value="_buyKeywords" style="width:100%"
-                                             Placeholder="buy, purchase, long, ..." />
-                            <FluentTextField Label="Sell keywords (comma-separated)" @bind-Value="_sellKeywords" style="width:100%"
-                                             Placeholder="sell, redeem, withdraw, ..." />
-                            <FluentTextField Label="Income keywords (comma-separated)" @bind-Value="_incomeKeywords"
-                                             style="width:100%" Placeholder="interest, dividend, distribution, ..." />
-                            <FluentTextField Label="Cash-equivalent symbol prefixes (comma-separated)"
-                                             @bind-Value="_cashEquivalentSymbols" style="width:100%" Placeholder="CASH, PSA, CSAV, ..." />
-                            <FluentTextField Label="Ignore row patterns — skip rows whose Date cell starts with (comma-separated)"
-                                             @bind-Value="_ignoreRowPatterns" style="width:100%" Placeholder="As of , TOTAL:, ..." />
-                            <FluentCheckbox Label="Invert amount sign (institution exports debits as positive)"
-                                            @bind-Value="_amountSignFlipped" />
+                            <FluentTextField Label="Buy keywords (comma-separated)" @bind-Value="_buyKeywords" style="width:100%" Placeholder="buy, purchase, long, ..." />
+                            <FluentTextField Label="Sell keywords (comma-separated)" @bind-Value="_sellKeywords" style="width:100%" Placeholder="sell, redeem, withdraw, ..." />
+                            <FluentTextField Label="Income keywords (comma-separated)" @bind-Value="_incomeKeywords" style="width:100%" Placeholder="interest, dividend, distribution, ..." />
+                            <FluentTextField Label="Cash-equivalent symbol prefixes (comma-separated)" @bind-Value="_cashEquivalentSymbols" style="width:100%" Placeholder="CASH, PSA, CSAV, ..." />
+                            <FluentTextField Label="Ignore row patterns — skip rows whose Date cell starts with (comma-separated)" @bind-Value="_ignoreRowPatterns" style="width:100%" Placeholder="As of , TOTAL:, ..." />
+                            <FluentCheckbox Label="Invert amount sign (institution exports debits as positive)" @bind-Value="_amountSignFlipped" />
                         </FluentStack>
                     </details>
 
                     <div class="action-cluster">
-                        <FluentButton Appearance="Appearance.Accent" Disabled="@(!HasRequiredMappings() || _isLoading)"
-                                      Loading="_isLoading" OnClick="RunPreviewImportAsync">
+                        <FluentButton Appearance="Appearance.Accent" Disabled="@(!HasRequiredMappings() || _isLoading)" Loading="_isLoading" OnClick="RunPreviewImportAsync">
                             Preview Results
                         </FluentButton>
                         <FluentButton Appearance="Appearance.Outline" OnClick="SaveMappingAsync">
@@ -171,15 +169,18 @@
                             Back
                         </FluentButton>
                     </div>
-                </FluentCard>
+                </section>
             }
 
             @if (_step == ImportStep.Preview && _previewResult is not null)
             {
-                <FluentCard Class="surface-card panel-stack" aria-label="Import preview">
-                    <div>
-                        <span class="eyebrow">Step 3</span>
-                        <h2 class="section-heading">Preview import results</h2>
+                <section class="import-stage">
+                    <div class="import-section-heading import-section-heading--split">
+                        <div>
+                            <h2 id="import-workspace-title">Preview results</h2>
+                            <p>Inspect import counts, duplicates, and row-level failures before committing anything.</p>
+                        </div>
+                        <span class="import-stage__eyebrow">Step 3 · Preview</span>
                     </div>
 
                     <div class="detail-grid">
@@ -191,74 +192,133 @@
 
                     @if (_previewResult.Errors.Count > 0)
                     {
-                        <div>
+                        <section class="import-stage__panel">
                             <h3 class="section-heading">Errors</h3>
-                            <FluentDataGrid Items="_previewResult.Errors.OrderBy(e => e.RowNumber).AsQueryable()"
+                            <FluentDataGrid Items="_previewResult.Errors.OrderBy(error => error.RowNumber).AsQueryable()"
                                             aria-label="Import errors" TGridItem="ImportErrorDetail"
                                             Class="data-grid--elevated data-grid--import-errors" ResizableColumns="true"
                                             ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
                                             ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
-                                <PropertyColumn Property="@(e => e.RowNumber)" Title="Row" Sortable="true" Width="88px" />
-                                <TemplateColumn Title="Error" SortBy="@(GridSort<ImportErrorDetail>.ByAscending(e => e.Message))"
-                                                Width="320px">
-                                    <span class="cell-truncate"
-                                          title="@(string.IsNullOrWhiteSpace(context.Message) ? "No error message" : context.Message)">@context.Message</span>
+                                <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" Sortable="true" Width="88px" />
+                                <TemplateColumn Title="Error" SortBy="@(GridSort<ImportErrorDetail>.ByAscending(error => error.Message))" Width="320px">
+                                    <span class="cell-truncate" title="@(string.IsNullOrWhiteSpace(context.Message) ? "No error message" : context.Message)">@context.Message</span>
                                 </TemplateColumn>
-                                <TemplateColumn Title="Raw Data"
-                                                SortBy="@(GridSort<ImportErrorDetail>.ByAscending(e => e.RawData ?? string.Empty))" Width="420px">
-                                    <span class="cell-truncate cell-truncate--mono"
-                                          title="@(string.IsNullOrWhiteSpace(context.RawData) ? "No raw data" : context.RawData)">@(context.RawData
-                                                                                                        ?? string.Empty)</span>
-                                    </TemplateColumn>
-                                </FluentDataGrid>
-                            </div>
-                        }
+                                <TemplateColumn Title="Raw Data" SortBy="@(GridSort<ImportErrorDetail>.ByAscending(error => error.RawData ?? string.Empty))" Width="420px">
+                                    <span class="cell-truncate cell-truncate--mono" title="@(string.IsNullOrWhiteSpace(context.RawData) ? "No raw data" : context.RawData)">@(context.RawData ?? string.Empty)</span>
+                                </TemplateColumn>
+                            </FluentDataGrid>
+                        </section>
+                    }
 
-                        <div class="action-cluster">
-                            <FluentButton Appearance="Appearance.Accent" Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)"
-                                          Loading="_isLoading" OnClick="CommitImportAsync">
-                                Commit Import (@_previewResult.ImportedCount transactions)
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.ColumnMapping)">
-                                Back to Mapping
-                            </FluentButton>
-                        </div>
-                    </FluentCard>
-                }
+                    <div class="action-cluster">
+                        <FluentButton Appearance="Appearance.Accent" Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)" Loading="_isLoading" OnClick="CommitImportAsync">
+                            Commit Import (@_previewResult.ImportedCount transactions)
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => _step = ImportStep.ColumnMapping)">
+                            Back to Mapping
+                        </FluentButton>
+                    </div>
+                </section>
+            }
 
-                @if (_step == ImportStep.Complete && _importResult is not null)
-                {
-                    <FluentCard Class="surface-card panel-stack" aria-label="Import complete">
+            @if (_step == ImportStep.Complete && _importResult is not null)
+            {
+                <section class="import-stage">
+                    <div class="import-section-heading import-section-heading--split">
                         <div>
-                            <span class="eyebrow">Step 4</span>
-                            <h2 class="section-heading">Import complete</h2>
+                            <h2 id="import-workspace-title">Commit</h2>
+                            <p>Review the result summary and move directly to the next useful action.</p>
                         </div>
+                        <span class="import-stage__eyebrow">Step 4 · Complete</span>
+                    </div>
 
-                        <div class="detail-grid">
-                            <StatCard Label="Imported">@_importResult.ImportedCount</StatCard>
-                            <StatCard Label="Duplicates skipped">@_importResult.DuplicateCount</StatCard>
-                            <StatCard Label="Errors">@_importResult.ErrorCount</StatCard>
-                            <StatCard Label="Status">@_importResult.Status</StatCard>
-                        </div>
+                    <div class="detail-grid">
+                        <StatCard Label="Imported">@_importResult.ImportedCount</StatCard>
+                        <StatCard Label="Duplicates skipped">@_importResult.DuplicateCount</StatCard>
+                        <StatCard Label="Errors">@_importResult.ErrorCount</StatCard>
+                        <StatCard Label="Status">@_importResult.Status</StatCard>
+                    </div>
 
-                        <div class="action-cluster">
-                            <FluentButton Appearance="Appearance.Accent"
-                                          OnClick="@(() => Navigation.NavigateTo($"/accounts/{_selectedAccountId}"))">
-                                View Account
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
-                                Import Another File
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => Navigation.NavigateTo("/import/history"))">
-                                Import History
-                            </FluentButton>
-                        </div>
-                    </FluentCard>
-                }
-            </section>
+                    <div class="action-cluster">
+                        <FluentButton Appearance="Appearance.Accent" OnClick='@(() => Navigation.NavigateTo($"/accounts/{_selectedAccountId}"))'>
+                            View Account
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Outline" OnClick="ResetImport">
+                            Import Another File
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => Navigation.NavigateTo("/import/history"))">
+                            Import History
+                        </FluentButton>
+                    </div>
+                </section>
+            }
+        </section>
+
+        <aside class="import-inspector" aria-labelledby="import-inspector-title">
+            <div class="import-section-heading">
+                <h2 id="import-inspector-title">Workflow context</h2>
+                <p>Keep account, mapping, plugin, and commit context visible without crowding the central bench.</p>
+            </div>
+
+            <div class="import-inspector__stack">
+                <article class="import-inspector__item">
+                    <span>Selected account</span>
+                    <strong>@SelectedAccountLabel</strong>
+                    <p>@SelectedAccountDetail</p>
+                </article>
+                <article class="import-inspector__item">
+                    <span>Detected format</span>
+                    <strong>@DetectedFormatLabel</strong>
+                    <p>@RegisteredFormatsLabel</p>
+                </article>
+                <article class="import-inspector__item">
+                    <span>Mapping health</span>
+                    <strong>@MappingHealthTitle</strong>
+                    <p>@MappingHealthDetail</p>
+                </article>
+                <article class="import-inspector__item">
+                    <span>Commit impact</span>
+                    <strong>@CommitImpactTitle</strong>
+                    <p>@CommitImpactDetail</p>
+                </article>
+            </div>
+        </aside>
+    </div>
+
+    <section class="import-exceptions" aria-labelledby="import-exceptions-title">
+        <div class="import-section-heading">
+            <h2 id="import-exceptions-title">Errors and exceptions</h2>
+            <p>Make unsupported formats, missing mappings, and row failures legible and actionable.</p>
+        </div>
+
+        <div class="import-exceptions__list">
+            @foreach (var item in WorkflowExceptions)
+            {
+                <article class="@GetExceptionClass(item.Tone)">
+                    <strong>@item.Title</strong>
+                    <p>@item.Detail</p>
+                </article>
+            }
+        </div>
+    </section>
+</section>
 
 @code {
-    private enum ImportStep { Upload, ColumnMapping, Preview, Complete }
+    private enum ImportStep
+    {
+        Upload,
+        ColumnMapping,
+        Preview,
+        Complete,
+    }
+
+    private static readonly IReadOnlyList<ImportStepDescriptor> ImportSteps =
+    [
+        new(1, ImportStep.Upload, "Upload", "Select the account, attach the file, and detect the format."),
+        new(2, ImportStep.ColumnMapping, "Mapping", "Confirm required fields, sample rows, and advanced settings."),
+        new(3, ImportStep.Preview, "Preview", "Inspect duplicates, errors, and the exact write impact."),
+        new(4, ImportStep.Complete, "Commit", "Confirm the result and move to the next useful action."),
+    ];
 
     private ImportStep _step = ImportStep.Upload;
     private List<AccountResponse> _accounts = [];
@@ -276,16 +336,54 @@
     private string? _errorMessage;
     private string? _successMessage;
     private bool _isLoading;
-    private readonly HashSet<string> _registeredImportFormats =
-        new(StringComparer.OrdinalIgnoreCase);
-
-    // Advanced import settings — comma-separated strings converted to lists on save/preview.
+    private readonly HashSet<string> _registeredImportFormats = new(StringComparer.OrdinalIgnoreCase);
     private string _buyKeywords = "buy, purchase, contribution, reinvest, deposit, in, long";
     private string _sellKeywords = "sell, redeem, withdraw, out";
     private string _incomeKeywords = "interest, dividend, distribution";
     private string _cashEquivalentSymbols = "CASH";
-    private string _ignoreRowPatterns = "";
+    private string _ignoreRowPatterns = string.Empty;
     private bool _amountSignFlipped;
+
+    private AccountResponse? SelectedAccount =>
+        _selectedAccountId is null
+            ? null
+            : _accounts.FirstOrDefault(account => account.Id == _selectedAccountId.Value);
+
+    private string SelectedAccountLabel => SelectedAccount?.Name ?? "No account selected";
+
+    private string SelectedAccountDetail =>
+        SelectedAccount is null
+            ? "Pick a destination account before previewing the file."
+            : $"{SelectedAccount.AccountType} · {FormatInstitution(SelectedAccount)}";
+
+    private string DetectedFormatLabel => _filePreview?.FileFormat ?? (_selectedFile is null ? "No file attached" : "Scanning pending");
+
+    private string RegisteredFormatsLabel =>
+        _registeredImportFormats.Count == 0
+            ? "No registered import plugins are available."
+            : $"Registered formats: {string.Join(", ", _registeredImportFormats.OrderBy(format => format, StringComparer.OrdinalIgnoreCase))}";
+
+    private string MappingHealthTitle => _step switch
+    {
+        ImportStep.Upload => "Waiting for preview",
+        ImportStep.ColumnMapping when HasRequiredMappings() => "Required fields mapped",
+        ImportStep.ColumnMapping => "Required mappings missing",
+        ImportStep.Preview => "Preview mapping locked",
+        ImportStep.Complete => "Committed with saved mapping",
+        _ => "Pending",
+    };
+
+    private string MappingHealthDetail => _filePreview is null
+        ? "Date, Amount, and Description are still waiting for source columns."
+        : $"{_columnMappings.Count} of {_filePreview.DetectedColumns.Count} detected columns are assigned.";
+
+    private string CommitImpactTitle => _previewResult is null ? "No preview yet" : $"{_previewResult.ImportedCount} rows ready";
+
+    private string CommitImpactDetail => _previewResult is null
+        ? "Run preview to see duplicates, errors, and write volume before commit."
+        : $"{_previewResult.DuplicateCount} duplicates and {_previewResult.ErrorCount} errors in the current pass.";
+
+    private List<WorkflowExceptionItem> WorkflowExceptions => BuildWorkflowExceptions();
 
     protected override async Task OnInitializedAsync()
     {
@@ -294,7 +392,9 @@
         foreach (var format in catalog?.TransactionImportFormats ?? [])
         {
             if (!string.IsNullOrWhiteSpace(format))
+            {
                 _registeredImportFormats.Add(format.Trim());
+            }
         }
     }
 
@@ -302,7 +402,9 @@
     {
         _errorMessage = null;
         if (args.Stream is null)
+        {
             return;
+        }
 
         _selectedFile = new MemoryStream();
         await args.Stream.CopyToAsync(_selectedFile);
@@ -313,7 +415,9 @@
     private async Task PreviewFileAsync()
     {
         if (_selectedAccountId is null || _selectedFile is null)
+        {
             return;
+        }
 
         _isLoading = true;
         _errorMessage = null;
@@ -335,52 +439,85 @@
             return;
         }
 
-        _sampleRows = _filePreview.SampleRows
-            .Select(r => new SampleRow { Values = r.ToList() })
-            .ToList();
+        _sampleRows = _filePreview.SampleRows.Select(row => new SampleRow { Values = row.ToList() }).ToList();
         _activeMappingId = null;
-
-        // Auto-detect common column names
         _columnMappings.Clear();
-        foreach (var col in _filePreview.DetectedColumns)
+
+        foreach (var column in _filePreview.DetectedColumns)
         {
-            var lower = col.ToLowerInvariant();
+            var lower = column.ToLowerInvariant();
             if (lower.Contains("date"))
-                _columnMappings[col] = "Date";
+            {
+                _columnMappings[column] = "Date";
+            }
             else if (lower.Contains("amount") || lower.Contains("total"))
-                _columnMappings[col] = "Amount";
+            {
+                _columnMappings[column] = "Amount";
+            }
             else if (lower.Contains("desc") || lower.Contains("memo") || lower.Contains("narrative"))
-                _columnMappings[col] = "Description";
-            else if (lower.Contains("payee") || lower.Contains("name"))
-                _columnMappings[col] = "Payee";
+            {
+                _columnMappings[column] = "Description";
+            }
+            else if (lower.Contains("payee"))
+            {
+                _columnMappings[column] = "Payee";
+            }
             else if (lower.Contains("category") || lower.Contains("cat"))
-                _columnMappings[col] = "Category";
+            {
+                _columnMappings[column] = "Category";
+            }
             else if (lower.Contains("note") || lower.Contains("comment"))
-                _columnMappings[col] = "Notes";
+            {
+                _columnMappings[column] = "Notes";
+            }
             else if (lower.Contains("ref") || lower.Contains("id") || lower.Contains("check"))
-                _columnMappings[col] = "ExternalId";
+            {
+                _columnMappings[column] = "ExternalId";
+            }
             else if (lower.Contains("settlement"))
-                _columnMappings[col] = "SettlementDate";
+            {
+                _columnMappings[column] = "SettlementDate";
+            }
             else if (lower.Contains("activity") && lower.Contains("sub"))
-                _columnMappings[col] = "ActivitySubType";
+            {
+                _columnMappings[column] = "ActivitySubType";
+            }
             else if (lower.Contains("activity"))
-                _columnMappings[col] = "ActivityType";
+            {
+                _columnMappings[column] = "ActivityType";
+            }
             else if (lower.Contains("direction") || lower.Contains("side"))
-                _columnMappings[col] = "Direction";
+            {
+                _columnMappings[column] = "Direction";
+            }
             else if (lower == "symbol" || lower.Contains("ticker"))
-                _columnMappings[col] = "Symbol";
-            else if (lower.Contains("security") || lower.Contains("name"))
-                _columnMappings[col] = "SecurityName";
+            {
+                _columnMappings[column] = "Symbol";
+            }
+            else if (lower.Contains("security"))
+            {
+                _columnMappings[column] = "SecurityName";
+            }
             else if (lower.Contains("quantity") || lower.Contains("shares") || lower == "qty")
-                _columnMappings[col] = "Quantity";
+            {
+                _columnMappings[column] = "Quantity";
+            }
             else if (lower.Contains("unit price") || lower.Contains("price") || lower.Contains("rate"))
-                _columnMappings[col] = "UnitPrice";
+            {
+                _columnMappings[column] = "UnitPrice";
+            }
             else if (lower.Contains("exchange") || lower == "exch" || lower == "market")
-                _columnMappings[col] = "Exchange";
+            {
+                _columnMappings[column] = "Exchange";
+            }
             else if (lower.Contains("cusip"))
-                _columnMappings[col] = "Cusip";
+            {
+                _columnMappings[column] = "Cusip";
+            }
             else if (lower.Contains("isin"))
-                _columnMappings[col] = "Isin";
+            {
+                _columnMappings[column] = "Isin";
+            }
         }
 
         _step = ImportStep.ColumnMapping;
@@ -388,27 +525,32 @@
     }
 
     private string GetMappingValue(string column) =>
-        _columnMappings.TryGetValue(column, out var val) ? val : "";
+        _columnMappings.TryGetValue(column, out var value) ? value : string.Empty;
 
     private void SetMappingValue(string column, string? value)
     {
         _activeMappingId = null;
         if (string.IsNullOrEmpty(value))
+        {
             _columnMappings.Remove(column);
+        }
         else
+        {
             _columnMappings[column] = value;
+        }
     }
 
     private async Task<Guid?> EnsureActiveMappingAsync()
     {
         if (_activeMappingId.HasValue)
+        {
             return _activeMappingId;
+        }
 
-        if (_filePreview is null)
+        if (_filePreview is null || !IsDetectedFormatRegistered())
+        {
             return null;
-
-        if (!IsDetectedFormatRegistered())
-            return null;
+        }
 
         var request = new CreateImportMappingRequest
         {
@@ -426,7 +568,9 @@
 
         var result = await ImportService.CreateMappingAsync(request);
         if (result is null)
+        {
             return null;
+        }
 
         _activeMappingId = result.Id;
         return result.Id;
@@ -440,7 +584,9 @@
     private async Task RunPreviewImportAsync()
     {
         if (_selectedAccountId is null || _selectedFile is null)
+        {
             return;
+        }
 
         if (!IsDetectedFormatRegistered())
         {
@@ -482,7 +628,9 @@
     private async Task CommitImportAsync()
     {
         if (_selectedAccountId is null || _selectedFile is null)
+        {
             return;
+        }
 
         if (!IsDetectedFormatRegistered())
         {
@@ -523,7 +671,9 @@
     private async Task SaveMappingAsync()
     {
         if (_filePreview is null)
+        {
             return;
+        }
 
         if (!IsDetectedFormatRegistered())
         {
@@ -547,9 +697,13 @@
 
         var result = await ImportService.CreateMappingAsync(request);
         if (result is not null)
+        {
             _successMessage = $"Mapping \"{result.Name}\" saved.";
+        }
         else
+        {
             _errorMessage = "Failed to save mapping.";
+        }
     }
 
     private void ResetImport()
@@ -570,30 +724,101 @@
         _sellKeywords = "sell, redeem, withdraw, out";
         _incomeKeywords = "interest, dividend, distribution";
         _cashEquivalentSymbols = "CASH";
-        _ignoreRowPatterns = "";
+        _ignoreRowPatterns = string.Empty;
         _amountSignFlipped = false;
     }
 
     private bool IsDetectedFormatRegistered()
     {
-        if (_filePreview is null)
+        if (_filePreview is null || _registeredImportFormats.Count == 0)
+        {
             return false;
-
-        if (_registeredImportFormats.Count == 0)
-            return false;
+        }
 
         return _registeredImportFormats.Contains(_filePreview.FileFormat);
     }
 
+    private List<WorkflowExceptionItem> BuildWorkflowExceptions()
+    {
+        var items = new List<WorkflowExceptionItem>();
+
+        if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            items.Add(new("Active import error", _errorMessage, "risk"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_successMessage))
+        {
+            items.Add(new("Recent success", _successMessage, "ok"));
+        }
+
+        if (_registeredImportFormats.Count == 0)
+        {
+            items.Add(new("No registered import plugins", "Register at least one transaction importer before uploading a file.", "risk"));
+        }
+
+        if (_accounts.Count == 0)
+        {
+            items.Add(new("No destination accounts", "Add an account first so the workflow has a valid import target.", "warning"));
+        }
+
+        if (_step == ImportStep.ColumnMapping && !HasRequiredMappings())
+        {
+            items.Add(new("Required mappings incomplete", "Map Date, Amount, and Description before previewing the import outcome.", "warning"));
+        }
+
+        if (_previewResult is not null && _previewResult.Errors.Count > 0)
+        {
+            items.Add(new("Preview errors present", $"{_previewResult.Errors.Count} row-level errors need review before commit.", "risk"));
+        }
+
+        if (_filePreview is not null && !IsDetectedFormatRegistered())
+        {
+            items.Add(new("Unsupported detected format", $"Detected format '{_filePreview.FileFormat}' is not backed by a registered importer.", "risk"));
+        }
+
+        if (items.Count == 0)
+        {
+            items.Add(new("No blocking exceptions", "The workflow context is clear and ready for the next step.", "ok"));
+        }
+
+        return items;
+    }
+
+    private string GetStepClass(ImportStep step)
+    {
+        if (_step == step)
+        {
+            return "import-step-rail__item import-step-rail__item--active";
+        }
+
+        return (int)_step > (int)step
+            ? "import-step-rail__item import-step-rail__item--complete"
+            : "import-step-rail__item";
+    }
+
+    private static string GetExceptionClass(string tone) => tone switch
+    {
+        "risk" => "import-exception import-exception--risk",
+        "warning" => "import-exception import-exception--warning",
+        "ok" => "import-exception import-exception--ok",
+        _ => "import-exception",
+    };
+
     private static List<string>? ParseKeywordList(string value) =>
         string.IsNullOrWhiteSpace(value)
             ? null
-            : value
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToList();
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private static string FormatInstitution(AccountResponse account) =>
+        string.IsNullOrWhiteSpace(account.Institution) ? "No institution" : account.Institution;
 
     public record SampleRow
     {
         public List<string> Values { get; init; } = [];
     }
+
+    private sealed record ImportStepDescriptor(int Index, ImportStep Step, string Label, string Description);
+
+    private sealed record WorkflowExceptionItem(string Title, string Detail, string Tone);
 }
