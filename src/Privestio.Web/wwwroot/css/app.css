@@ -2837,6 +2837,33 @@ fluent-anchor.app-rail__link--active::part(control) {
     color: var(--text-strong);
 }
 
+:root[data-theme="dark"] .app-utility-strip {
+    background: linear-gradient(180deg, rgba(24, 29, 31, 0.9), rgba(20, 24, 27, 0.86));
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="dark"] .app-utility-group--status .status-cluster,
+:root[data-theme="dark"] .theme-switcher,
+:root[data-theme="dark"] .app-utility-strip .app-button--secondary {
+    background: linear-gradient(180deg, rgba(35, 40, 43, 0.96), rgba(29, 34, 37, 0.94));
+    border-color: rgba(244, 239, 231, 0.14);
+}
+
+:root[data-theme="dark"] .theme-switcher__button {
+    color: rgba(244, 239, 231, 0.68);
+}
+
+:root[data-theme="dark"] .theme-switcher__button--active {
+    background: linear-gradient(180deg, rgba(124, 193, 187, 0.2), rgba(88, 163, 157, 0.12));
+    color: #f4efe7;
+    box-shadow: inset 0 0 0 1px rgba(124, 193, 187, 0.28);
+}
+
+:root[data-theme="dark"] .app-utility-strip .app-button--primary {
+    background: linear-gradient(180deg, rgba(88, 163, 157, 0.92), rgba(64, 135, 130, 0.96));
+    color: #f4efe7;
+}
+
 .dashboard-skeleton {
     display: block;
     border-radius: 999px;

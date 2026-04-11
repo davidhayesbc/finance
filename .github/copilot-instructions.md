@@ -179,6 +179,14 @@ return Results.Problem("Account not found", statusCode: 404);
 // ✅ PREFER: @key for list rendering optimization
 ```
 
+### UI Validation (Critical)
+
+- Always validate UI changes in both light mode and dark mode before considering the task complete.
+- When working on shared shell, navigation, page headers, forms, tables, charts, dialogs, drawers, or status surfaces, explicitly inspect the affected route in both themes.
+- Do not assume token-based theming is sufficient; verify the rendered page in each mode because hard-coded surfaces, borders, shadows, and text colors can drift.
+- Prefer checking both public routes (for example login and register) and authenticated product routes (for example dashboard, accounts, import, budgets, and forecast) when a shared layout or shared component changes.
+- A UI task is not complete until the affected pages remain readable, visually coherent, and state-appropriate in both themes.
+
 ## Testing Conventions
 
 ### Test-First Development (Critical)
