@@ -16,7 +16,7 @@
                         <span class="brand-mark">P</span>
                         <span>
                             <strong>Privestio</strong>
-                            <span class="brand-tagline">Private household finance instrument</span>
+                            <span class="brand-tagline">Balances, budgets, imports, and alerts</span>
                         </span>
                     </FluentAnchor>
 
@@ -45,38 +45,46 @@
                             <span class="brand-mark">P</span>
                             <span>
                                 <strong>Privestio</strong>
-                                <span class="brand-tagline">Private household finance instrument</span>
+                                <span class="brand-tagline">Balances, budgets, imports, and alerts</span>
                             </span>
                         </FluentAnchor>
                     }
                     else
                     {
-                        <span class="app-utility-strip__eyebrow">Stable shell</span>
+                        <span class="app-utility-strip__eyebrow">Current workspace</span>
                         <strong class="app-utility-strip__title">@GetFrameTitle()</strong>
                     }
                 </div>
 
                 <div class="app-utility-strip__controls">
-                    <div class="status-cluster">
+                    <div class="app-utility-group app-utility-group--status">
+                        <span class="app-utility-group__label">Status</span>
+                        <div class="status-cluster">
                         <OnlineIndicator />
                         <InstallPrompt />
+                        </div>
                     </div>
 
-                    <div class="theme-switcher" role="group" aria-label="Theme preference">
-                        <button type="button" class="theme-switcher__button @GetThemeButtonClass("system")"
-                                aria-pressed="@GetAriaPressed("system")" @onclick='() => SetThemePreferenceAsync("system")'>
-                            Auto
-                        </button>
-                        <button type="button" class="theme-switcher__button @GetThemeButtonClass("light")"
-                                aria-pressed="@GetAriaPressed("light")" @onclick='() => SetThemePreferenceAsync("light")'>
-                            Light
-                        </button>
-                        <button type="button" class="theme-switcher__button @GetThemeButtonClass("dark")"
-                                aria-pressed="@GetAriaPressed("dark")" @onclick='() => SetThemePreferenceAsync("dark")'>
-                            Dark
-                        </button>
+                    <div class="app-utility-group app-utility-group--display">
+                        <span class="app-utility-group__label">Display</span>
+                        <div class="theme-switcher" role="group" aria-label="Theme preference">
+                            <button type="button" class="theme-switcher__button @GetThemeButtonClass("system")"
+                                    aria-pressed="@GetAriaPressed("system")" @onclick='() => SetThemePreferenceAsync("system")'>
+                                Auto
+                            </button>
+                            <button type="button" class="theme-switcher__button @GetThemeButtonClass("light")"
+                                    aria-pressed="@GetAriaPressed("light")" @onclick='() => SetThemePreferenceAsync("light")'>
+                                Light
+                            </button>
+                            <button type="button" class="theme-switcher__button @GetThemeButtonClass("dark")"
+                                    aria-pressed="@GetAriaPressed("dark")" @onclick='() => SetThemePreferenceAsync("dark")'>
+                                Dark
+                            </button>
+                        </div>
                     </div>
 
+                    <div class="app-utility-group app-utility-group--session">
+                        <span class="app-utility-group__label">Access</span>
                     @if (AuthService.IsAuthenticated)
                     {
                         <button type="button" class="app-button app-button--secondary header-cta"
@@ -88,6 +96,7 @@
                     {
                         <a href="/login" class="app-button app-button--primary header-cta">Sign in</a>
                     }
+                    </div>
                 </div>
             </header>
 
@@ -107,7 +116,7 @@
             </main>
 
             <footer class="app-footer">
-                <p>Privestio keeps balances, workflows, and exceptions inside one stable household finance workspace.</p>
+                <p>Balances, workflows, and exceptions stay in one workspace.</p>
             </footer>
         </div>
     </div>

@@ -28,15 +28,15 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 ### 1. Replace The App Shell And Design Tokens
 
 - [x] Delete the current homepage-first mental model and define the authenticated product shell as the default design center.
-- [ ] Replace the current blue-forward token set with the thesis palette: bone, oat, graphite, coal, verdigris, gain, risk, and forecast tones.
-- [ ] Replace the current typography stack with a two-family system: Familjen Grotesk for operational UI and Newsreader for selective high-importance figures and headings.
+- [x] Replace the current blue-forward token set with the thesis palette: bone, oat, graphite, coal, verdigris, gain, risk, and forecast tones.
+- [x] Replace the current typography stack with a two-family system: Familjen Grotesk for operational UI and Newsreader for selective high-importance figures and headings.
 - [ ] Replace the current rounded, glossy shape language with near-square corners, thin dividers, flatter modules, and selective smoked-glass overlays.
-- [ ] Reduce decorative shadows until the layout still works without them.
+- [x] Reduce decorative shadows until the layout still works without them.
 - [ ] Define a single global spacing and density system tuned for dense analytical surfaces rather than marketing cards.
 - [x] Create a left navigation rail that feels architectural and remains stable across page changes.
 - [x] Move status, theme control, sync state, notifications, and profile actions into a restrained top utility strip instead of giving them equal weight with primary navigation.
 - [x] Ensure the app frame keeps navigation chrome stable while only the content plane changes.
-- [ ] Remove hero-style headlines and promotional support copy from authenticated product routes.
+- [x] Remove hero-style headlines and promotional support copy from authenticated product routes.
 
 ### 2. Build Shared Page Structure Components
 
