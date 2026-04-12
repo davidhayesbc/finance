@@ -36,7 +36,7 @@
 
         @if (_isLoading)
         {
-            <LoadingSpinner AriaLabel="Loading forecast posture" />
+            <LoadingSurface Variant="posture" Columns="5" />
         }
         else
         {
@@ -73,26 +73,16 @@
 
     <div class="forecast-core-grid">
         <PageRegion Name="primary" Class="forecast-plane" aria-labelledby="forecast-plane-title">
-            <SectionBand Title="Projection"
-                         TitleId="forecast-plane-title"
-                         Description="The balance trajectory owns the page and marks the months that matter."
-                         Meta="@GetHorizonLabel(_months)"
-                         HeaderClass="forecast-section-heading forecast-section-heading--split">
-
-            @if (_isLoading)
-            {
-                <LoadingSpinner AriaLabel="Loading forecast projection" />
-            }
-            else if (Periods.Count == 0)
-            {
-                <div class="forecast-inline-empty">
-                    <strong>No projection data is available yet.</strong>
-                    <p>Add recurring transactions and budgets to generate a balance trajectory.</p>
-                </div>
-            }
-            else
-            {
-                <div class="forecast-plane__canvas">
+            <ChartFrame Title="Projection"
+                        TitleId="forecast-plane-title"
+                        Description="The balance trajectory owns the page and marks the months that matter."
+                        Meta="@GetHorizonLabel(_months)"
+                        HeaderClass="forecast-section-heading forecast-section-heading--split"
+                        CanvasClass="forecast-plane__canvas"
+                        IsLoading="@_isLoading"
+                        IsEmpty="@(Periods.Count == 0)"
+                        EmptyTitle="No projection data is available yet."
+                        EmptyMessage="Add recurring transactions and budgets to generate a balance trajectory.">
                     <svg class="forecast-plane__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                         @if (ZeroLineY.HasValue)
                         {
@@ -108,9 +98,7 @@
                             <span class="forecast-plane__marker-label">@marker.Label</span>
                         </article>
                     }
-                </div>
-            }
-            </SectionBand>
+            </ChartFrame>
         </PageRegion>
 
         <PageRegion Name="exceptions" Class="forecast-drivers" aria-labelledby="forecast-drivers-title">
@@ -139,20 +127,13 @@
                      Meta="Base projection"
                      HeaderClass="forecast-section-heading forecast-section-heading--split">
 
-        @if (_isLoading)
-        {
-            <LoadingSpinner AriaLabel="Loading forecast periods" />
-        }
-        else if (Periods.Count == 0)
-        {
-            <div class="forecast-inline-empty">
-                <strong>No forecast ledger exists for this horizon.</strong>
-                <p>The projection plane and ledger will populate once forecast inputs are available.</p>
-            </div>
-        }
-        else
-        {
-            <div class="forecast-table-wrap">
+        <DenseTableSurface IsLoading="@_isLoading"
+                           IsEmpty="@(Periods.Count == 0)"
+                           LoadingRows="6"
+                           LoadingColumns="7"
+                           EmptyTitle="No forecast ledger exists for this horizon."
+                           EmptyMessage="The projection plane and ledger will populate once forecast inputs are available.">
+            <div class="forecast-table-wrap table-surface table-surface--native">
                 <table class="forecast-table">
                     <thead>
                         <tr>
@@ -183,7 +164,7 @@
                     </tbody>
                 </table>
             </div>
-        }
+        </DenseTableSurface>
         </SectionBand>
     </PageRegion>
 </section>

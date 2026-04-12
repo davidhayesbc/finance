@@ -86,22 +86,16 @@
     </PageRegion>
 
     <PageRegion Name="primary" Class="dashboard-plane" aria-labelledby="dashboard-net-worth-heading" data-testid="dashboard-net-worth-plane">
-        <div class="dashboard-plane__header">
-            <div>
-                <h2 id="dashboard-net-worth-heading">Net worth</h2>
-                <p>Trajectory across the selected range with optional evidence from asset and liability movement.</p>
-            </div>
-        </div>
-
-        <div class="dashboard-plane__body">
-            @if (_isLoading || _isHistoryLoading)
-            {
-                <div class="dashboard-chart-skeleton" aria-hidden="true">
-                    <span class="dashboard-skeleton dashboard-chart-skeleton__axis"></span>
-                    <span class="dashboard-skeleton dashboard-chart-skeleton__line"></span>
-                </div>
-            }
-            else if (_history is not null && _history.Series.Count > 0)
+        <ChartFrame Title="Net worth"
+                    TitleId="dashboard-net-worth-heading"
+                    Description="Trajectory across the selected range with optional evidence from asset and liability movement."
+                    HeaderClass="dashboard-plane__header"
+                    CanvasClass="dashboard-plane__body"
+                    IsLoading="@(_isLoading || _isHistoryLoading)"
+                    IsEmpty="@(_history is null || (_history.Series.Count == 0 && _history.Points.Count == 0))"
+                    EmptyTitle="No net worth history yet."
+                    EmptyMessage="Sync historical prices and keep account activity current to build a usable trend line.">
+            @if (_history is not null && _history.Series.Count > 0)
             {
                 <StackedNetWorthChart Series="_history.Series"
                                      EmptyTitle="No net worth history yet."
@@ -114,14 +108,7 @@
                                       EmptyTitle="No net worth history yet."
                                       EmptyMessage="Sync historical prices and keep account activity up to date to build your trend line." />
             }
-            else
-            {
-                <div class="empty-inline">
-                    <strong>No net worth history yet.</strong>
-                    <span>Sync historical prices and keep account activity current to build a usable trend line.</span>
-                </div>
-            }
-        </div>
+        </ChartFrame>
     </PageRegion>
 
     <div class="dashboard-support-grid">
@@ -228,20 +215,15 @@
                          Description="Largest balances and active account classes available for deeper review."
                          HeaderClass="dashboard-band__header">
 
-            @if (_isLoading)
-            {
-                <div class="dashboard-stack" aria-hidden="true">
-                    @for (var index = 0; index < 4; index++)
-                    {
-                        <span class="dashboard-skeleton dashboard-skeleton--row"></span>
-                    }
-                </div>
-            }
-            else if (_summary is { AccountSummaries.Count: > 0 })
-            {
-                <FluentDataGrid Items="_summary.AccountSummaries.OrderByDescending(a => a.Balance).ThenBy(a => a.Name).AsQueryable()"
+            <DenseTableSurface IsLoading="@_isLoading"
+                               IsEmpty="@(_summary is null || _summary.AccountSummaries.Count == 0)"
+                               LoadingRows="4"
+                               LoadingColumns="3"
+                               EmptyTitle="No accounts yet."
+                               EmptyMessage="Add your first account to turn this dashboard into a live working surface.">
+                <FluentDataGrid Items="_summary!.AccountSummaries.OrderByDescending(a => a.Balance).ThenBy(a => a.Name).AsQueryable()"
                                 TGridItem="AccountSummary"
-                                Class="data-grid--elevated data-grid--dashboard"
+                                Class="data-grid--elevated table-surface table-surface--grid data-grid--dashboard"
                                 ResizableColumns="true"
                                 ResizeType="DataGridResizeType.Discrete"
                                 HeaderCellAsButtonWithMenu="true"
@@ -257,14 +239,7 @@
                         @FormatMoney(context.Balance)
                     </TemplateColumn>
                 </FluentDataGrid>
-            }
-            else
-            {
-                <div class="empty-inline">
-                    <strong>No accounts yet.</strong>
-                    <span>Add your first account to turn this dashboard into a live working surface.</span>
-                </div>
-            }
+            </DenseTableSurface>
             </SectionBand>
         </PageRegion>
     </div>

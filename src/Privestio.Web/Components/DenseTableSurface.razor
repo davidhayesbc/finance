@@ -1,0 +1,50 @@
+<div class="@ComputedClass" @attributes="AdditionalAttributes">
+    @if (IsLoading)
+    {
+        <LoadingSurface Variant="table" Rows="@LoadingRows" Columns="@LoadingColumns" />
+    }
+    else if (IsEmpty)
+    {
+        <div class="empty-inline dense-table-surface__empty">
+            <strong>@EmptyTitle</strong>
+            <span>@EmptyMessage</span>
+        </div>
+    }
+    else
+    {
+        @ChildContent
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public bool IsEmpty { get; set; }
+
+    [Parameter]
+    public int LoadingRows { get; set; } = 5;
+
+    [Parameter]
+    public int LoadingColumns { get; set; } = 6;
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "No rows available.";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Add data to populate this table.";
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
+        ? "dense-table-surface"
+        : $"dense-table-surface {Class}";
+}

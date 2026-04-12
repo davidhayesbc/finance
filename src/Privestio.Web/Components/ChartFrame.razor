@@ -1,0 +1,78 @@
+<SectionBand Title="@Title"
+             TitleId="@TitleId"
+             Description="@Description"
+             Meta="@Meta"
+             HeaderClass="@HeaderClass"
+             Class="@ComputedClass"
+             @attributes="AdditionalAttributes">
+    <HeaderActions>
+        @HeaderActions
+    </HeaderActions>
+    <ChildContent>
+        @if (IsLoading)
+        {
+            <LoadingSurface Variant="chart" Class="chart-frame__loading" />
+        }
+        else if (IsEmpty)
+        {
+            <div class="empty-inline chart-frame__empty">
+                <strong>@EmptyTitle</strong>
+                <span>@EmptyMessage</span>
+            </div>
+        }
+        else
+        {
+            <div class="chart-frame__canvas @CanvasClass">
+                @ChildContent
+            </div>
+        }
+    </ChildContent>
+</SectionBand>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? TitleId { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public string? Meta { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public bool IsEmpty { get; set; }
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "No chart data yet.";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Add more data to populate this chart.";
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string HeaderClass { get; set; } = "section-band__header";
+
+    [Parameter]
+    public string CanvasClass { get; set; } = string.Empty;
+
+    [Parameter]
+    public RenderFragment? HeaderActions { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
+        ? "chart-frame"
+        : $"chart-frame {Class}";
+}

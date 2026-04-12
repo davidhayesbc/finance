@@ -44,9 +44,9 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 - [x] Rebuild the page header component so it supports a short utility description, one context selector, and at most one or two high-value actions.
 - [x] Create reusable band components for posture strips, risk lists, allocation or composition bands, and analytic support zones.
 - [x] Create a reusable right-side inspector or side-sheet pattern for editing, drill-in, and exception review.
-- [ ] Create a dense table surface standard with consistent header treatment, row density, hover tone, active-row styling, and inline actions.
-- [ ] Create a shared chart frame with consistent title, range control placement, tooltip behavior, empty states, and loading behavior.
-- [ ] Create localized loading patterns that preserve layout structure instead of replacing whole pages with spinners.
+- [x] Create a dense table surface standard with consistent header treatment, row density, hover tone, active-row styling, and inline actions.
+- [x] Create a shared chart frame with consistent title, range control placement, tooltip behavior, empty states, and loading behavior.
+- [x] Create localized loading patterns that preserve layout structure instead of replacing whole pages with spinners.
 - [ ] Create empty states that explain what is missing, what action unlocks data, and where the user remains in the workflow.
 - [ ] Create error states that attach to the affected surface first and only escalate to page-level bars when the whole workflow is blocked.
 

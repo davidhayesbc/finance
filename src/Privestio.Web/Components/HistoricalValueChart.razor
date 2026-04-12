@@ -7,7 +7,7 @@
 }
 else
 {
-    <ApexChart TItem="ValueHistoryPointResponse" Title="" Height="@Height">
+    <ApexChart TItem="ValueHistoryPointResponse" Title="" Height="@Height" Options="_options">
         <ApexPointSeries TItem="ValueHistoryPointResponse" Items="_displayPoints" SeriesType="SeriesType.Line"
                          Name="@SeriesName" XValue="@GetXAxisLabel" YAggregate="@(items => items.Sum(i => i.Value))" />
     </ApexChart>
@@ -22,6 +22,7 @@ else
 
     private IReadOnlyList<ValueHistoryPointResponse> _displayPoints = [];
     private bool _groupedMonthly;
+    private readonly ApexChartOptions<ValueHistoryPointResponse> _options = BuildOptions();
 
     protected override void OnParametersSet()
     {
@@ -39,4 +40,15 @@ else
 
     private string GetXAxisLabel(ValueHistoryPointResponse point) =>
     _groupedMonthly ? point.Date.ToString("MMM yyyy") : point.Date.ToString("MMM d");
+
+    private static ApexChartOptions<ValueHistoryPointResponse> BuildOptions() =>
+        new()
+        {
+            Chart = new Chart { Animations = new Animations { Enabled = false } },
+            DataLabels = new DataLabels { Enabled = false },
+            Stroke = new Stroke { Curve = Curve.Straight, Width = 2 },
+            Tooltip = new Tooltip { Enabled = true, Shared = true, Intersect = false },
+            Grid = new Grid { StrokeDashArray = 2 },
+            Xaxis = new XAxis { Tooltip = new XAxisTooltip { Enabled = false } },
+        };
 }

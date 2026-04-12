@@ -129,7 +129,7 @@
                     <section class="import-stage__panel">
                         <h3 class="section-heading">Sample rows</h3>
                         <FluentDataGrid Items="_sampleRows.AsQueryable()" aria-label="File preview data" TGridItem="SampleRow"
-                                        Class="data-grid--elevated data-grid--import-preview" ResizableColumns="true"
+                                        Class="data-grid--elevated table-surface table-surface--grid data-grid--import-preview" ResizableColumns="true"
                                         ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
                                         ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                             @foreach (var (columnName, index) in _filePreview.DetectedColumns.Select((value, idx) => (value, idx)))
@@ -197,7 +197,7 @@
                             <h3 class="section-heading">Errors</h3>
                             <FluentDataGrid Items="_previewResult.Errors.OrderBy(error => error.RowNumber).AsQueryable()"
                                             aria-label="Import errors" TGridItem="ImportErrorDetail"
-                                            Class="data-grid--elevated data-grid--import-errors" ResizableColumns="true"
+                                            Class="data-grid--elevated table-surface table-surface--grid data-grid--import-errors" ResizableColumns="true"
                                             ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
                                             ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                                 <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" Sortable="true" Width="88px" />

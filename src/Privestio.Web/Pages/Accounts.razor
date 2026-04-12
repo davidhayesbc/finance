@@ -65,40 +65,28 @@
     </PageRegion>
 
     <PageRegion Name="supporting" Class="accounts-history" aria-labelledby="accounts-history-title">
-        <SectionBand Title="Net worth history"
-                     TitleId="accounts-history-title"
-                     Description="Compact trend evidence above the main ledger, with the frame kept stable during range changes."
-                     HeaderClass="accounts-section-heading accounts-section-heading--split">
+        <ChartFrame Title="Net worth history"
+                    TitleId="accounts-history-title"
+                    Description="Compact trend evidence above the main ledger, with the frame kept stable during range changes."
+                    HeaderClass="accounts-section-heading accounts-section-heading--split"
+                    CanvasClass="accounts-history__body"
+                    IsLoading="@(_isLoading || _isLoadingHistory)"
+                    IsEmpty="@(_netWorthHistory is null || _netWorthHistory.Points.Count == 0)"
+                    EmptyTitle="History is unavailable right now."
+                    EmptyMessage="The strip stays visible so the page still reads like one ledger workspace.">
             <HeaderActions>
                 <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
                                       Disabled="@(_isLoadingHistory || _isSyncingHistory)" OnChange="HandleHistoryRangeChangedAsync" />
             </HeaderActions>
             <ChildContent>
-                <div class="accounts-history__body">
-                    @if (_isLoading)
-                    {
-                        <LoadingSpinner AriaLabel="Loading accounts" />
-                    }
-                    else if (_isLoadingHistory)
-                    {
-                        <LoadingSpinner AriaLabel="Loading net worth history" />
-                    }
-                    else if (_netWorthHistory is not null)
-                    {
-                        <HistoricalValueChart Points="_netWorthHistory.Points" SeriesName="Net Worth"
-                                              EmptyTitle="No net worth history yet."
-                                              EmptyMessage="Sync historical prices and keep account activity current to build the account trend line." />
-                    }
-                    else
-                    {
-                        <div class="accounts-inline-empty">
-                            <strong>History is unavailable right now.</strong>
-                            <p>The strip stays visible so the page still reads like one ledger workspace.</p>
-                        </div>
-                    }
-                </div>
+                @if (_netWorthHistory is not null)
+                {
+                    <HistoricalValueChart Points="_netWorthHistory.Points" SeriesName="Net Worth"
+                                          EmptyTitle="No net worth history yet."
+                                          EmptyMessage="Sync historical prices and keep account activity current to build the account trend line." />
+                }
             </ChildContent>
-        </SectionBand>
+        </ChartFrame>
     </PageRegion>
 
     <div class="accounts-support-grid">
@@ -145,21 +133,13 @@
                      Description="Account name, type, institution, status, last updated, and current balance in one calm ledger."
                      Meta='@($"{FilteredAccounts.Count} account{(FilteredAccounts.Count == 1 ? string.Empty : "s")}")'
                      HeaderClass="accounts-section-heading accounts-section-heading--split">
-
-        @if (_isLoading)
-        {
-            <LoadingSpinner AriaLabel="Loading accounts ledger" />
-        }
-        else if (FilteredAccounts.Count == 0)
-        {
-            <div class="accounts-inline-empty">
-                <strong>No accounts yet.</strong>
-                <p>Add your first account to turn this shell into a live ledger.</p>
-            </div>
-        }
-        else
-        {
-            <div class="accounts-ledger__table-wrap">
+        <DenseTableSurface IsLoading="@_isLoading"
+                           IsEmpty="@(FilteredAccounts.Count == 0)"
+                           LoadingRows="6"
+                           LoadingColumns="7"
+                           EmptyTitle="No accounts yet."
+                           EmptyMessage="Add your first account to turn this shell into a live ledger.">
+            <div class="accounts-ledger__table-wrap table-surface table-surface--native">
                 <table class="accounts-ledger__table">
                     <thead>
                         <tr>
@@ -199,7 +179,7 @@
                     </tbody>
                 </table>
             </div>
-        }
+        </DenseTableSurface>
         </SectionBand>
     </PageRegion>
 </section>

@@ -702,6 +702,183 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     gap: var(--space-3);
 }
 
+.dense-table-surface,
+.chart-frame {
+    min-width: 0;
+}
+
+.dense-table-surface__empty,
+.chart-frame__empty {
+    min-height: 220px;
+}
+
+.chart-frame__canvas {
+    min-height: 280px;
+}
+
+.loading-surface {
+    display: grid;
+    gap: 14px;
+    min-height: 220px;
+}
+
+.loading-surface__line {
+    display: block;
+    min-height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--surface-border) 62%, transparent), color-mix(in srgb, var(--surface-raised) 92%, #fff), color-mix(in srgb, var(--surface-border) 62%, transparent));
+    background-size: 220% 100%;
+    animation: loading-shimmer 1.4s ease-in-out infinite;
+}
+
+.loading-surface__line--label {
+    width: 34%;
+}
+
+.loading-surface__line--value {
+    width: 58%;
+    min-height: 28px;
+}
+
+.loading-surface__line--header {
+    min-height: 10px;
+}
+
+.loading-surface__line--axis {
+    align-self: end;
+    width: 100%;
+    min-height: 220px;
+    border-radius: var(--radius-lg);
+}
+
+.loading-surface__line--curve {
+    width: 88%;
+    min-height: 10px;
+    justify-self: center;
+    margin-top: -120px;
+}
+
+.loading-surface__table-head,
+.loading-surface__table-row,
+.loading-surface__posture-grid,
+.loading-surface__panel-stack {
+    display: grid;
+    gap: 12px;
+}
+
+.loading-surface__table-head,
+.loading-surface__table-row {
+    grid-template-columns: repeat(var(--loading-columns, 5), minmax(0, 1fr));
+}
+
+.loading-surface--table {
+    --loading-columns: 6;
+}
+
+.loading-surface__table-body,
+.loading-surface__panel-stack {
+    display: grid;
+    gap: 10px;
+}
+
+.loading-surface__table-row {
+    padding: 12px 0;
+    border-top: 1px solid color-mix(in srgb, var(--surface-border) 72%, transparent);
+}
+
+.loading-surface__posture-grid {
+    grid-template-columns: repeat(var(--loading-columns, 5), minmax(0, 1fr));
+    border-top: 1px solid var(--surface-border);
+    padding-top: 18px;
+}
+
+.loading-surface--posture {
+    --loading-columns: 5;
+}
+
+.loading-surface__posture-item,
+.loading-surface__panel-item {
+    display: grid;
+    gap: 8px;
+}
+
+.loading-surface__panel-item {
+    padding: 14px 16px;
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface-raised) 94%, var(--page-bg));
+}
+
+.table-surface {
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+    overflow: hidden;
+}
+
+.table-surface--native table,
+.table-surface--grid table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-surface--native thead th,
+.table-surface--grid th {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-soft);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+    background: color-mix(in srgb, var(--surface) 94%, #fff);
+}
+
+.table-surface--native tbody tr,
+.table-surface--grid tbody tr {
+    transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.table-surface--native tbody td,
+.table-surface--grid td {
+    padding: 13px 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 72%, transparent);
+    vertical-align: top;
+}
+
+.table-surface--native tbody tr:hover,
+.table-surface--grid tbody tr:hover td {
+    background: color-mix(in srgb, var(--surface-raised) 86%, var(--accent-soft));
+}
+
+.table-surface--native tbody tr:focus-within,
+.table-surface--grid tbody tr:focus-within td,
+.table-surface--native tbody tr.is-active,
+.table-surface--grid tbody tr.is-active td {
+    background: color-mix(in srgb, var(--surface-raised) 78%, var(--accent-soft));
+}
+
+.table-surface--native tbody tr:last-child td,
+.table-surface--grid tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.table-surface .grid-actions,
+.table-surface .budgets-actions {
+    justify-content: flex-end;
+}
+
+@keyframes loading-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -20% 0;
+    }
+}
+
 .detail-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

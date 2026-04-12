@@ -1,0 +1,75 @@
+<div class="@ComputedClass" aria-hidden="true" @attributes="AdditionalAttributes">
+    @switch (Variant)
+    {
+        case "table":
+            <div class="loading-surface__table-head">
+                @for (var index = 0; index < Columns; index++)
+                {
+                    <span class="loading-surface__line loading-surface__line--header"></span>
+                }
+            </div>
+            <div class="loading-surface__table-body">
+                @for (var rowIndex = 0; rowIndex < Rows; rowIndex++)
+                {
+                    <div class="loading-surface__table-row">
+                        @for (var columnIndex = 0; columnIndex < Columns; columnIndex++)
+                        {
+                            <span class="loading-surface__line"></span>
+                        }
+                    </div>
+                }
+            </div>
+            break;
+        case "posture":
+            <div class="loading-surface__posture-grid">
+                @for (var index = 0; index < Columns; index++)
+                {
+                    <div class="loading-surface__posture-item">
+                        <span class="loading-surface__line loading-surface__line--label"></span>
+                        <span class="loading-surface__line loading-surface__line--value"></span>
+                        <span class="loading-surface__line"></span>
+                    </div>
+                }
+            </div>
+            break;
+        case "panel":
+            <div class="loading-surface__panel-stack">
+                @for (var index = 0; index < Rows; index++)
+                {
+                    <div class="loading-surface__panel-item">
+                        <span class="loading-surface__line loading-surface__line--label"></span>
+                        <span class="loading-surface__line loading-surface__line--value"></span>
+                        <span class="loading-surface__line"></span>
+                    </div>
+                }
+            </div>
+            break;
+        default:
+            <div class="loading-surface__chart-frame">
+                <span class="loading-surface__line loading-surface__line--axis"></span>
+                <span class="loading-surface__line loading-surface__line--curve"></span>
+            </div>
+            break;
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Variant { get; set; } = "chart";
+
+    [Parameter]
+    public int Rows { get; set; } = 4;
+
+    [Parameter]
+    public int Columns { get; set; } = 5;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
+        ? $"loading-surface loading-surface--{Variant}"
+        : $"loading-surface loading-surface--{Variant} {Class}";
+}

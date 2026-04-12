@@ -37,7 +37,7 @@
 
         @if (_isLoading)
         {
-            <LoadingSpinner AriaLabel="Loading budget posture" />
+            <LoadingSurface Variant="posture" Columns="5" />
         }
         else
         {
@@ -80,20 +80,13 @@
                          Meta='@($"{_summaries.Count} categor{(_summaries.Count == 1 ? "y" : "ies")}")'
                          HeaderClass="budgets-section-heading budgets-section-heading--split">
 
-            @if (_isLoading)
-            {
-                <LoadingSpinner AriaLabel="Loading category performance" />
-            }
-            else if (_summaries.Count == 0)
-            {
-                <div class="budgets-inline-empty">
-                    <strong>No category performance yet.</strong>
-                    <p>Add a budget definition for this period to turn the month review into a live ledger.</p>
-                </div>
-            }
-            else
-            {
-                <div class="budgets-table-wrap">
+            <DenseTableSurface IsLoading="@_isLoading"
+                               IsEmpty="@(_summaries.Count == 0)"
+                               LoadingRows="6"
+                               LoadingColumns="6"
+                               EmptyTitle="No category performance yet."
+                               EmptyMessage="Add a budget definition for this period to turn the month review into a live ledger.">
+                <div class="budgets-table-wrap table-surface table-surface--native">
                     <table class="budgets-table">
                         <thead>
                             <tr>
@@ -132,7 +125,7 @@
                         </tbody>
                     </table>
                 </div>
-            }
+            </DenseTableSurface>
             </SectionBand>
         </PageRegion>
 
@@ -225,20 +218,13 @@
             </InspectorPanel>
         }
 
-        @if (_isLoading)
-        {
-            <LoadingSpinner AriaLabel="Loading budget definitions" />
-        }
-        else if (_budgets.Count == 0)
-        {
-            <div class="budgets-inline-empty">
-                <strong>No budget definitions saved for @PeriodLabel.</strong>
-                <p>Use the add action to create the first budget definition for this period.</p>
-            </div>
-        }
-        else
-        {
-            <div class="budgets-table-wrap">
+        <DenseTableSurface IsLoading="@_isLoading"
+                           IsEmpty="@(_budgets.Count == 0)"
+                           LoadingRows="5"
+                           LoadingColumns="6"
+                           EmptyTitle='@($"No budget definitions saved for {PeriodLabel}.")'
+                           EmptyMessage="Use the add action to create the first budget definition for this period.">
+            <div class="budgets-table-wrap table-surface table-surface--native">
                 <table class="budgets-table budgets-table--definitions">
                     <thead>
                         <tr>
@@ -270,7 +256,7 @@
                     </tbody>
                 </table>
             </div>
-        }
+        </DenseTableSurface>
         </SectionBand>
     </PageRegion>
 </section>
