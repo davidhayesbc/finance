@@ -137,45 +137,47 @@
                            LoadingColumns="7"
                            EmptyTitle="No accounts yet."
                            EmptyMessage="Add your first account to turn this shell into a live ledger.">
-            <div class="accounts-ledger__table-wrap table-surface table-surface--native">
-                <table class="accounts-ledger__table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Account</th>
-                            <th scope="col">Type</th>
-                            <th scope="col">Institution</th>
-                            <th scope="col">Status</th>
-                            <th scope="col">Last updated</th>
-                            <th scope="col" class="accounts-ledger__numeric">Balance</th>
-                            <th scope="col">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var account in FilteredAccounts)
-                        {
-                            <tr>
-                                <td>
-                                    <div class="accounts-ledger__identity">
-                                        <strong>@account.Name</strong>
-                                        <span>@BuildAccountSubline(account)</span>
-                                    </div>
-                                </td>
-                                <td>@account.AccountType</td>
-                                <td>@FormatInstitution(account)</td>
-                                <td>
-                                    <span class="@GetStatusBadgeClass(account)">@BuildStatusLabel(account)</span>
-                                </td>
-                                <td>@FormatUpdated(account.UpdatedAt)</td>
-                                <td class="accounts-ledger__numeric">@FormatMoney(account.CurrentBalance, account.Currency)</td>
-                                <td>
-                                    <button type="button" class="accounts-ledger__action" @onclick='() => Navigation.NavigateTo($"/accounts/{account.Id}")'>
-                                        View
-                                    </button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+            <div class="table-surface table-surface--grid table-surface--scroll" data-testid="accounts-ledger-grid">
+                <FluentDataGrid Items="FilteredAccounts.AsQueryable()"
+                                TGridItem="AccountResponse"
+                                Class="data-grid--elevated data-grid--accounts"
+                                aria-label="Accounts ledger"
+                                ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeColumnOnAllRows="false"
+                                ShowHover="true"
+                                DisplayMode="DataGridDisplayMode.Table"
+                                RowSize="DataGridRowSize.Medium"
+                                ItemKey="@(account => account.Id)">
+                    <TemplateColumn Title="Account" SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Name))" Width="250px">
+                        <div class="accounts-ledger__identity">
+                            <strong>@context.Name</strong>
+                            <span>@BuildAccountSubline(context)</span>
+                        </div>
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(account => account.AccountType)" Title="Type" Sortable="true" Width="140px" />
+                    <TemplateColumn Title="Institution" SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Institution ?? string.Empty))" Width="180px">
+                        <span class="cell-truncate" title="@FormatInstitution(context)">@FormatInstitution(context)</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Status" SortBy="@(GridSort<AccountResponse>.ByAscending(a => BuildStatusLabel(a)))" Width="120px">
+                        <span class="@GetStatusBadgeClass(context)">@BuildStatusLabel(context)</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Last updated" SortBy="@(GridSort<AccountResponse>.ByDescending(a => a.UpdatedAt))" Width="140px">
+                        @FormatUpdated(context.UpdatedAt)
+                    </TemplateColumn>
+                    <TemplateColumn Title="Balance" SortBy="@(GridSort<AccountResponse>.ByDescending(a => Math.Abs(a.CurrentBalance)))" Width="150px">
+                        <div class="accounts-ledger__numeric">@FormatMoney(context.CurrentBalance, context.Currency)</div>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Action" Width="110px">
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      Class="accounts-ledger__action"
+                                      OnClick='@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))'
+                                      aria-label='@($"View {context.Name}")'>
+                            View
+                        </FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
             </div>
         </DenseTableSurface>
         </SectionBand>
