@@ -11,9 +11,18 @@
 <PageTitle>Dashboard — Privestio</PageTitle>
 
 <section class="dashboard-shell" data-testid="dashboard-page">
-    <div class="dashboard-orientation" data-testid="dashboard-orientation">
+    <PageRegion Name="orientation" TagName="div" Class="dashboard-orientation" data-testid="dashboard-orientation">
         <PageHeader Eyebrow="Dashboard" Title="Dashboard"
-                    Description="Current financial position, recent movement, and active issues.">
+                    Description="Current financial position, recent movement, and active issues."
+                    UtilityDescription="Use the active range selector to recompose the page in place and keep the next two actions close.">
+            <Context>
+                <div>
+                    <span class="filter-label">Range</span>
+                    <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
+                                          Disabled="@(_isLoading || _isHistoryLoading || _isSyncingHistory)"
+                                          OnChange="HandleHistoryRangeChangedAsync" />
+                </div>
+            </Context>
             <Actions>
                 <div class="action-cluster">
                     <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
@@ -22,27 +31,15 @@
                     <FluentButton Appearance="Appearance.Accent" Loading="_isSyncingHistory" @onclick="SyncHistoricalPricesAsync">
                         Sync prices
                     </FluentButton>
-                    <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/notifications"))">
-                        Alerts
-                    </FluentButton>
                 </div>
             </Actions>
         </PageHeader>
 
-        <div class="dashboard-orientation__context">
-            <div>
-                <span class="filter-label">Range</span>
-                <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
-                                      Disabled="@(_isLoading || _isHistoryLoading || _isSyncingHistory)"
-                                      OnChange="HandleHistoryRangeChangedAsync" />
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(_syncMessage))
-            {
-                <FluentMessageBar Intent="@_syncMessageIntent">@_syncMessage</FluentMessageBar>
-            }
-        </div>
-    </div>
+        @if (!string.IsNullOrWhiteSpace(_syncMessage))
+        {
+            <FluentMessageBar Intent="@_syncMessageIntent">@_syncMessage</FluentMessageBar>
+        }
+    </PageRegion>
 
     @if (_summary is null && _history is null && !_isLoading)
     {
@@ -51,7 +48,7 @@
         </FluentMessageBar>
     }
 
-    <section class="dashboard-posture" aria-label="Financial posture" data-testid="dashboard-posture">
+    <PageRegion Name="primary" Class="dashboard-posture" aria-label="Financial posture" data-testid="dashboard-posture">
         @if (_isLoading)
         {
             @for (var index = 0; index < 5; index++)
@@ -86,9 +83,9 @@
                 <strong class="dashboard-posture__value">@BuildWatchlistItems().Count(item => item.Intent != MessageIntent.Success)</strong>
             </div>
         }
-    </section>
+    </PageRegion>
 
-    <section class="dashboard-plane" aria-labelledby="dashboard-net-worth-heading" data-testid="dashboard-net-worth-plane">
+    <PageRegion Name="primary" Class="dashboard-plane" aria-labelledby="dashboard-net-worth-heading" data-testid="dashboard-net-worth-plane">
         <div class="dashboard-plane__header">
             <div>
                 <h2 id="dashboard-net-worth-heading">Net worth</h2>
@@ -125,16 +122,14 @@
                 </div>
             }
         </div>
-    </section>
+    </PageRegion>
 
     <div class="dashboard-support-grid">
-        <section class="dashboard-band" aria-labelledby="dashboard-composition-heading">
-            <div class="dashboard-band__header">
-                <div>
-                    <h2 id="dashboard-composition-heading">Composition</h2>
-                    <p>How the household is distributed across major account classes.</p>
-                </div>
-            </div>
+        <PageRegion Name="supporting" Class="dashboard-band" aria-labelledby="dashboard-composition-heading">
+            <SectionBand Title="Composition"
+                         TitleId="dashboard-composition-heading"
+                         Description="How the household is distributed across major account classes."
+                         HeaderClass="dashboard-band__header">
 
             @if (_isLoading)
             {
@@ -172,15 +167,14 @@
                     <span>Add accounts and balances to populate the structural view.</span>
                 </div>
             }
-        </section>
+            </SectionBand>
+        </PageRegion>
 
-        <section class="dashboard-band" aria-labelledby="dashboard-pressure-heading">
-            <div class="dashboard-band__header">
-                <div>
-                    <h2 id="dashboard-pressure-heading">Pressure</h2>
-                    <p>Compact structural signals that indicate concentration or funding stress.</p>
-                </div>
-            </div>
+        <PageRegion Name="supporting" Class="dashboard-band" aria-labelledby="dashboard-pressure-heading">
+            <SectionBand Title="Pressure"
+                         TitleId="dashboard-pressure-heading"
+                         Description="Compact structural signals that indicate concentration or funding stress."
+                         HeaderClass="dashboard-band__header">
 
             <div class="dashboard-pressure-grid">
                 @foreach (var metric in BuildPressureMetrics())
@@ -192,17 +186,16 @@
                     </div>
                 }
             </div>
-        </section>
+            </SectionBand>
+        </PageRegion>
     </div>
 
     <div class="dashboard-lower-grid">
-        <section class="dashboard-band dashboard-band--watchlist" aria-labelledby="dashboard-watchlist-heading">
-            <div class="dashboard-band__header">
-                <div>
-                    <h2 id="dashboard-watchlist-heading">Watchlist</h2>
-                    <p>Items that need review before they distort balances, budgets, or forecast confidence.</p>
-                </div>
-            </div>
+        <PageRegion Name="exceptions" Class="dashboard-band dashboard-band--watchlist" aria-labelledby="dashboard-watchlist-heading">
+            <SectionBand Title="Watchlist"
+                         TitleId="dashboard-watchlist-heading"
+                         Description="Items that need review before they distort balances, budgets, or forecast confidence."
+                         HeaderClass="dashboard-band__header">
 
             <div class="dashboard-watchlist">
                 @foreach (var item in BuildWatchlistItems())
@@ -226,15 +219,14 @@
                     </div>
                 }
             </div>
-        </section>
+            </SectionBand>
+        </PageRegion>
 
-        <section class="dashboard-band dashboard-band--accounts" aria-labelledby="dashboard-accounts-heading">
-            <div class="dashboard-band__header">
-                <div>
-                    <h2 id="dashboard-accounts-heading">Accounts</h2>
-                    <p>Largest balances and active account classes available for deeper review.</p>
-                </div>
-            </div>
+        <PageRegion Name="supporting" Class="dashboard-band dashboard-band--accounts" aria-labelledby="dashboard-accounts-heading">
+            <SectionBand Title="Accounts"
+                         TitleId="dashboard-accounts-heading"
+                         Description="Largest balances and active account classes available for deeper review."
+                         HeaderClass="dashboard-band__header">
 
             @if (_isLoading)
             {
@@ -273,7 +265,8 @@
                     <span>Add your first account to turn this dashboard into a live working surface.</span>
                 </div>
             }
-        </section>
+            </SectionBand>
+        </PageRegion>
     </div>
 </section>
 

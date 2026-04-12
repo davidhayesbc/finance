@@ -1,0 +1,39 @@
+<SectionBand Title="@Title"
+             TitleId="@TitleId"
+             Description="@Description"
+             Meta="@Meta"
+             Class="@Class"
+             HeaderClass="@HeaderClass"
+             BodyClass="@GridClass"
+             @attributes="AdditionalAttributes">
+    @ChildContent
+</SectionBand>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? TitleId { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public string? Meta { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? HeaderClass { get; set; }
+
+    [Parameter]
+    public string? GridClass { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

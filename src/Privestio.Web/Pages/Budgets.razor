@@ -5,37 +5,35 @@
 <PageTitle>Budgets — Privestio</PageTitle>
 
 <section class="page-shell budgets-shell" data-testid="budgets-page">
-    <section class="budgets-orientation">
+    <PageRegion Name="orientation" Class="budgets-orientation">
         <PageHeader Eyebrow="Budgets" Title="Budgets"
-                    Description="Track the current month against category limits, rollover rules, and actual spend.">
+                    Description="Track the current month against category limits, rollover rules, and actual spend."
+                    UtilityDescription="Use the period selector to move month by month while keeping the creation action fixed.">
+            <Context>
+                <div>
+                    <span class="filter-label">Period</span>
+                    <div class="action-cluster">
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="ShowPreviousMonthAsync">Previous</FluentButton>
+                        <FluentButton Appearance="Appearance.Outline" OnClick="JumpToCurrentPeriodAsync">Current period</FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="ShowNextMonthAsync">Next</FluentButton>
+                    </div>
+                </div>
+            </Context>
             <Actions>
-                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">
-                    Add Budget
-                </FluentButton>
+                <div class="action-cluster">
+                    <FluentButton Appearance="Appearance.Outline" OnClick="LoadDataAsync">Refresh</FluentButton>
+                    <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm">Add Budget</FluentButton>
+                </div>
             </Actions>
         </PageHeader>
-    </section>
+    </PageRegion>
 
-    <section class="budgets-period-strip" aria-labelledby="budgets-period-title">
-        <div class="budgets-section-heading budgets-section-heading--split">
-            <div>
-                <h2 id="budgets-period-title">This month</h2>
-                <p>@PeriodLabel with quick period navigation and local refresh controls.</p>
-            </div>
-            <div class="action-cluster">
-                <FluentButton Appearance="Appearance.Stealth" OnClick="ShowPreviousMonthAsync">Previous</FluentButton>
-                <FluentButton Appearance="Appearance.Outline" OnClick="JumpToCurrentPeriodAsync">Current period</FluentButton>
-                <FluentButton Appearance="Appearance.Stealth" OnClick="ShowNextMonthAsync">Next</FluentButton>
-                <FluentButton Appearance="Appearance.Outline" OnClick="LoadDataAsync">Refresh</FluentButton>
-            </div>
-        </div>
-    </section>
-
-    <section class="budgets-posture" aria-labelledby="budgets-posture-title">
-        <div class="budgets-section-heading">
-            <h2 id="budgets-posture-title">Monthly posture</h2>
-            <p>Read the month before drilling into individual categories.</p>
-        </div>
+    <PageRegion Name="supporting" Class="budgets-posture" aria-labelledby="budgets-posture-title">
+        <PostureStrip Title="Monthly posture"
+                      TitleId="budgets-posture-title"
+                      Description="Read the month before drilling into individual categories."
+                      HeaderClass="budgets-section-heading"
+                      GridClass="budgets-posture__grid">
 
         @if (_isLoading)
         {
@@ -71,17 +69,16 @@
                 </article>
             </div>
         }
-    </section>
+        </PostureStrip>
+    </PageRegion>
 
     <div class="budgets-review-grid">
-        <section class="budgets-performance" aria-labelledby="budgets-performance-title">
-            <div class="budgets-section-heading budgets-section-heading--split">
-                <div>
-                    <h2 id="budgets-performance-title">Category performance</h2>
-                    <p>The category table is the primary judgment surface for the month.</p>
-                </div>
-                <span class="budgets-meta">@_summaries.Count categor@(_summaries.Count == 1 ? "y" : "ies")</span>
-            </div>
+        <PageRegion Name="primary" Class="budgets-performance" aria-labelledby="budgets-performance-title">
+            <SectionBand Title="Category performance"
+                         TitleId="budgets-performance-title"
+                         Description="The category table is the primary judgment surface for the month."
+                         Meta='@($"{_summaries.Count} categor{(_summaries.Count == 1 ? "y" : "ies")}")'
+                         HeaderClass="budgets-section-heading budgets-section-heading--split">
 
             @if (_isLoading)
             {
@@ -136,13 +133,14 @@
                     </table>
                 </div>
             }
-        </section>
+            </SectionBand>
+        </PageRegion>
 
-        <section class="budgets-pressure" aria-labelledby="budgets-pressure-title">
-            <div class="budgets-section-heading">
-                <h2 id="budgets-pressure-title">At risk</h2>
-                <p>Isolate interventions without burying the main performance table.</p>
-            </div>
+        <PageRegion Name="exceptions" Class="budgets-pressure" aria-labelledby="budgets-pressure-title">
+            <SectionBand Title="At risk"
+                         TitleId="budgets-pressure-title"
+                         Description="Isolate interventions without burying the main performance table."
+                         HeaderClass="budgets-section-heading">
 
             <div class="budgets-pressure__list">
                 @foreach (var item in PressureItems)
@@ -153,77 +151,78 @@
                     </article>
                 }
             </div>
-        </section>
+            </SectionBand>
+        </PageRegion>
     </div>
 
-    <section class="budgets-definitions" aria-labelledby="budgets-definitions-title">
-        <div class="budgets-section-heading budgets-section-heading--split">
-            <div>
-                <h2 id="budgets-definitions-title">Budget definitions</h2>
-                <p>Keep setup subordinate to the current-month judgment surface.</p>
-            </div>
-            <span class="budgets-meta">@_budgets.Count saved definition@(_budgets.Count == 1 ? string.Empty : "s")</span>
-        </div>
+    <PageRegion Name="supporting" Class="budgets-definitions" aria-labelledby="budgets-definitions-title">
+        <SectionBand Title="Budget definitions"
+                     TitleId="budgets-definitions-title"
+                     Description="Keep setup subordinate to the current-month judgment surface."
+                     Meta='@($"{_budgets.Count} saved definition{(_budgets.Count == 1 ? string.Empty : "s")}")'
+                     HeaderClass="budgets-section-heading budgets-section-heading--split">
 
         @if (_showForm)
         {
-            <section class="budgets-edit-band" aria-labelledby="budgets-edit-title">
-                <div class="budgets-section-heading budgets-section-heading--split">
-                    <div>
-                        <h3 id="budgets-edit-title">@(_editingBudgetId.HasValue ? "Edit budget" : "New budget")</h3>
-                        <p>Adjust one definition without losing the surrounding month context.</p>
-                    </div>
+            <InspectorPanel Title="@(_editingBudgetId.HasValue ? "Edit budget" : "New budget")"
+                            TitleId="budgets-edit-title"
+                            Description="Adjust one definition without losing the surrounding month context."
+                            HeadingLevel="3"
+                            Variant="sheet"
+                            Class="budgets-edit-band">
+                <HeaderActions>
                     <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Close</FluentButton>
-                </div>
+                </HeaderActions>
+                <ChildContent>
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <FluentMessageBar Intent="@MessageIntent.Error">@_errorMessage</FluentMessageBar>
+                    }
 
-                @if (!string.IsNullOrWhiteSpace(_errorMessage))
-                {
-                    <FluentMessageBar Intent="@MessageIntent.Error">@_errorMessage</FluentMessageBar>
-                }
+                    <EditForm Model="_form" OnValidSubmit="SaveBudgetAsync" aria-label="Budget form">
+                        <DataAnnotationsValidator />
+                        <FluentValidationSummary />
 
-                <EditForm Model="_form" OnValidSubmit="SaveBudgetAsync" aria-label="Budget form">
-                    <DataAnnotationsValidator />
-                    <FluentValidationSummary />
+                        <div class="budgets-form-grid">
+                            <label class="budgets-form-field">
+                                <span>Category</span>
+                                <select @bind="_form.CategoryId" class="budgets-native-select" aria-label="Category" disabled="@(_categories.Count == 0)">
+                                    <option value="">Select category...</option>
+                                    @foreach (var category in OrderedCategories)
+                                    {
+                                        <option value="@category.Id.ToString()">@category.Name</option>
+                                    }
+                                </select>
+                            </label>
 
-                    <div class="budgets-form-grid">
-                        <label class="budgets-form-field">
-                            <span>Category</span>
-                            <select @bind="_form.CategoryId" class="budgets-native-select" aria-label="Category" disabled="@(_categories.Count == 0)">
-                                <option value="">Select category...</option>
-                                @foreach (var category in OrderedCategories)
-                                {
-                                    <option value="@category.Id.ToString()">@category.Name</option>
-                                }
-                            </select>
-                        </label>
+                            <label class="budgets-form-field">
+                                <span>Budget amount</span>
+                                <InputNumber @bind-Value="_form.Amount" class="budgets-native-input" />
+                            </label>
 
-                        <label class="budgets-form-field">
-                            <span>Budget amount</span>
-                            <InputNumber @bind-Value="_form.Amount" class="budgets-native-input" />
-                        </label>
+                            <label class="budgets-form-field">
+                                <span>Currency</span>
+                                <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
+                            </label>
 
-                        <label class="budgets-form-field">
-                            <span>Currency</span>
-                            <CurrencySelect @bind-Value="_form.Currency" Label="Currency" />
-                        </label>
-
-                        <label class="budgets-form-field budgets-form-field--wide">
-                            <span>Notes</span>
-                            <InputTextArea @bind-Value="_form.Notes" class="budgets-native-textarea" />
-                        </label>
-                    </div>
-
-                    <div class="budgets-form-actions">
-                        <FluentCheckbox @bind-Value="_form.RolloverEnabled" Label="Enable rollover for this category" />
-                        <div class="action-cluster">
-                            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isSaving">
-                                @(_editingBudgetId.HasValue ? "Update Budget" : "Create Budget")
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Cancel</FluentButton>
+                            <label class="budgets-form-field budgets-form-field--wide">
+                                <span>Notes</span>
+                                <InputTextArea @bind-Value="_form.Notes" class="budgets-native-textarea" />
+                            </label>
                         </div>
-                    </div>
-                </EditForm>
-            </section>
+
+                        <div class="budgets-form-actions">
+                            <FluentCheckbox @bind-Value="_form.RolloverEnabled" Label="Enable rollover for this category" />
+                            <div class="action-cluster">
+                                <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="_isSaving">
+                                    @(_editingBudgetId.HasValue ? "Update Budget" : "Create Budget")
+                                </FluentButton>
+                                <FluentButton Appearance="Appearance.Stealth" OnClick="CancelForm">Cancel</FluentButton>
+                            </div>
+                        </div>
+                    </EditForm>
+                </ChildContent>
+            </InspectorPanel>
         }
 
         @if (_isLoading)
@@ -272,7 +271,8 @@
                 </table>
             </div>
         }
-    </section>
+        </SectionBand>
+    </PageRegion>
 </section>
 
 @code {

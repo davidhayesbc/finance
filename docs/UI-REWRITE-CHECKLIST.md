@@ -13,7 +13,7 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 ## Current-State Findings From Live Review
 
 - [x] Replace the current overview page with a true operational dashboard. The current `/` route behaves like a product landing page with hero copy and feature cards instead of a household finance command surface.
-- [ ] Replace the current shell aesthetic. The live UI uses soft SaaS gradients, oversized rounded corners, pill navigation, blue accents, and frosted cards that conflict with the thesis of paper light, graphite framing, smoked glass, and verdigris accent.
+- [x] Replace the current shell aesthetic. The live UI uses soft SaaS gradients, oversized rounded corners, pill navigation, blue accents, and frosted cards that conflict with the thesis of paper light, graphite framing, smoked glass, and verdigris accent.
 - [x] Replace the top navigation model. The current header is horizontally oriented and collapses the authenticated product into nav pills instead of providing the architectural left rail called for in the visual thesis.
 - [ ] Remove card-grid composition as the dominant layout pattern. The current UI repeatedly stacks `FluentCard` surfaces instead of using wide bands, split workspaces, dossier layouts, and dense table planes.
 - [x] Rebuild the import workflow as a workbench. The current page exposes the steps, but it still reads as stacked forms and cards rather than a calibration bench with a persistent step frame and secondary inspector.
@@ -30,9 +30,9 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 - [x] Delete the current homepage-first mental model and define the authenticated product shell as the default design center.
 - [x] Replace the current blue-forward token set with the thesis palette: bone, oat, graphite, coal, verdigris, gain, risk, and forecast tones.
 - [x] Replace the current typography stack with a two-family system: Familjen Grotesk for operational UI and Newsreader for selective high-importance figures and headings.
-- [ ] Replace the current rounded, glossy shape language with near-square corners, thin dividers, flatter modules, and selective smoked-glass overlays.
+- [x] Replace the current rounded, glossy shape language with near-square corners, thin dividers, flatter modules, and selective smoked-glass overlays.
 - [x] Reduce decorative shadows until the layout still works without them.
-- [ ] Define a single global spacing and density system tuned for dense analytical surfaces rather than marketing cards.
+- [x] Define a single global spacing and density system tuned for dense analytical surfaces rather than marketing cards.
 - [x] Create a left navigation rail that feels architectural and remains stable across page changes.
 - [x] Move status, theme control, sync state, notifications, and profile actions into a restrained top utility strip instead of giving them equal weight with primary navigation.
 - [x] Ensure the app frame keeps navigation chrome stable while only the content plane changes.
@@ -40,10 +40,10 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 
 ### 2. Build Shared Page Structure Components
 
-- [ ] Standardize every core page around four regions: orientation band, primary working plane, supporting evidence, and actionable exceptions.
-- [ ] Rebuild the page header component so it supports a short utility description, one context selector, and at most one or two high-value actions.
-- [ ] Create reusable band components for posture strips, risk lists, allocation or composition bands, and analytic support zones.
-- [ ] Create a reusable right-side inspector or side-sheet pattern for editing, drill-in, and exception review.
+- [x] Standardize every core page around four regions: orientation band, primary working plane, supporting evidence, and actionable exceptions.
+- [x] Rebuild the page header component so it supports a short utility description, one context selector, and at most one or two high-value actions.
+- [x] Create reusable band components for posture strips, risk lists, allocation or composition bands, and analytic support zones.
+- [x] Create a reusable right-side inspector or side-sheet pattern for editing, drill-in, and exception review.
 - [ ] Create a dense table surface standard with consistent header treatment, row density, hover tone, active-row styling, and inline actions.
 - [ ] Create a shared chart frame with consistent title, range control placement, tooltip behavior, empty states, and loading behavior.
 - [ ] Create localized loading patterns that preserve layout structure instead of replacing whole pages with spinners.
@@ -163,7 +163,7 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 ## Completion Criteria
 
 - [x] The first screen after sign-in is an operational dashboard, not a landing page.
-- [ ] The app shell uses the visual thesis consistently across navigation, typography, color, surface, and density.
+- [x] The app shell uses the visual thesis consistently across navigation, typography, color, surface, and density.
 - [ ] Dashboard, accounts, import, budgets, and forecast all match the content plan structurally.
 - [ ] Motion and state feedback match the interaction thesis behaviorally.
 - [ ] The rewritten UI feels like a private household finance instrument rather than a generic SaaS app.

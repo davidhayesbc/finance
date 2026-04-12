@@ -4,28 +4,35 @@
 <PageTitle>Forecast — Privestio</PageTitle>
 
 <section class="page-shell forecast-shell" data-testid="forecast-page">
-    <section class="forecast-orientation">
+    <PageRegion Name="orientation" Class="forecast-orientation">
         <PageHeader Eyebrow="Forecast" Title="Forecast"
-                    Description="Project balances from recurring income, expenses, budgets, and sinking-fund contributions.">
-            <Actions>
-                <div class="action-cluster">
-                    @foreach (var horizon in HorizonOptions)
-                    {
-                        <FluentButton Appearance="@GetHorizonAppearance(horizon)" OnClick="() => ChangeHorizonAsync(horizon)">
-                            @GetHorizonLabel(horizon)
-                        </FluentButton>
-                    }
-                    <FluentButton Appearance="Appearance.Outline" OnClick="LoadForecastAsync">Refresh</FluentButton>
+                    Description="Project balances from recurring income, expenses, budgets, and sinking-fund contributions."
+                    UtilityDescription="Keep one horizon selector in view and reserve the action lane for the highest-value refresh.">
+            <Context>
+                <div>
+                    <span class="filter-label">Horizon</span>
+                    <div class="action-cluster">
+                        @foreach (var horizon in HorizonOptions)
+                        {
+                            <FluentButton Appearance="@GetHorizonAppearance(horizon)" OnClick="() => ChangeHorizonAsync(horizon)">
+                                @GetHorizonLabel(horizon)
+                            </FluentButton>
+                        }
+                    </div>
                 </div>
+            </Context>
+            <Actions>
+                <FluentButton Appearance="Appearance.Outline" OnClick="LoadForecastAsync">Refresh</FluentButton>
             </Actions>
         </PageHeader>
-    </section>
+    </PageRegion>
 
-    <section class="forecast-posture" aria-labelledby="forecast-posture-title">
-        <div class="forecast-section-heading">
-            <h2 id="forecast-posture-title">Forecast posture</h2>
-            <p>Summarize the selected horizon before reading the trajectory itself.</p>
-        </div>
+    <PageRegion Name="supporting" Class="forecast-posture" aria-labelledby="forecast-posture-title">
+        <PostureStrip Title="Forecast posture"
+                      TitleId="forecast-posture-title"
+                      Description="Summarize the selected horizon before reading the trajectory itself."
+                      HeaderClass="forecast-section-heading"
+                      GridClass="forecast-posture__grid">
 
         @if (_isLoading)
         {
@@ -61,17 +68,16 @@
                 </article>
             </div>
         }
-    </section>
+        </PostureStrip>
+    </PageRegion>
 
     <div class="forecast-core-grid">
-        <section class="forecast-plane" aria-labelledby="forecast-plane-title">
-            <div class="forecast-section-heading forecast-section-heading--split">
-                <div>
-                    <h2 id="forecast-plane-title">Projection</h2>
-                    <p>The balance trajectory owns the page and marks the months that matter.</p>
-                </div>
-                <span class="forecast-meta">@GetHorizonLabel(_months)</span>
-            </div>
+        <PageRegion Name="primary" Class="forecast-plane" aria-labelledby="forecast-plane-title">
+            <SectionBand Title="Projection"
+                         TitleId="forecast-plane-title"
+                         Description="The balance trajectory owns the page and marks the months that matter."
+                         Meta="@GetHorizonLabel(_months)"
+                         HeaderClass="forecast-section-heading forecast-section-heading--split">
 
             @if (_isLoading)
             {
@@ -104,13 +110,14 @@
                     }
                 </div>
             }
-        </section>
+            </SectionBand>
+        </PageRegion>
 
-        <section class="forecast-drivers" aria-labelledby="forecast-drivers-title">
-            <div class="forecast-section-heading">
-                <h2 id="forecast-drivers-title">Drivers</h2>
-                <p>Explain why the line bends instead of leaving the trajectory as a black box.</p>
-            </div>
+        <PageRegion Name="exceptions" Class="forecast-drivers" aria-labelledby="forecast-drivers-title">
+            <SectionBand Title="Drivers"
+                         TitleId="forecast-drivers-title"
+                         Description="Explain why the line bends instead of leaving the trajectory as a black box."
+                         HeaderClass="forecast-section-heading">
 
             <div class="forecast-driver__list">
                 @foreach (var driver in DriverItems)
@@ -121,17 +128,16 @@
                     </article>
                 }
             </div>
-        </section>
+            </SectionBand>
+        </PageRegion>
     </div>
 
-    <section class="forecast-ledger" aria-labelledby="forecast-ledger-title">
-        <div class="forecast-section-heading forecast-section-heading--split">
-            <div>
-                <h2 id="forecast-ledger-title">Monthly periods</h2>
-                <p>Keep the audit trail directly below the projection plane.</p>
-            </div>
-            <span class="forecast-meta">Base projection</span>
-        </div>
+    <PageRegion Name="supporting" Class="forecast-ledger" aria-labelledby="forecast-ledger-title">
+        <SectionBand Title="Monthly periods"
+                     TitleId="forecast-ledger-title"
+                     Description="Keep the audit trail directly below the projection plane."
+                     Meta="Base projection"
+                     HeaderClass="forecast-section-heading forecast-section-heading--split">
 
         @if (_isLoading)
         {
@@ -178,7 +184,8 @@
                 </table>
             </div>
         }
-    </section>
+        </SectionBand>
+    </PageRegion>
 </section>
 
 @code {

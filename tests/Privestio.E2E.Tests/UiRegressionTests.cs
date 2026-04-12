@@ -140,6 +140,26 @@ public class UiRegressionTests : PlaywrightTestBase
         Assert.True(await Page.Locator("text=Monthly periods").First.IsVisibleAsync());
     }
 
+    [Theory]
+    [InlineData("/dashboard", "dashboard-page")]
+    [InlineData("/accounts", "accounts-page")]
+    [InlineData("/import", "import-page")]
+    [InlineData("/budgets", "budgets-page")]
+    [InlineData("/forecast", "forecast-page")]
+    public async Task CoreRoutes_ExposeSharedPageRegions(string route, string pageTestId)
+    {
+        await GotoRelativeAsync(route);
+
+        await Page
+            .GetByTestId(pageTestId)
+            .WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
+        Assert.True(await Page.Locator("[data-page-region='orientation']").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("[data-page-region='primary']").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("[data-page-region='supporting']").First.IsVisibleAsync());
+        Assert.True(await Page.Locator("[data-page-region='exceptions']").First.IsVisibleAsync());
+    }
+
     [Fact]
     public async Task DashboardPage_ShowsOperationalRegions()
     {

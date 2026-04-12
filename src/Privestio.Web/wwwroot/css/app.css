@@ -36,6 +36,14 @@
     --radius-xl: 14px;
     --radius-lg: 10px;
     --radius-md: 6px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --layout-gutter: 32px;
     --content-width: 1180px;
 }
 
@@ -133,18 +141,18 @@ a {
 .app-header__inner,
 .app-main,
 .app-footer {
-    width: min(calc(100% - 32px), var(--content-width));
+    width: min(calc(100% - var(--layout-gutter)), var(--content-width));
     margin: 0 auto;
 }
 
 .app-header {
-    padding: 24px 0 12px;
+    padding: var(--space-6) 0 var(--space-3);
 }
 
 .app-header__inner {
     display: grid;
-    gap: 18px;
-    padding: 18px 22px;
+    gap: var(--space-5);
+    padding: var(--space-5) calc(var(--space-5) + var(--space-1));
     border: 1px solid var(--header-border);
     border-radius: var(--radius-xl);
     background: var(--header-surface);
@@ -157,14 +165,14 @@ a {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 18px;
+    gap: var(--space-5);
 }
 
 .app-header__controls,
 .status-cluster {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
     flex-wrap: wrap;
     justify-content: flex-end;
 }
@@ -172,7 +180,7 @@ a {
 .brand-link {
     display: inline-flex;
     align-items: center;
-    gap: 14px;
+    gap: calc(var(--space-3) + 2px);
     text-decoration: none;
 }
 
@@ -199,7 +207,7 @@ a {
 .form-actions,
 .summary-strip {
     display: flex;
-    gap: 12px;
+    gap: var(--space-3);
     align-items: center;
     flex-wrap: wrap;
 }
@@ -232,7 +240,7 @@ a {
 fluent-anchor.nav-pill::part(control) {
     min-height: 40px;
     padding: 0 16px;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--surface-border);
     background: var(--surface-raised);
     color: var(--text-muted);
@@ -307,6 +315,61 @@ fluent-anchor.brand-link::part(control) {
 .app-button:disabled {
     opacity: 0.66;
     cursor: wait;
+}
+
+fluent-button::part(control) {
+    min-height: 40px;
+    padding-inline: 16px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: none;
+}
+
+fluent-button[appearance="accent"]::part(control) {
+    border: 1px solid transparent;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-strong) 92%, black 6%), var(--accent));
+    color: #fff;
+}
+
+fluent-button[appearance="outline"]::part(control) {
+    border: 1px solid var(--surface-border);
+    background: color-mix(in srgb, var(--surface-strong) 94%, var(--bone));
+    color: var(--text-strong);
+}
+
+fluent-button[appearance="stealth"]::part(control) {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+}
+
+fluent-button[appearance="accent"]:hover::part(control) {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-strong) 96%, black 8%), color-mix(in srgb, var(--accent) 90%, var(--accent-strong)));
+}
+
+fluent-button[appearance="outline"]:hover::part(control),
+fluent-button[appearance="stealth"]:hover::part(control) {
+    border-color: var(--accent-soft);
+    background: color-mix(in srgb, var(--surface-raised) 88%, var(--accent-soft));
+    color: var(--text-strong);
+}
+
+:root[data-theme="dark"] fluent-button[appearance="outline"]::part(control) {
+    border-color: rgba(244, 239, 231, 0.14);
+    background: linear-gradient(180deg, rgba(35, 40, 43, 0.96), rgba(29, 34, 37, 0.94));
+    color: #f4efe7;
+}
+
+:root[data-theme="dark"] fluent-button[appearance="stealth"]::part(control) {
+    color: rgba(244, 239, 231, 0.72);
+}
+
+:root[data-theme="dark"] fluent-button[appearance="outline"]:hover::part(control),
+:root[data-theme="dark"] fluent-button[appearance="stealth"]:hover::part(control) {
+    border-color: rgba(124, 193, 187, 0.28);
+    background: rgba(88, 163, 157, 0.12);
+    color: #f4efe7;
 }
 
 .header-cta {
@@ -392,25 +455,29 @@ fluent-anchor.brand-link::part(control) {
     backdrop-filter: blur(14px);
 }
 
+.page-region {
+    min-width: 0;
+}
+
 .page-shell {
-    padding: 28px;
+    padding: var(--space-7);
 }
 
 .surface-card {
-    padding: 24px;
+    padding: var(--space-6);
 }
 
 .hero-panel,
 .content-grid,
 .auth-shell {
-    margin-bottom: 24px;
+    margin-bottom: var(--space-6);
 }
 
 .hero-panel,
 .auth-shell,
 .content-grid {
     display: grid;
-    gap: 22px;
+    gap: calc(var(--space-5) + 2px);
 }
 
 .hero-panel,
@@ -491,22 +558,52 @@ fluent-anchor.brand-link::part(control) {
 }
 
 .page-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-5);
     align-items: end;
-    margin-bottom: 24px;
+    margin-bottom: var(--space-6);
+}
+
+.page-header__main,
+.page-header__copy {
+    min-width: 0;
+}
+
+.page-header__copy {
+    display: grid;
+    gap: var(--space-1);
+}
+
+.page-header__utility-description {
+    max-width: 40rem;
+    color: var(--text-soft);
+    font-size: 0.92rem;
+}
+
+.page-header__utility {
+    display: grid;
+    gap: var(--space-3);
+    min-width: min(100%, 360px);
+    justify-items: end;
+}
+
+.page-header__context {
+    display: grid;
+    gap: var(--space-2);
+    width: 100%;
 }
 
 .page-header__actions {
     display: flex;
-    gap: 12px;
+    gap: var(--space-3);
     align-items: center;
     flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .page-header--compact {
-    margin-bottom: 18px;
+    margin-bottom: var(--space-5);
 }
 
 .panel-stack,
@@ -522,9 +619,87 @@ fluent-anchor.brand-link::part(control) {
 
 .action-cluster {
     display: flex;
-    gap: 10px;
+    gap: calc(var(--space-2) + 2px);
     align-items: center;
     flex-wrap: wrap;
+}
+
+.section-band__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: var(--space-5);
+    margin-bottom: var(--space-5);
+}
+
+.section-band__header h2,
+.section-band__header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.section-band__header p,
+.section-band__meta {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.section-band__utility {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.section-band__body {
+    min-width: 0;
+}
+
+.inspector-panel {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--surface-raised) 94%, var(--page-bg));
+}
+
+.inspector-panel--sheet {
+    background: color-mix(in srgb, var(--surface) 92%, var(--page-bg));
+}
+
+.inspector-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: var(--space-5);
+}
+
+.inspector-panel__header h2,
+.inspector-panel__header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.inspector-panel__header p,
+.inspector-panel__footer {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.inspector-panel__actions,
+.inspector-panel__footer {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.inspector-panel__body {
+    display: grid;
+    gap: var(--space-3);
 }
 
 .detail-grid {
@@ -978,7 +1153,7 @@ fluent-anchor.brand-link::part(control) {
     min-height: 38px;
     padding: 0 14px;
     border: 1px solid transparent;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     background: var(--chip-bg);
     color: var(--text-muted);
     cursor: pointer;
@@ -1113,7 +1288,7 @@ fluent-anchor.brand-link::part(control) {
     display: inline-flex;
     align-items: center;
     padding: 2px 7px;
-    border-radius: 999px;
+    border-radius: 4px;
     background: var(--chip-bg);
     color: var(--text-muted);
     font-size: 0.78rem;
@@ -1170,7 +1345,7 @@ fluent-anchor.brand-link::part(control) {
     gap: 4px;
     padding: 18px;
     border: 1px dashed var(--surface-border);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     color: var(--text-muted);
 }
 
@@ -1234,7 +1409,26 @@ fluent-anchor.brand-link::part(control) {
     }
 
     .page-header {
+        grid-template-columns: 1fr;
         align-items: start;
+    }
+
+    .page-header__utility,
+    .page-header__actions,
+    .page-header__context,
+    .section-band__header,
+    .section-band__utility,
+    .inspector-panel__header,
+    .inspector-panel__actions,
+    .inspector-panel__footer {
+        justify-items: stretch;
+        justify-content: flex-start;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .page-header__utility {
+        min-width: 0;
     }
 
     .auth-card {
@@ -1540,7 +1734,7 @@ fluent-anchor.brand-link::part(control) {
     align-items: center;
     min-height: 28px;
     padding: 0 10px;
-    border-radius: 999px;
+    border-radius: 4px;
     font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -1661,7 +1855,7 @@ fluent-anchor.brand-link::part(control) {
     place-items: center;
     width: 30px;
     height: 30px;
-    border-radius: 999px;
+    border-radius: 4px;
     background: color-mix(in srgb, var(--chip-bg) 92%, transparent);
     color: var(--text-soft);
     font-size: 0.78rem;
@@ -1883,7 +2077,7 @@ fluent-anchor.brand-link::part(control) {
     width: 100%;
     height: 8px;
     overflow: hidden;
-    border-radius: 999px;
+    border-radius: 4px;
     background: color-mix(in srgb, var(--chip-bg) 94%, transparent);
 }
 
@@ -1905,7 +2099,7 @@ fluent-anchor.brand-link::part(control) {
     align-items: center;
     min-height: 28px;
     padding: 0 10px;
-    border-radius: 999px;
+    border-radius: 4px;
     font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -2159,7 +2353,7 @@ fluent-anchor.brand-link::part(control) {
     width: 14px;
     height: 14px;
     border: 2px solid var(--surface);
-    border-radius: 999px;
+    border-radius: 4px;
     background: var(--accent-strong);
     box-shadow: 0 0 0 4px rgba(30, 107, 104, 0.14);
 }
@@ -2510,7 +2704,7 @@ fluent-anchor.brand-link::part(control) {
     width: 100%;
     height: 10px;
     overflow: hidden;
-    border-radius: 999px;
+    border-radius: 4px;
     background: color-mix(in srgb, var(--chip-bg) 82%, transparent);
 }
 
@@ -2566,7 +2760,7 @@ fluent-anchor.brand-link::part(control) {
     align-items: center;
     min-height: 28px;
     padding: 0 10px;
-    border-radius: 999px;
+    border-radius: 4px;
     background: color-mix(in srgb, var(--chip-bg) 90%, transparent);
     color: var(--text-muted);
     font-size: 0.76rem;
@@ -2626,14 +2820,14 @@ fluent-anchor.brand-link::part(control) {
 .app-frame {
     position: relative;
     z-index: 1;
-    width: min(calc(100% - 32px), 1520px);
-    margin: 24px auto 0;
+    width: min(calc(100% - var(--layout-gutter)), 1520px);
+    margin: var(--space-6) auto 0;
 }
 
 .app-frame--workspace {
     display: grid;
     grid-template-columns: minmax(220px, 252px) minmax(0, 1fr);
-    gap: 24px;
+    gap: var(--space-6);
     align-items: start;
 }
 
@@ -2643,14 +2837,14 @@ fluent-anchor.brand-link::part(control) {
 
 .app-rail {
     position: sticky;
-    top: 24px;
+    top: var(--space-6);
     align-self: start;
 }
 
 .app-rail__inner {
     display: grid;
-    gap: 24px;
-    padding: 24px 20px;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-5);
     border: 1px solid rgba(244, 239, 231, 0.08);
     border-radius: 12px;
     background:
@@ -2722,7 +2916,7 @@ fluent-anchor.app-rail__link--active::part(control) {
 .app-workspace {
     min-width: 0;
     display: grid;
-    gap: 18px;
+    gap: var(--space-5);
 }
 
 .app-workspace .app-main,
@@ -2743,8 +2937,8 @@ fluent-anchor.app-rail__link--active::part(control) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 18px;
-    padding: 14px 20px;
+    gap: var(--space-5);
+    padding: calc(var(--space-3) + 2px) var(--space-5);
     border: 1px solid var(--header-border);
     border-radius: 12px;
     background: rgba(255, 252, 248, 0.72);
@@ -2776,7 +2970,7 @@ fluent-anchor.app-rail__link--active::part(control) {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--space-3);
     flex-wrap: wrap;
 }
 

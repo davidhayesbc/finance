@@ -1,0 +1,88 @@
+<section class="@ComputedClass" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrWhiteSpace(Title) || !string.IsNullOrWhiteSpace(Description) || HeaderActions is not null || !string.IsNullOrWhiteSpace(Meta))
+    {
+        <div class="@ComputedHeaderClass">
+            <div>
+                @if (HeadingLevel == 3)
+                {
+                    <h3 id="@TitleId">@Title</h3>
+                }
+                else
+                {
+                    <h2 id="@TitleId">@Title</h2>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Description))
+                {
+                    <p>@Description</p>
+                }
+            </div>
+
+            @if (HeaderActions is not null || !string.IsNullOrWhiteSpace(Meta))
+            {
+                <div class="section-band__utility">
+                    @if (!string.IsNullOrWhiteSpace(Meta))
+                    {
+                        <span class="section-band__meta">@Meta</span>
+                    }
+
+                    @if (HeaderActions is not null)
+                    {
+                        @HeaderActions
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="@ComputedBodyClass">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? TitleId { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public string? Meta { get; set; }
+
+    [Parameter]
+    public int HeadingLevel { get; set; } = 2;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? HeaderClass { get; set; }
+
+    [Parameter]
+    public string? BodyClass { get; set; }
+
+    [Parameter]
+    public RenderFragment? HeaderActions { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
+        ? "section-band"
+        : $"section-band {Class}";
+
+    private string ComputedHeaderClass => string.IsNullOrWhiteSpace(HeaderClass)
+        ? "section-band__header"
+        : $"section-band__header {HeaderClass}";
+
+    private string ComputedBodyClass => string.IsNullOrWhiteSpace(BodyClass)
+        ? "section-band__body"
+        : $"section-band__body {BodyClass}";
+}

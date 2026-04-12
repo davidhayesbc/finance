@@ -1,0 +1,119 @@
+@if (IsAside)
+{
+    <aside class="@ComputedClass" @attributes="AdditionalAttributes">
+        @PanelContent
+    </aside>
+}
+else
+{
+    <section class="@ComputedClass" @attributes="AdditionalAttributes">
+        @PanelContent
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? TitleId { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public string Variant { get; set; } = "panel";
+
+    [Parameter]
+    public string TagName { get; set; } = "aside";
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? BodyClass { get; set; }
+
+    [Parameter]
+    public int HeadingLevel { get; set; } = 2;
+
+    [Parameter]
+    public RenderFragment? HeaderActions { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsAside => string.Equals(TagName, "aside", StringComparison.OrdinalIgnoreCase);
+
+    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
+        ? $"inspector-panel inspector-panel--{Variant}"
+        : $"inspector-panel inspector-panel--{Variant} {Class}";
+
+    private string ComputedBodyClass => string.IsNullOrWhiteSpace(BodyClass)
+        ? "inspector-panel__body"
+        : $"inspector-panel__body {BodyClass}";
+
+    private RenderFragment PanelContent => builder =>
+    {
+        var sequence = 0;
+
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "inspector-panel__header");
+
+        builder.OpenElement(sequence++, "div");
+
+        if (HeadingLevel == 3)
+        {
+            builder.OpenElement(sequence++, "h3");
+        }
+        else
+        {
+            builder.OpenElement(sequence++, "h2");
+        }
+
+        if (!string.IsNullOrWhiteSpace(TitleId))
+        {
+            builder.AddAttribute(sequence++, "id", TitleId);
+        }
+
+        builder.AddContent(sequence++, Title);
+        builder.CloseElement();
+
+        if (!string.IsNullOrWhiteSpace(Description))
+        {
+            builder.OpenElement(sequence++, "p");
+            builder.AddContent(sequence++, Description);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+
+        if (HeaderActions is not null)
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "inspector-panel__actions");
+            builder.AddContent(sequence++, HeaderActions);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", ComputedBodyClass);
+        builder.AddContent(sequence++, ChildContent);
+        builder.CloseElement();
+
+        if (Footer is not null)
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "inspector-panel__footer");
+            builder.AddContent(sequence++, Footer);
+            builder.CloseElement();
+        }
+    };
+}

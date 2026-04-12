@@ -7,9 +7,10 @@
 <PageTitle>Import Transactions — Privestio</PageTitle>
 
 <section class="page-shell import-shell" data-testid="import-page">
-    <section class="import-orientation">
+    <PageRegion Name="orientation" Class="import-orientation">
         <PageHeader Eyebrow="Import" Title="Import"
                     Description="Upload, map, preview, and commit transaction files with full visibility before write."
+                    UtilityDescription="Keep the workbench centered while supporting context and exceptions stay anchored around it."
                     Compact="true">
             <Actions>
                 <div class="action-cluster">
@@ -24,10 +25,10 @@
                 </div>
             </Actions>
         </PageHeader>
-    </section>
+    </PageRegion>
 
     <div class="import-workbench">
-        <aside class="import-step-rail" aria-labelledby="import-step-rail-title">
+        <PageRegion Name="supporting" TagName="aside" Class="import-step-rail" aria-labelledby="import-step-rail-title">
             <div class="import-section-heading">
                 <h2 id="import-step-rail-title">Step rail</h2>
                 <p>Keep upload, mapping, preview, and commit visible at all times.</p>
@@ -45,9 +46,9 @@
                     </li>
                 }
             </ol>
-        </aside>
+        </PageRegion>
 
-        <section class="import-workspace" aria-labelledby="import-workspace-title">
+        <PageRegion Name="primary" Class="import-workspace" aria-labelledby="import-workspace-title">
             @if (_step == ImportStep.Upload)
             {
                 <section class="import-stage">
@@ -252,15 +253,14 @@
                     </div>
                 </section>
             }
-        </section>
+        </PageRegion>
 
-        <aside class="import-inspector" aria-labelledby="import-inspector-title">
-            <div class="import-section-heading">
-                <h2 id="import-inspector-title">Workflow context</h2>
-                <p>Keep account, mapping, plugin, and commit context visible without crowding the central bench.</p>
-            </div>
-
-            <div class="import-inspector__stack">
+        <PageRegion Name="supporting" TagName="aside" Class="import-inspector" aria-labelledby="import-inspector-title">
+            <InspectorPanel Title="Workflow context"
+                            TitleId="import-inspector-title"
+                            Description="Keep account, mapping, plugin, and commit context visible without crowding the central bench."
+                            Class="import-inspector__panel"
+                            BodyClass="import-inspector__stack">
                 <article class="import-inspector__item">
                     <span>Selected account</span>
                     <strong>@SelectedAccountLabel</strong>
@@ -281,15 +281,15 @@
                     <strong>@CommitImpactTitle</strong>
                     <p>@CommitImpactDetail</p>
                 </article>
-            </div>
-        </aside>
+            </InspectorPanel>
+        </PageRegion>
     </div>
 
-    <section class="import-exceptions" aria-labelledby="import-exceptions-title">
-        <div class="import-section-heading">
-            <h2 id="import-exceptions-title">Errors and exceptions</h2>
-            <p>Make unsupported formats, missing mappings, and row failures legible and actionable.</p>
-        </div>
+    <PageRegion Name="exceptions" Class="import-exceptions" aria-labelledby="import-exceptions-title">
+        <SectionBand Title="Errors and exceptions"
+                     TitleId="import-exceptions-title"
+                     Description="Make unsupported formats, missing mappings, and row failures legible and actionable."
+                     HeaderClass="import-section-heading">
 
         <div class="import-exceptions__list">
             @foreach (var item in WorkflowExceptions)
@@ -300,7 +300,8 @@
                 </article>
             }
         </div>
-    </section>
+        </SectionBand>
+    </PageRegion>
 </section>
 
 @code {

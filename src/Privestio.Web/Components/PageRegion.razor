@@ -1,0 +1,43 @@
+@if (IsAside)
+{
+    <aside class="@ComputedClass" data-page-region="@Name" @attributes="AdditionalAttributes">
+        @ChildContent
+    </aside>
+}
+else if (IsDiv)
+{
+    <div class="@ComputedClass" data-page-region="@Name" @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+}
+else
+{
+    <section class="@ComputedClass" data-page-region="@Name" @attributes="AdditionalAttributes">
+        @ChildContent
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public string TagName { get; set; } = "section";
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsAside => string.Equals(TagName, "aside", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsDiv => string.Equals(TagName, "div", StringComparison.OrdinalIgnoreCase);
+
+    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
+        ? $"page-region page-region--{Name}"
+        : $"page-region page-region--{Name} {Class}";
+}
