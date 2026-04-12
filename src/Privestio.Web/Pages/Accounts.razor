@@ -360,6 +360,12 @@
         return ContainsAny(descriptor, "mortgage", "credit", "loan", "debt", "line of credit", "liability");
     }
 
+    private static bool IsPropertyAccount(AccountResponse account)
+    {
+        var descriptor = $"{account.AccountType} {account.AccountSubType}";
+        return ContainsAny(descriptor, "property", "real estate", "realestate", "home");
+    }
+
     private static bool ContainsAny(string value, params string[] candidates) =>
         candidates.Any(candidate => value.Contains(candidate, StringComparison.OrdinalIgnoreCase));
 
@@ -457,8 +463,8 @@
             ];
         }
 
-        var missingOpeningBalances = _accounts.Count(account => account.OpeningBalance == 0m);
-        var missingInstitutions = _accounts.Count(account => string.IsNullOrWhiteSpace(account.Institution));
+        var zeroOpeningBalances = _accounts.Count(account => account.OpeningBalance == 0m);
+        var missingInstitutions = _accounts.Count(account => !IsPropertyAccount(account) && string.IsNullOrWhiteSpace(account.Institution));
         var staleAccounts = StaleAccounts.Count;
         var inactiveAccounts = _accounts.Count(account => !account.IsActive);
         var emptyAccounts = _accounts.Count(account => account.CurrentBalance == 0m);
@@ -466,11 +472,11 @@
         var items = new List<AccountIssueItem>
         {
             new(
-                "Missing opening balance",
-                missingOpeningBalances == 0
-                    ? "All accounts currently have an opening balance on file."
-                    : $"{missingOpeningBalances} account{(missingOpeningBalances == 1 ? string.Empty : "s")} still need an opening balance.",
-                missingOpeningBalances == 0 ? "neutral" : "warning"
+                "Zero opening balance",
+                zeroOpeningBalances == 0
+                    ? "All accounts currently start with a non-zero opening balance."
+                    : $"{zeroOpeningBalances} account{(zeroOpeningBalances == 1 ? string.Empty : "s")} start at 0.00; review whether that is intentional.",
+                zeroOpeningBalances == 0 ? "neutral" : "warning"
             ),
             new(
                 "Stale account state",

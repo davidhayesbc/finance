@@ -19,20 +19,20 @@
     else
     {
         <FluentCard Class="surface-card">
-            <div class="table-surface table-surface--grid table-surface--scroll">
+            <div class="table-surface table-surface--grid table-surface--scroll securities-grid-wrap">
                 <FluentDataGrid Items="_securities.AsQueryable()" TGridItem="SecurityCatalogItemResponse"
-                                Class="data-grid--elevated data-grid--securities" aria-label="Securities" ResizableColumns="true"
+                                Class="data-grid--elevated data-grid--securities data-grid--dense" aria-label="Securities" ResizableColumns="true"
                                 ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
-                                ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
-                <PropertyColumn Property="@(s => s.DisplaySymbol)" Title="Symbol" Sortable="true" Width="100px" />
+                                ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Small">
+                <PropertyColumn Property="@(s => s.DisplaySymbol)" Title="Symbol" Sortable="true" Width="88px" />
                 <TemplateColumn Title="Name" SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.Name))"
-                                Width="240px">
+                                Width="220px">
                     <span class="cell-truncate"
                           title="@(string.IsNullOrWhiteSpace(context.Name) ? "Unnamed security" : context.Name)">@context.Name</span>
                 </TemplateColumn>
-                <PropertyColumn Property="@(s => s.Exchange)" Title="Exchange" Sortable="true" Width="120px" />
-                <PropertyColumn Property="@(s => s.Currency)" Title="Currency" Sortable="true" Width="96px" />
-                <TemplateColumn Title="Cash" Width="84px">
+                <PropertyColumn Property="@(s => s.Exchange)" Title="Exchange" Sortable="true" Width="108px" />
+                <PropertyColumn Property="@(s => s.Currency)" Title="Currency" Sortable="true" Width="88px" />
+                <TemplateColumn Title="Cash" Width="72px">
                     @if (context.IsCashEquivalent)
                     {
                         <FluentBadge Appearance="Appearance.Accent">Yes</FluentBadge>
@@ -40,7 +40,7 @@
                 </TemplateColumn>
                 <TemplateColumn Title="Price source"
                                 SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.LatestPriceSource ?? string.Empty))"
-                                Width="210px">
+                                Width="184px">
                     @if (context.LatestPriceAsOfDate is { } asOfDate)
                     {
                         <span class="cell-truncate"
@@ -54,7 +54,7 @@
                     </TemplateColumn>
                     <TemplateColumn Title="Latest price"
                                     SortBy="@(GridSort<SecurityCatalogItemResponse>.ByDescending(s => s.LatestPrice ?? decimal.MinValue))"
-                                    Width="150px">
+                                    Width="132px">
                         @if (context.LatestPrice is { } latestPrice)
                         {
                             <span>@latestPrice.ToString("N4") @DisplayOrDash(context.LatestPriceCurrency)</span>
@@ -64,8 +64,8 @@
                             <span class="txn-no-value">—</span>
                         }
                     </TemplateColumn>
-                    <TemplateColumn Title="" Width="320px">
-                        <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact">
+                    <TemplateColumn Title="" Width="360px">
+                        <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact grid-actions--dense">
                             <FluentButton Appearance="Appearance.Stealth" Disabled="@(_fetchingPriceFor == context.Id)"
                                           OnClick="@(() => FetchPriceAsync(context))"
                                           aria-label="@($"Fetch price for {context.DisplaySymbol}")">

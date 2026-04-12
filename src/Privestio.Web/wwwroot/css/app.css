@@ -1177,11 +1177,47 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     white-space: nowrap;
 }
 
+.grid-actions--dense {
+    gap: 2px;
+    flex-wrap: nowrap;
+}
+
+.grid-actions--dense fluent-button::part(control) {
+    height: 26px;
+    padding-inline: 8px;
+    font-size: 0.72rem;
+}
+
+.securities-grid-wrap {
+    overflow: auto;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: min(68vh, 42rem);
+}
+
+.securities-grid-wrap .data-grid--elevated {
+    min-width: 1380px;
+}
+
+.data-grid--dense th {
+    padding: 10px 12px;
+    font-size: 0.7rem;
+}
+
+.data-grid--dense td {
+    padding: 10px 12px;
+}
+
 .data-grid--securities td:nth-child(2),
 .data-grid--securities td:nth-child(6),
 .data-grid--securities td:nth-child(7) {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data-grid--securities td:nth-child(8) {
     white-space: nowrap;
 }
 
@@ -1223,6 +1259,14 @@ fluent-button[appearance="stealth"]:hover::part(control) {
         height: 28px;
         padding-inline: 8px;
         font-size: 0.74rem;
+    }
+
+    .grid-actions--dense {
+        flex-wrap: wrap;
+    }
+
+    .securities-grid-wrap {
+        max-height: none;
     }
 }
 

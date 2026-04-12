@@ -812,6 +812,10 @@ public class LoaderOrchestrator
             return;
 
         _logger.LogInformation("Applying account adjustments...");
+        var existingAccounts = _dryRun
+            ? []
+            : await _api.GetAccountsAsync();
+        var existingAccountsById = existingAccounts.ToDictionary(a => a.Id);
 
         foreach (var account in accountsWithAdjustments)
         {
@@ -833,14 +837,16 @@ public class LoaderOrchestrator
                 continue;
             }
 
+            existingAccountsById.TryGetValue(accountId, out var existingAccount);
+
             var result = await _api.UpdateAccountAsync(
                 accountId,
                 new UpdateAccountRequest
                 {
                     Name = adj.Name ?? account.Name,
-                    Institution = adj.Institution,
+                    Institution = adj.Institution ?? existingAccount?.Institution ?? account.Institution,
                     Notes = adj.Notes,
-                    IsShared = adj.IsShared ?? false,
+                    IsShared = adj.IsShared ?? existingAccount?.IsShared ?? false,
                 }
             );
             if (result is not null)
