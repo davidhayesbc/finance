@@ -11,16 +11,19 @@ public interface IAuthService
     bool IsAuthenticated { get; }
     string? AccessToken { get; }
     AuthResponse? CurrentUser { get; }
+    event Action<bool>? AuthenticationStateChanged;
     Task InitializeAsync();
     Task<AuthResponse?> LoginAsync(LoginRequest request);
     Task<AuthResponse?> RegisterAsync(RegisterRequest request);
     Task LogoutAsync();
 }
 
-public class AuthService : IAuthService
+public class AuthService : IAuthService, IAsyncDisposable
 {
+    private const string PersistentStorage = "localStorage";
     private readonly HttpClient _httpClient;
     private readonly IJSRuntime _jsRuntime;
+    private DotNetObjectReference<AuthService>? _dotNetRef;
     private AuthResponse? _currentUser;
     private bool _isRefreshing;
 
@@ -37,6 +40,7 @@ public class AuthService : IAuthService
         _currentUser is not null && !string.IsNullOrEmpty(_currentUser.AccessToken);
     public string? AccessToken => _currentUser?.AccessToken;
     public AuthResponse? CurrentUser => _currentUser;
+    public event Action<bool>? AuthenticationStateChanged;
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
@@ -50,7 +54,7 @@ public class AuthService : IAuthService
             if (_currentUser is not null)
             {
                 await StoreTokensAsync(_currentUser.AccessToken, _currentUser.RefreshToken);
-                SetAuthorizationHeader(_currentUser.AccessToken);
+                ApplyAuthenticatedState(_currentUser.AccessToken);
             }
 
             return _currentUser;
@@ -73,7 +77,7 @@ public class AuthService : IAuthService
             if (_currentUser is not null)
             {
                 await StoreTokensAsync(_currentUser.AccessToken, _currentUser.RefreshToken);
-                SetAuthorizationHeader(_currentUser.AccessToken);
+                ApplyAuthenticatedState(_currentUser.AccessToken);
             }
 
             return _currentUser;
@@ -89,10 +93,7 @@ public class AuthService : IAuthService
         // Attempt to revoke the refresh token server-side
         try
         {
-            var refreshToken = await _jsRuntime.InvokeAsync<string?>(
-                "sessionStorage.getItem",
-                RefreshTokenKey
-            );
+            var refreshToken = await GetStoredTokenAsync(RefreshTokenKey);
 
             if (!string.IsNullOrEmpty(refreshToken))
             {
@@ -108,17 +109,19 @@ public class AuthService : IAuthService
         }
 
         _currentUser = null;
-        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", AccessTokenKey);
-        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
+        await ClearStoredTokensAsync();
         _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
     public async Task InitializeAsync()
     {
-        var token = await _jsRuntime.InvokeAsync<string?>(
-            "sessionStorage.getItem",
-            AccessTokenKey
-        );
+        if (_dotNetRef is null)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _jsRuntime.InvokeVoidAsync("authFunctions.initialize", _dotNetRef);
+        }
+
+        var token = await GetStoredTokenAsync(AccessTokenKey);
 
         if (!string.IsNullOrEmpty(token))
         {
@@ -133,9 +136,11 @@ public class AuthService : IAuthService
                 return;
             }
 
-            _currentUser = new AuthResponse { AccessToken = token };
-            SetAuthorizationHeader(token);
+            ApplyAuthenticatedState(token);
+            return;
         }
+
+        ApplySignedOutState();
     }
 
     /// <summary>
@@ -150,10 +155,7 @@ public class AuthService : IAuthService
         _isRefreshing = true;
         try
         {
-            var refreshToken = await _jsRuntime.InvokeAsync<string?>(
-                "sessionStorage.getItem",
-                RefreshTokenKey
-            );
+            var refreshToken = await GetStoredTokenAsync(RefreshTokenKey);
 
             if (string.IsNullOrEmpty(refreshToken))
                 return false;
@@ -177,7 +179,7 @@ public class AuthService : IAuthService
                     return false;
 
                 await StoreTokensAsync(_currentUser.AccessToken, _currentUser.RefreshToken);
-                SetAuthorizationHeader(_currentUser.AccessToken);
+                ApplyAuthenticatedState(_currentUser.AccessToken);
                 return true;
             }
             finally
@@ -225,11 +227,12 @@ public class AuthService : IAuthService
 
     private async Task StoreTokensAsync(string accessToken, string? refreshToken)
     {
-        await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", AccessTokenKey, accessToken);
+        await _jsRuntime.InvokeVoidAsync($"{PersistentStorage}.setItem", AccessTokenKey, accessToken);
+
         if (!string.IsNullOrEmpty(refreshToken))
         {
             await _jsRuntime.InvokeVoidAsync(
-                "sessionStorage.setItem",
+                $"{PersistentStorage}.setItem",
                 RefreshTokenKey,
                 refreshToken
             );
@@ -238,8 +241,66 @@ public class AuthService : IAuthService
 
     private async Task ClearStoredTokensAsync()
     {
-        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", AccessTokenKey);
-        await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
+        await _jsRuntime.InvokeVoidAsync($"{PersistentStorage}.removeItem", AccessTokenKey);
+        await _jsRuntime.InvokeVoidAsync($"{PersistentStorage}.removeItem", RefreshTokenKey);
+    }
+
+    private async Task<string?> GetStoredTokenAsync(string key)
+    {
+        return await _jsRuntime.InvokeAsync<string?>($"{PersistentStorage}.getItem", key);
+    }
+
+    [JSInvokable]
+    public async Task OnStorageChanged()
+    {
+        var token = await GetStoredTokenAsync(AccessTokenKey);
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            ApplySignedOutState();
+            return;
+        }
+
+        if (IsTokenExpired(token))
+        {
+            var refreshed = await TryRefreshTokenAsync();
+            if (!refreshed)
+            {
+                await ClearStoredTokensAsync();
+                ApplySignedOutState();
+            }
+
+            return;
+        }
+
+        ApplyAuthenticatedState(token);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dotNetRef is null)
+        {
+            return;
+        }
+
+        await _jsRuntime.InvokeVoidAsync("authFunctions.dispose");
+        _dotNetRef.Dispose();
+        _dotNetRef = null;
+    }
+
+    private void ApplyAuthenticatedState(string token)
+    {
+        _currentUser = _currentUser is null
+            ? new AuthResponse { AccessToken = token }
+            : _currentUser with { AccessToken = token };
+        SetAuthorizationHeader(token);
+        AuthenticationStateChanged?.Invoke(true);
+    }
+
+    private void ApplySignedOutState()
+    {
+        _currentUser = null;
+        _httpClient.DefaultRequestHeaders.Authorization = null;
+        AuthenticationStateChanged?.Invoke(false);
     }
 
     private void SetAuthorizationHeader(string token) =>

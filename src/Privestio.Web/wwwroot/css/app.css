@@ -33,6 +33,13 @@
     --chip-active-bg: rgba(30, 107, 104, 0.12);
     --chip-active-border: rgba(30, 107, 104, 0.24);
     --chip-active-text: var(--verdigris-deep);
+    --rail-surface: linear-gradient(180deg, rgba(247, 241, 233, 0.98), rgba(238, 230, 220, 0.98));
+    --rail-border: rgba(47, 52, 56, 0.1);
+    --rail-text: var(--text-strong);
+    --rail-muted: rgba(47, 52, 56, 0.58);
+    --rail-hover: rgba(47, 52, 56, 0.05);
+    --rail-active-bg: rgba(30, 107, 104, 0.12);
+    --rail-active-border: rgba(30, 107, 104, 0.28);
     --radius-xl: 14px;
     --radius-lg: 10px;
     --radius-md: 6px;
@@ -73,6 +80,13 @@
     --chip-active-bg: rgba(88, 163, 157, 0.16);
     --chip-active-border: rgba(124, 193, 187, 0.34);
     --chip-active-text: #dfeeea;
+    --rail-surface: linear-gradient(180deg, rgba(30, 35, 40, 0.96), rgba(17, 20, 23, 0.96));
+    --rail-border: rgba(244, 239, 231, 0.08);
+    --rail-text: #f4efe7;
+    --rail-muted: rgba(244, 239, 231, 0.54);
+    --rail-hover: rgba(244, 239, 231, 0.06);
+    --rail-active-bg: rgba(30, 107, 104, 0.18);
+    --rail-active-border: rgba(30, 107, 104, 0.52);
 }
 
 html,
@@ -816,6 +830,18 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     overflow: hidden;
 }
 
+.table-surface--scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.table-surface--scroll .data-grid--elevated {
+    min-width: 980px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
 .table-surface--native table,
 .table-surface--grid table {
     width: 100%;
@@ -1232,6 +1258,20 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .data-grid--elevated fluent-button::part(control) {
     color: var(--text-strong);
+}
+
+.apexcharts-legend-text,
+.apexcharts-xaxis-label,
+.apexcharts-yaxis-label {
+    fill: var(--text-muted) !important;
+    color: var(--text-muted) !important;
+}
+
+:root[data-theme="dark"] .apexcharts-legend-text,
+:root[data-theme="dark"] .apexcharts-xaxis-label,
+:root[data-theme="dark"] .apexcharts-yaxis-label {
+    fill: #dce9fb !important;
+    color: #dce9fb !important;
 }
 
 :root[data-theme="dark"] .data-grid--elevated fluent-button::part(control) {
@@ -3022,18 +3062,16 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     display: grid;
     gap: var(--space-6);
     padding: var(--space-6) var(--space-5);
-    border: 1px solid rgba(244, 239, 231, 0.08);
+    border: 1px solid var(--rail-border);
     border-radius: 12px;
-    background:
-        linear-gradient(180deg, rgba(30, 35, 40, 0.96), rgba(17, 20, 23, 0.96)),
-        rgba(17, 20, 23, 0.96);
+    background: var(--rail-surface);
     box-shadow: 0 16px 34px rgba(17, 20, 23, 0.18);
-    color: #f4efe7;
+    color: var(--rail-text);
 }
 
 .brand-link--rail {
     padding-bottom: 18px;
-    border-bottom: 1px solid rgba(244, 239, 231, 0.08);
+    border-bottom: 1px solid var(--rail-border);
 }
 
 .brand-link--rail .brand-mark {
@@ -3043,7 +3081,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .brand-link--rail strong,
 .brand-link--rail .brand-tagline {
-    color: #f4efe7;
+    color: var(--rail-text);
 }
 
 .brand-link--rail .brand-tagline {
@@ -3060,7 +3098,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba(244, 239, 231, 0.54);
+    color: var(--rail-muted);
 }
 
 .app-rail__nav {
@@ -3075,19 +3113,22 @@ fluent-anchor.app-rail__link::part(control) {
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     background: transparent;
-    color: rgba(244, 239, 231, 0.8);
+    color: var(--rail-text);
+    opacity: 0.82;
     font-weight: 600;
 }
 
 fluent-anchor.app-rail__link:hover::part(control) {
-    background: rgba(244, 239, 231, 0.06);
-    color: #f4efe7;
+    background: var(--rail-hover);
+    color: var(--rail-text);
+    opacity: 1;
 }
 
 fluent-anchor.app-rail__link--active::part(control) {
-    border-color: rgba(30, 107, 104, 0.52);
-    background: rgba(30, 107, 104, 0.18);
-    color: #f4efe7;
+    border-color: var(--rail-active-border);
+    background: var(--rail-active-bg);
+    color: var(--rail-text);
+    opacity: 1;
 }
 
 .app-workspace {

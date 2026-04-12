@@ -64,15 +64,15 @@
         {
             <div class="dashboard-posture__item">
                 <span class="summary-strip__label">Net worth</span>
-                <strong class="dashboard-posture__value dashboard-posture__value--serif">@FormatMoney(_summary?.NetWorth)</strong>
+                <strong class="dashboard-posture__value dashboard-posture__value--serif">@FormatSummaryMoney(_summary?.NetWorth)</strong>
             </div>
             <div class="dashboard-posture__item">
                 <span class="summary-strip__label">Assets</span>
-                <strong class="dashboard-posture__value dashboard-posture__value--gain">@FormatMoney(_summary?.TotalAssets)</strong>
+                <strong class="dashboard-posture__value dashboard-posture__value--gain">@FormatSummaryMoney(_summary?.TotalAssets)</strong>
             </div>
             <div class="dashboard-posture__item">
                 <span class="summary-strip__label">Liabilities</span>
-                <strong class="dashboard-posture__value dashboard-posture__value--risk">@FormatMoney(_summary?.TotalLiabilities)</strong>
+                <strong class="dashboard-posture__value dashboard-posture__value--risk">@FormatSummaryMoney(_summary?.TotalLiabilities)</strong>
             </div>
             <div class="dashboard-posture__item">
                 <span class="summary-strip__label">Last refresh</span>
@@ -329,6 +329,10 @@
     private string FormatMoney(decimal? value) => value.HasValue
         ? $"{value.Value.ToString("C")} {CurrencyCode}"
         : $"{0m.ToString("C")} {CurrencyCode}";
+
+    private string FormatSummaryMoney(decimal? value) => _summary is null
+        ? "Unavailable"
+        : FormatMoney(value);
 
     private string CurrencyCode => _summary?.Currency ?? _history?.Currency ?? "CAD";
 

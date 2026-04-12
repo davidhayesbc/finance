@@ -19,10 +19,11 @@
     else
     {
         <FluentCard Class="surface-card">
-            <FluentDataGrid Items="_securities.AsQueryable()" TGridItem="SecurityCatalogItemResponse"
-                            Class="data-grid--elevated data-grid--securities" aria-label="Securities" ResizableColumns="true"
-                            ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
-                            ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
+            <div class="table-surface table-surface--grid table-surface--scroll">
+                <FluentDataGrid Items="_securities.AsQueryable()" TGridItem="SecurityCatalogItemResponse"
+                                Class="data-grid--elevated data-grid--securities" aria-label="Securities" ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
+                                ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
                 <PropertyColumn Property="@(s => s.DisplaySymbol)" Title="Symbol" Sortable="true" Width="100px" />
                 <TemplateColumn Title="Name" SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.Name))"
                                 Width="240px">
@@ -102,6 +103,7 @@
                         </FluentStack>
                     </TemplateColumn>
                 </FluentDataGrid>
+            </div>
             </FluentCard>
         }
     </section>

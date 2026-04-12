@@ -40,7 +40,6 @@
         }
         else
         {
-            <div class="forecast-posture__grid">
                 <article class="forecast-posture__item">
                     <span>Total projected income</span>
                     <strong>@FormatMoney(TotalProjectedIncome)</strong>
@@ -66,7 +65,6 @@
                     <strong class="@(LowestProjectedBalance >= 0m ? string.Empty : "forecast-posture__value--risk")">@FormatMoney(LowestProjectedBalance)</strong>
                     <p>@BuildLowestBalanceDetail()</p>
                 </article>
-            </div>
         }
         </PostureStrip>
     </PageRegion>

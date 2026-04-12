@@ -29,15 +29,16 @@
                 <StatCard Label="Total plugins">@_catalog.Plugins.Count</StatCard>
             </div>
 
-            <FluentDataGrid Items="_catalog.Plugins.AsQueryable()" TGridItem="RegisteredPluginResponse"
-                            Class="data-grid--elevated" aria-label="Registered plugins"
-                            ResizableColumns="true"
-                            ResizeType="DataGridResizeType.Discrete"
-                            HeaderCellAsButtonWithMenu="true"
-                            ResizeColumnOnAllRows="false"
-                            ShowHover="true"
-                            DisplayMode="DataGridDisplayMode.Table"
-                            RowSize="DataGridRowSize.Medium">
+            <div class="table-surface table-surface--grid table-surface--scroll">
+                <FluentDataGrid Items="_catalog.Plugins.AsQueryable()" TGridItem="RegisteredPluginResponse"
+                                Class="data-grid--elevated" aria-label="Registered plugins"
+                                ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeColumnOnAllRows="false"
+                                ShowHover="true"
+                                DisplayMode="DataGridDisplayMode.Table"
+                                RowSize="DataGridRowSize.Medium">
                 <PropertyColumn Property="@(p => p.Kind)" Title="Kind" Sortable="true" />
                 <PropertyColumn Property="@(p => p.Name)" Title="Name" Sortable="true" />
                 <PropertyColumn Property="@(p => p.Key)" Title="Key" Sortable="true" />
@@ -45,7 +46,8 @@
                 <PropertyColumn Property="@(p => p.AssemblyVersion)" Title="Version" />
                 <PropertyColumn Property="@(p => p.DllIdentity)" Title="DLL Identity" />
                 <PropertyColumn Property="@(p => p.TypeName)" Title="Type" />
-            </FluentDataGrid>
+                </FluentDataGrid>
+            </div>
         </FluentCard>
     }
 </section>

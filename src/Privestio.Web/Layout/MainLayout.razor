@@ -166,6 +166,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        AuthService.AuthenticationStateChanged += HandleAuthenticationStateChanged;
         await ThemeService.InitializeAsync();
         _themeState = ThemeService.State;
         ThemeService.ThemeChanged += HandleThemeChanged;
@@ -186,6 +187,19 @@
     {
         _themeState = themeState;
         InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleAuthenticationStateChanged(bool isAuthenticated)
+    {
+        _ = InvokeAsync(() =>
+        {
+            if (!isAuthenticated && UseProductShell)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+            }
+
+            StateHasChanged();
+        });
     }
 
     private string GetThemeButtonClass(string preference) =>
@@ -243,6 +257,7 @@
 
     public void Dispose()
     {
+        AuthService.AuthenticationStateChanged -= HandleAuthenticationStateChanged;
         ThemeService.ThemeChanged -= HandleThemeChanged;
     }
 

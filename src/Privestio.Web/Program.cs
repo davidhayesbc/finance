@@ -10,7 +10,12 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // API HttpClient
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:5001";
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+builder.Services.AddTransient<AuthenticatedHttpMessageHandler>();
+builder.Services.AddScoped(sp =>
+{
+	var handler = sp.GetRequiredService<AuthenticatedHttpMessageHandler>();
+	return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+});
 
 // Fluent UI services
 builder.Services.AddFluentUIComponents();
