@@ -1,6 +1,8 @@
 using MediatR;
 using Privestio.Application.Interfaces;
+using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
+using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 
 namespace Privestio.Application.Queries.GetNetWorthSummary;
@@ -9,10 +11,15 @@ public class GetNetWorthSummaryQueryHandler
     : IRequestHandler<GetNetWorthSummaryQuery, NetWorthSummaryResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly InvestmentPortfolioValuationService _investmentPortfolioValuationService;
 
-    public GetNetWorthSummaryQueryHandler(IUnitOfWork unitOfWork)
+    public GetNetWorthSummaryQueryHandler(
+        IUnitOfWork unitOfWork,
+        InvestmentPortfolioValuationService investmentPortfolioValuationService
+    )
     {
         _unitOfWork = unitOfWork;
+        _investmentPortfolioValuationService = investmentPortfolioValuationService;
     }
 
     public async Task<NetWorthSummaryResponse> Handle(
@@ -36,39 +43,55 @@ public class GetNetWorthSummaryQueryHandler
 
         var liabilityTypes = new HashSet<AccountType> { AccountType.Credit, AccountType.Loan };
 
-        var totalAssets = activeAccounts
-            .Where(a => assetTypes.Contains(a.AccountType))
-            .Sum(a => a.CurrentBalance.Amount);
+        var nonPropertyAndNonInvestmentIds = activeAccounts
+            .Where(a => a.AccountType != AccountType.Property && a.AccountType != AccountType.Investment)
+            .Select(a => a.Id);
 
-        var totalLiabilities = activeAccounts
-            .Where(a => liabilityTypes.Contains(a.AccountType))
-            .Sum(a => Math.Abs(a.CurrentBalance.Amount));
+        var signedSums = await _unitOfWork.Transactions.GetSignedSumsByAccountIdsAsync(
+            nonPropertyAndNonInvestmentIds,
+            cancellationToken
+        );
+
+        var computedAccounts = new List<(Account Account, decimal Balance)>(activeAccounts.Count);
+        foreach (var account in activeAccounts)
+        {
+            var balance = await ComputeBalanceAsync(account, signedSums, cancellationToken);
+            computedAccounts.Add((account, balance));
+        }
+
+        var totalAssets = computedAccounts
+            .Where(x => assetTypes.Contains(x.Account.AccountType))
+            .Sum(x => x.Balance);
+
+        var totalLiabilities = computedAccounts
+            .Where(x => liabilityTypes.Contains(x.Account.AccountType))
+            .Sum(x => Math.Abs(x.Balance));
 
         var netWorth = totalAssets - totalLiabilities;
 
-        var assetAllocation = activeAccounts
-            .Where(a => assetTypes.Contains(a.AccountType))
-            .GroupBy(a => a.AccountType)
+        var assetAllocation = computedAccounts
+            .Where(x => assetTypes.Contains(x.Account.AccountType))
+            .GroupBy(x => x.Account.AccountType)
             .Select(g => new AssetAllocationItem
             {
                 AccountType = g.Key.ToString(),
-                Amount = g.Sum(a => a.CurrentBalance.Amount),
+                Amount = g.Sum(x => x.Balance),
                 Percentage =
                     totalAssets > 0
-                        ? Math.Round(g.Sum(a => a.CurrentBalance.Amount) / totalAssets * 100, 2)
+                        ? Math.Round(g.Sum(x => x.Balance) / totalAssets * 100, 2)
                         : 0,
             })
             .OrderByDescending(a => a.Amount)
             .ToList();
 
-        var accountSummaries = activeAccounts
-            .Select(a => new AccountSummary
+        var accountSummaries = computedAccounts
+            .Select(x => new AccountSummary
             {
-                AccountId = a.Id,
-                Name = a.Name,
-                AccountType = a.AccountType.ToString(),
-                Balance = a.CurrentBalance.Amount,
-                Currency = a.Currency,
+                AccountId = x.Account.Id,
+                Name = x.Account.Name,
+                AccountType = x.Account.AccountType.ToString(),
+                Balance = x.Balance,
+                Currency = x.Account.Currency,
             })
             .ToList();
 
@@ -81,5 +104,30 @@ public class GetNetWorthSummaryQueryHandler
             AssetAllocation = assetAllocation,
             AccountSummaries = accountSummaries,
         };
+    }
+
+    private async Task<decimal> ComputeBalanceAsync(
+        Account account,
+        IReadOnlyDictionary<Guid, decimal> signedSums,
+        CancellationToken cancellationToken
+    )
+    {
+        if (account.AccountType == AccountType.Property)
+        {
+            var latest = account.GetLatestValuation();
+            return latest?.EstimatedValue.Amount ?? account.OpeningBalance.Amount;
+        }
+
+        if (account.AccountType == AccountType.Investment)
+        {
+            var valuation = await _investmentPortfolioValuationService.CalculateAsync(
+                account,
+                cancellationToken
+            );
+            return valuation.TotalMarketValue ?? account.CurrentBalance.Amount;
+        }
+
+        signedSums.TryGetValue(account.Id, out var sum);
+        return account.OpeningBalance.Amount + sum;
     }
 }
