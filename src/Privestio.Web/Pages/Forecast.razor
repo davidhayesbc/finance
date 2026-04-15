@@ -1,4 +1,6 @@
 @page "/forecast"
+@inject IForecastScenarioService ForecastScenarioService
+@inject IJSRuntime JS
 @inject INotificationWebService NotificationService
 
 <PageTitle>Forecast — Privestio</PageTitle>
@@ -22,7 +24,12 @@
                 </div>
             </Context>
             <Actions>
-                <FluentButton Appearance="Appearance.Outline" OnClick="LoadForecastAsync">Refresh</FluentButton>
+                <div class="action-cluster">
+                    <FluentButton Id="forecast-assumptions-toggle" Appearance="Appearance.Outline" OnClick="OpenAssumptionsPanelAsync">
+                        Assumptions
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" OnClick="LoadForecastAsync">Refresh</FluentButton>
+                </div>
             </Actions>
         </PageHeader>
     </PageRegion>
@@ -77,7 +84,8 @@
                         Meta="@GetHorizonLabel(_months)"
                         HeaderClass="forecast-section-heading forecast-section-heading--split"
                         CanvasClass="forecast-plane__canvas"
-                        IsLoading="@_isLoading"
+                        IsLoading="@(!_hasLoadedData && _isLoading)"
+                        IsUpdating="@(_hasLoadedData && _isLoading)"
                         IsEmpty="@(Periods.Count == 0)"
                         EmptyTitle="No projection data is available yet."
                         EmptyMessage="Add recurring transactions and budgets to generate a balance trajectory.">
@@ -96,6 +104,78 @@
                             <span class="forecast-plane__marker-label">@marker.Label</span>
                         </article>
                     }
+
+                    @if (_isAssumptionsPanelOpen)
+                    {
+                        <InspectorPanel Title="Scenario assumptions"
+                                        TitleId="forecast-assumptions-title"
+                                        Description="Adjust longer-range net worth assumptions while the current cash projection remains visible."
+                                        HeadingLevel="3"
+                                        Variant="sheet"
+                                        Class="forecast-assumptions-panel">
+                            <HeaderActions>
+                                <FluentButton Appearance="Appearance.Stealth" OnClick="CloseAssumptionsPanelAsync">Close</FluentButton>
+                            </HeaderActions>
+                            <ChildContent>
+                                @if (!string.IsNullOrWhiteSpace(_scenarioErrorMessage))
+                                {
+                                    <FluentMessageBar Intent="@MessageIntent.Error">@_scenarioErrorMessage</FluentMessageBar>
+                                }
+
+                                <div class="forecast-assumptions-panel__stack">
+                                    <label class="forecast-assumptions-field">
+                                        <span>Scenario</span>
+                                        <select class="forecast-native-select" value="@GetSelectedScenarioValue()" @onchange="HandleScenarioSelectionChangedAsync">
+                                            <option value="">New scenario draft</option>
+                                            @foreach (var scenario in _scenarios)
+                                            {
+                                                <option value="@scenario.Id.ToString()">@scenario.Name</option>
+                                            }
+                                        </select>
+                                    </label>
+
+                                    <label class="forecast-assumptions-field">
+                                        <span>Name</span>
+                                        <InputText @bind-Value="_scenarioEditor.Name" class="forecast-native-input" />
+                                    </label>
+
+                                    <label class="forecast-assumptions-field">
+                                        <span>Description</span>
+                                        <InputTextArea @bind-Value="_scenarioEditor.Description" class="forecast-native-textarea" />
+                                    </label>
+
+                                    <div class="forecast-assumptions-list">
+                                        @foreach (var row in _scenarioEditor.Assumptions)
+                                        {
+                                            <div class="forecast-assumptions-row" @key="row.Key">
+                                                <label class="forecast-assumptions-field">
+                                                    <span>Account type</span>
+                                                    <InputText @bind-Value="row.AccountType" class="forecast-native-input" />
+                                                </label>
+                                                <label class="forecast-assumptions-field">
+                                                    <span>Growth %</span>
+                                                    <InputNumber @bind-Value="row.AnnualGrowthRate" class="forecast-native-input" />
+                                                </label>
+                                                <label class="forecast-assumptions-field">
+                                                    <span>Inflation %</span>
+                                                    <InputNumber @bind-Value="row.AnnualInflationRate" class="forecast-native-input" />
+                                                </label>
+                                                <button type="button" class="forecast-link-action forecast-link-action--danger" @onclick="() => RemoveAssumptionRow(row.Key)">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="forecast-assumptions-actions">
+                                        <FluentButton Appearance="Appearance.Outline" OnClick="AddAssumptionRow">Add Assumption</FluentButton>
+                                        <FluentButton Appearance="Appearance.Stealth" OnClick="StartNewScenario">New Scenario</FluentButton>
+                                        <FluentButton Appearance="Appearance.Accent" Loading="_isScenarioSaving" OnClick="SaveScenarioAsync">Save</FluentButton>
+                                    </div>
+                                </div>
+                            </ChildContent>
+                        </InspectorPanel>
+                    }
             </ChartFrame>
         </PageRegion>
 
@@ -108,10 +188,9 @@
             <div class="forecast-driver__list">
                 @foreach (var driver in DriverItems)
                 {
-                    <article class="@GetDriverClass(driver.Tone)">
-                        <strong>@driver.Title</strong>
-                        <p>@driver.Detail</p>
-                    </article>
+                    <OperationalExceptionRow Title="@driver.Title"
+                                             Detail="@driver.Detail"
+                                             Severity="@ToSeverity(driver.Tone)" />
                 }
             </div>
             </SectionBand>
@@ -126,6 +205,7 @@
                      HeaderClass="forecast-section-heading forecast-section-heading--split">
 
         <DenseTableSurface IsLoading="@_isLoading"
+                           IsUpdating="@(_hasLoadedData && _isLoading)"
                            IsEmpty="@(Periods.Count == 0)"
                            LoadingRows="6"
                            LoadingColumns="7"
@@ -170,8 +250,16 @@
 @code {
     private static readonly IReadOnlyList<int> HorizonOptions = [3, 6, 12, 24];
     private CashFlowForecastResponse? _forecast;
+    private List<ForecastScenarioResponse> _scenarios = [];
     private bool _isLoading = true;
+    private bool _hasLoadedData;
+    private bool _isAssumptionsPanelOpen;
+    private bool _isScenarioSaving;
     private int _months = 6;
+    private string? _scenarioErrorMessage;
+
+    private ForecastScenarioResponse? _selectedScenario;
+    private ForecastScenarioEditorModel _scenarioEditor = ForecastScenarioEditorModel.CreateDefault();
 
     private IReadOnlyList<CashFlowPeriod> Periods => _forecast?.Periods ?? [];
 
@@ -197,7 +285,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadForecastAsync();
+        await Task.WhenAll(LoadForecastAsync(), LoadScenariosAsync());
     }
 
     private async Task LoadForecastAsync()
@@ -207,6 +295,7 @@
         try
         {
             _forecast = await NotificationService.GetCashFlowForecastAsync(_months);
+            _hasLoadedData = true;
         }
         finally
         {
@@ -224,6 +313,144 @@
         _months = months;
         await LoadForecastAsync();
     }
+
+    private async Task LoadScenariosAsync()
+    {
+        _scenarios = (await ForecastScenarioService.GetAllAsync()).ToList();
+        var initialScenario = _scenarios.FirstOrDefault(scenario => scenario.IsDefault) ?? _scenarios.FirstOrDefault();
+        ApplyScenario(initialScenario);
+    }
+
+    private Task OpenAssumptionsPanelAsync()
+    {
+        _isAssumptionsPanelOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task CloseAssumptionsPanelAsync()
+    {
+        _isAssumptionsPanelOpen = false;
+        await JS.InvokeVoidAsync("uiState.focusElementById", "forecast-assumptions-toggle");
+    }
+
+    private async Task HandleScenarioSelectionChangedAsync(ChangeEventArgs args)
+    {
+        var selectedValue = args.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(selectedValue))
+        {
+            StartNewScenario();
+            return;
+        }
+
+        if (Guid.TryParse(selectedValue, out var scenarioId))
+        {
+            ApplyScenario(_scenarios.FirstOrDefault(scenario => scenario.Id == scenarioId));
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private void StartNewScenario()
+    {
+        _selectedScenario = null;
+        _scenarioErrorMessage = null;
+        _scenarioEditor = ForecastScenarioEditorModel.CreateDefault();
+    }
+
+    private void AddAssumptionRow()
+    {
+        _scenarioEditor.Assumptions.Add(new AssumptionEditorRow());
+    }
+
+    private void RemoveAssumptionRow(Guid key)
+    {
+        var updatedRows = _scenarioEditor.Assumptions.Where(row => row.Key != key).ToList();
+        if (updatedRows.Count == 0)
+        {
+            updatedRows.Add(new AssumptionEditorRow());
+        }
+
+        _scenarioEditor.Assumptions = updatedRows;
+    }
+
+    private async Task SaveScenarioAsync()
+    {
+        _isScenarioSaving = true;
+        _scenarioErrorMessage = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_scenarioEditor.Name))
+            {
+                _scenarioErrorMessage = "Scenario name is required.";
+                return;
+            }
+
+            var assumptions = _scenarioEditor.Assumptions
+                .Where(row => !string.IsNullOrWhiteSpace(row.AccountType) || row.AnnualGrowthRate != 0m || row.AnnualInflationRate != 0m)
+                .Select(row => new GrowthAssumptionDto(null, row.AccountType, row.AnnualGrowthRate, row.AnnualInflationRate))
+                .ToList();
+
+            if (_selectedScenario is null)
+            {
+                var created = await ForecastScenarioService.CreateAsync(new CreateForecastScenarioRequest(_scenarioEditor.Name.Trim(), NormalizeOptional(_scenarioEditor.Description), assumptions));
+                if (created is null)
+                {
+                    _scenarioErrorMessage = "Scenario could not be created.";
+                    return;
+                }
+
+                await LoadScenariosAsync();
+                ApplyScenario(_scenarios.FirstOrDefault(scenario => scenario.Id == created.Id));
+            }
+            else
+            {
+                var updated = await ForecastScenarioService.UpdateAsync(_selectedScenario.Id, new UpdateForecastScenarioRequest(_scenarioEditor.Name.Trim(), NormalizeOptional(_scenarioEditor.Description), assumptions));
+                if (updated is null)
+                {
+                    _scenarioErrorMessage = "Scenario could not be updated.";
+                    return;
+                }
+
+                await LoadScenariosAsync();
+                ApplyScenario(_scenarios.FirstOrDefault(scenario => scenario.Id == updated.Id));
+            }
+        }
+        finally
+        {
+            _isScenarioSaving = false;
+        }
+    }
+
+    private string GetSelectedScenarioValue() => _selectedScenario?.Id.ToString() ?? string.Empty;
+
+    private void ApplyScenario(ForecastScenarioResponse? scenario)
+    {
+        _selectedScenario = scenario;
+        _scenarioErrorMessage = null;
+
+        if (scenario is null)
+        {
+            _scenarioEditor = ForecastScenarioEditorModel.CreateDefault();
+            return;
+        }
+
+        _scenarioEditor = new ForecastScenarioEditorModel
+        {
+            Name = scenario.Name,
+            Description = scenario.Description ?? string.Empty,
+            Assumptions = scenario.GrowthAssumptions.Count == 0
+                ? [new AssumptionEditorRow()]
+                : scenario.GrowthAssumptions.Select(assumption => new AssumptionEditorRow
+                {
+                    AccountType = assumption.AccountType ?? string.Empty,
+                    AnnualGrowthRate = assumption.AnnualGrowthRate,
+                    AnnualInflationRate = assumption.AnnualInflationRate,
+                }).ToList(),
+        };
+    }
+
+    private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private Appearance GetHorizonAppearance(int months) => _months == months ? Appearance.Accent : Appearance.Outline;
 
@@ -367,12 +594,11 @@
         return items.Take(4).ToList();
     }
 
-    private static string GetDriverClass(string tone) => tone switch
+    private static UiSeverity ToSeverity(string tone) => tone switch
     {
-        "risk" => "forecast-driver forecast-driver--risk",
-        "warning" => "forecast-driver forecast-driver--warning",
-        "ok" => "forecast-driver forecast-driver--ok",
-        _ => "forecast-driver",
+        "risk" => UiSeverity.Urgent,
+        "warning" => UiSeverity.Advisory,
+        _ => UiSeverity.Informational,
     };
 
     private static string GetProjectionMarkerClass(string tone) => tone switch
@@ -392,4 +618,26 @@
     private sealed record ProjectionMarker(decimal Left, decimal Top, string Label, string Tooltip, string Tone);
 
     private sealed record ForecastDriver(string Title, string Detail, string Tone);
+
+    private sealed class ForecastScenarioEditorModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public List<AssumptionEditorRow> Assumptions { get; set; } = [new()];
+
+        public static ForecastScenarioEditorModel CreateDefault() => new()
+        {
+            Name = "Long-range scenario",
+            Description = "Stored net worth planning assumptions.",
+            Assumptions = [new AssumptionEditorRow()],
+        };
+    }
+
+    private sealed class AssumptionEditorRow
+    {
+        public Guid Key { get; set; } = Guid.NewGuid();
+        public string AccountType { get; set; } = string.Empty;
+        public decimal AnnualGrowthRate { get; set; }
+        public decimal AnnualInflationRate { get; set; }
+    }
 }

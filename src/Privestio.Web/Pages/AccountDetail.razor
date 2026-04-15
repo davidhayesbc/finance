@@ -18,7 +18,7 @@ else if (_account is null)
             <PageHeader Eyebrow="Account dossier" Title="Account not found"
                         Description="The requested account could not be loaded, but the dossier shell stays intact so you can recover context.">
                 <Actions>
-                    <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
+                    <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo(GetBackToAccountsUrl()))">
                         Back to Accounts
                     </FluentButton>
                 </Actions>
@@ -35,7 +35,7 @@ else
                         Compact="true">
                 <Actions>
                     <div class="action-cluster">
-                        <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
+                        <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo(GetBackToAccountsUrl()))">
                             Back to Accounts
                         </FluentButton>
                         <FluentButton Appearance="Appearance.Accent"
@@ -173,6 +173,7 @@ else
     private string? _valueHistoryErrorMessage;
     private string? _performanceErrorMessage;
     private string? _historicalPriceSyncMessage;
+    private string _returnFilter = "all";
     private MessageIntent _historicalPriceSyncIntent = MessageIntent.Success;
     private string _selectedValueHistoryRange = "1y";
 
@@ -184,6 +185,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        _returnFilter = ResolveReturnFilter();
         _isLoading = true;
         _account = await AccountService.GetAccountByIdAsync(Id);
         _isLoading = false;
@@ -368,4 +370,28 @@ else
     }
 
     private string FormatMoney(decimal amount) => $"{amount:C} {_account?.Currency ?? "CAD"}";
+
+    private string GetBackToAccountsUrl() => $"/accounts?filter={Uri.EscapeDataString(_returnFilter)}";
+
+    private string ResolveReturnFilter()
+    {
+        var query = Navigation.ToAbsoluteUri(Navigation.Uri).Query;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return "all";
+        }
+
+        var segments = query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var segment in segments)
+        {
+            var keyValue = segment.Split('=', 2);
+            if (keyValue.Length == 2 && string.Equals(keyValue[0], "returnFilter", StringComparison.OrdinalIgnoreCase))
+            {
+                var value = Uri.UnescapeDataString(keyValue[1]);
+                return string.IsNullOrWhiteSpace(value) ? "all" : value;
+            }
+        }
+
+        return "all";
+    }
 }

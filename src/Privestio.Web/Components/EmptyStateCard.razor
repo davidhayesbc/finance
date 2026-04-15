@@ -1,6 +1,22 @@
 <FluentCard Class="@CardClass">
     <FluentMessageBar Intent="@Intent" aria-live="@AriaLive">
-        @Message
+        <div class="empty-state-card__message">
+            <strong>@Message</strong>
+            @if (!string.IsNullOrWhiteSpace(MissingContext))
+            {
+                <span>@MissingContext</span>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(ActionHint))
+            {
+                <span>@ActionHint</span>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(LocationHint))
+            {
+                <span>@LocationHint</span>
+            }
+        </div>
     </FluentMessageBar>
 
     @if (Actions is not null)
@@ -22,6 +38,15 @@
 
     [Parameter]
     public string AriaLive { get; set; } = "polite";
+
+    [Parameter]
+    public string? MissingContext { get; set; }
+
+    [Parameter]
+    public string? ActionHint { get; set; }
+
+    [Parameter]
+    public string? LocationHint { get; set; }
 
     [Parameter]
     public string? Class { get; set; }

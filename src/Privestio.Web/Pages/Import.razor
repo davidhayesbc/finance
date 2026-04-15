@@ -25,6 +25,8 @@
                 </div>
             </Actions>
         </PageHeader>
+
+        <MessageStack ErrorMessage="@_errorMessage" SuccessMessage="@_successMessage" />
     </PageRegion>
 
     <div class="import-workbench">
@@ -294,10 +296,9 @@
         <div class="import-exceptions__list">
             @foreach (var item in WorkflowExceptions)
             {
-                <article class="@GetExceptionClass(item.Tone)">
-                    <strong>@item.Title</strong>
-                    <p>@item.Detail</p>
-                </article>
+                <OperationalExceptionRow Title="@item.Title"
+                                         Detail="@item.Detail"
+                                         Severity="@ToSeverity(item.Tone)" />
             }
         </div>
         </SectionBand>
@@ -798,12 +799,11 @@
             : "import-step-rail__item";
     }
 
-    private static string GetExceptionClass(string tone) => tone switch
+    private static UiSeverity ToSeverity(string tone) => tone switch
     {
-        "risk" => "import-exception import-exception--risk",
-        "warning" => "import-exception import-exception--warning",
-        "ok" => "import-exception import-exception--ok",
-        _ => "import-exception",
+        "risk" => UiSeverity.Urgent,
+        "warning" => UiSeverity.Advisory,
+        _ => UiSeverity.Informational,
     };
 
     private static List<string>? ParseKeywordList(string value) =>

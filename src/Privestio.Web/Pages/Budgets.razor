@@ -79,6 +79,7 @@
                          HeaderClass="budgets-section-heading budgets-section-heading--split">
 
             <DenseTableSurface IsLoading="@_isLoading"
+                               IsUpdating="@(_hasLoadedData && _isLoading)"
                                IsEmpty="@(_summaries.Count == 0)"
                                LoadingRows="6"
                                LoadingColumns="6"
@@ -136,10 +137,9 @@
             <div class="budgets-pressure__list">
                 @foreach (var item in PressureItems)
                 {
-                    <article class="@GetPressureClass(item.Tone)">
-                        <strong>@item.Title</strong>
-                        <p>@item.Detail</p>
-                    </article>
+                    <OperationalExceptionRow Title="@item.Title"
+                                             Detail="@item.Detail"
+                                             Severity="@ToSeverity(item.Tone)" />
                 }
             </div>
             </SectionBand>
@@ -217,6 +217,7 @@
         }
 
         <DenseTableSurface IsLoading="@_isLoading"
+                           IsUpdating="@(_hasLoadedData && _isLoading)"
                            IsEmpty="@(_budgets.Count == 0)"
                            LoadingRows="5"
                            LoadingColumns="6"
@@ -265,6 +266,7 @@
     private List<CategoryResponse> _categories = [];
     private bool _isLoading = true;
     private bool _isSaving;
+    private bool _hasLoadedData;
     private bool _showForm;
     private Guid? _editingBudgetId;
     private string? _errorMessage;
@@ -324,6 +326,7 @@
             await Task.WhenAll(budgetTask, summaryTask);
             _budgets = (await budgetTask).ToList();
             _summaries = (await summaryTask).ToList();
+            _hasLoadedData = true;
         }
         finally
         {
@@ -530,12 +533,11 @@
         return items.Take(6).ToList();
     }
 
-    private static string GetPressureClass(string tone) => tone switch
+    private static UiSeverity ToSeverity(string tone) => tone switch
     {
-        "risk" => "budgets-pressure-item budgets-pressure-item--risk",
-        "warning" => "budgets-pressure-item budgets-pressure-item--warning",
-        "ok" => "budgets-pressure-item budgets-pressure-item--ok",
-        _ => "budgets-pressure-item",
+        "risk" => UiSeverity.Urgent,
+        "warning" => UiSeverity.Advisory,
+        _ => UiSeverity.Informational,
     };
 
     private string FormatMoney(decimal amount, string? currency = null) => $"{amount:C} {currency ?? PrimaryCurrency}";

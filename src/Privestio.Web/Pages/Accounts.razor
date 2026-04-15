@@ -1,6 +1,7 @@
 @page "/accounts"
 @inject IAccountService AccountService
 @inject IAnalyticsService AnalyticsService
+@inject IJSRuntime JS
 @inject IPriceHistoryService PriceHistoryService
 @inject NavigationManager Navigation
 
@@ -68,7 +69,8 @@
                     Description="Compact trend evidence above the main ledger, with the frame kept stable during range changes."
                     HeaderClass="accounts-section-heading accounts-section-heading--split"
                     CanvasClass="accounts-history__body"
-                    IsLoading="@(_isLoading || _isLoadingHistory)"
+                    IsLoading="@(!_hasLoadedHistory && (_isLoading || _isLoadingHistory))"
+                    IsUpdating="@(_hasLoadedHistory && _isLoadingHistory)"
                     IsEmpty="@(_netWorthHistory is null || _netWorthHistory.Points.Count == 0)"
                     EmptyTitle="History is unavailable right now."
                     EmptyMessage="The strip stays visible so the page still reads like one ledger workspace.">
@@ -115,10 +117,9 @@
             <div class="accounts-exceptions__list">
                 @foreach (var item in ExceptionItems)
                 {
-                    <article class="@GetExceptionClass(item.Tone)">
-                        <strong>@item.Title</strong>
-                        <p>@item.Detail</p>
-                    </article>
+                    <OperationalExceptionRow Title="@item.Title"
+                                             Detail="@item.Detail"
+                                             Severity="@ToSeverity(item.Tone)" />
                 }
             </div>
             </SectionBand>
@@ -170,16 +171,54 @@
                         <div class="accounts-ledger__numeric">@FormatMoney(context.CurrentBalance, context.Currency)</div>
                     </TemplateColumn>
                     <TemplateColumn Title="Action" Width="110px">
-                        <FluentButton Appearance="Appearance.Stealth"
-                                      Class="accounts-ledger__action"
-                                      OnClick='@(() => Navigation.NavigateTo($"/accounts/{context.Id}"))'
-                                      aria-label='@($"View {context.Name}")'>
-                            View
-                        </FluentButton>
+                        <div class="grid-actions grid-actions--compact">
+                            <FluentButton Appearance="Appearance.Stealth"
+                                          Id="@GetQuickViewButtonId(context.Id)"
+                                          Class="accounts-ledger__action"
+                                          OnClick='@(() => ShowQuickViewAsync(context))'
+                                          aria-label='@($"Quick view {context.Name}")'>
+                                Quick
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth"
+                                          Id="@GetOpenButtonId(context.Id)"
+                                          Class="accounts-ledger__action"
+                                          OnClick='@(() => OpenAccountDetailAsync(context.Id))'
+                                          aria-label='@($"Open dossier for {context.Name}")'>
+                                Open
+                            </FluentButton>
+                        </div>
                     </TemplateColumn>
                 </FluentDataGrid>
             </div>
         </DenseTableSurface>
+
+        @if (_selectedQuickViewAccount is not null)
+        {
+            <InspectorPanel Title="Quick detail"
+                            TitleId="accounts-quick-sheet-title"
+                            Description="Small account checks stay in a side sheet while filters and ledger context remain visible."
+                            HeadingLevel="3"
+                            Variant="sheet"
+                            Class="accounts-quick-sheet">
+                <HeaderActions>
+                    <FluentButton Appearance="Appearance.Stealth" OnClick="ClearQuickViewAsync">Close</FluentButton>
+                </HeaderActions>
+                <ChildContent>
+                    <div class="accounts-quick-sheet__facts">
+                        <strong>@_selectedQuickViewAccount.Name</strong>
+                        <span>@BuildAccountSubline(_selectedQuickViewAccount)</span>
+                        <span>@FormatInstitution(_selectedQuickViewAccount)</span>
+                        <span>Balance: @FormatMoney(_selectedQuickViewAccount.CurrentBalance, _selectedQuickViewAccount.Currency)</span>
+                        <span>Status: @BuildStatusLabel(_selectedQuickViewAccount)</span>
+                    </div>
+                    <div class="action-cluster">
+                        <FluentButton Appearance="Appearance.Accent" OnClick='@(() => OpenAccountDetailAsync(_selectedQuickViewAccount.Id))'>
+                            Open dossier
+                        </FluentButton>
+                    </div>
+                </ChildContent>
+            </InspectorPanel>
+        }
         </SectionBand>
     </PageRegion>
 </section>
@@ -199,9 +238,14 @@
     private bool _isLoadingHistory = true;
     private bool _isLoading = true;
     private bool _isSyncingHistory;
+    private bool _hasLoadedHistory;
+    private bool _hasRestoredViewState;
+    private bool _initialized;
     private string _selectedHistoryRange = "1y";
     private string _selectedFilter = "all";
     private string? _syncMessage;
+    private AccountResponse? _selectedQuickViewAccount;
+    private string? _lastQuickViewInvokerId;
     private MessageIntent _syncMessageIntent = MessageIntent.Success;
 
     private List<AccountResponse> FilteredAccounts =>
@@ -246,10 +290,27 @@
             .FirstOrDefault(currency => !string.IsNullOrWhiteSpace(currency))
         ?? "CAD";
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        ApplyFilterFromQuery();
+
+        if (_initialized)
+        {
+            return;
+        }
+
         await LoadPageAsync();
         _isLoading = false;
+        _initialized = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_isLoading && !_hasRestoredViewState)
+        {
+            _hasRestoredViewState = true;
+            await JS.InvokeVoidAsync("uiState.restoreScrollState", "accounts-ledger");
+        }
     }
 
     private async Task LoadPageAsync()
@@ -262,6 +323,7 @@
 
         var (fromDate, toDate) = ResolveHistoryRange();
         _netWorthHistory = await AnalyticsService.GetNetWorthHistoryAsync(fromDate, toDate);
+        _hasLoadedHistory = true;
         _isLoadingHistory = false;
     }
 
@@ -347,6 +409,66 @@
         string.Equals(_selectedFilter, key, StringComparison.OrdinalIgnoreCase)
             ? "accounts-filter accounts-filter--active"
             : "accounts-filter";
+
+    private static UiSeverity ToSeverity(string tone) => tone switch
+    {
+        "risk" => UiSeverity.Urgent,
+        "warning" => UiSeverity.Advisory,
+        _ => UiSeverity.Informational,
+    };
+
+    private Task ShowQuickViewAsync(AccountResponse account)
+    {
+        _selectedQuickViewAccount = account;
+        _lastQuickViewInvokerId = GetQuickViewButtonId(account.Id);
+        return Task.CompletedTask;
+    }
+
+    private async Task ClearQuickViewAsync()
+    {
+        _selectedQuickViewAccount = null;
+
+        if (!string.IsNullOrWhiteSpace(_lastQuickViewInvokerId))
+        {
+            await JS.InvokeVoidAsync("uiState.focusElementById", _lastQuickViewInvokerId);
+        }
+    }
+
+    private async Task OpenAccountDetailAsync(Guid accountId)
+    {
+        await JS.InvokeVoidAsync("uiState.saveScrollState", "accounts-ledger", GetOpenButtonId(accountId));
+        var safeFilter = Uri.EscapeDataString(_selectedFilter);
+        Navigation.NavigateTo($"/accounts/{accountId}?returnFilter={safeFilter}");
+    }
+
+    private static string GetQuickViewButtonId(Guid accountId) => $"accounts-quick-{accountId:N}";
+
+    private static string GetOpenButtonId(Guid accountId) => $"accounts-open-{accountId:N}";
+
+    private void ApplyFilterFromQuery()
+    {
+        var query = Navigation.ToAbsoluteUri(Navigation.Uri).Query;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return;
+        }
+
+        var segments = query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var segment in segments)
+        {
+            var keyValue = segment.Split('=', 2);
+            if (keyValue.Length != 2 || !string.Equals(keyValue[0], "filter", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var requestedFilter = Uri.UnescapeDataString(keyValue[1]);
+            if (AccountFilters.Any(option => string.Equals(option.Key, requestedFilter, StringComparison.OrdinalIgnoreCase)))
+            {
+                _selectedFilter = requestedFilter;
+            }
+        }
+    }
 
     private static bool IsInvestmentAccount(AccountResponse account)
     {
@@ -443,14 +565,6 @@
             "Stale" => "accounts-status-badge accounts-status-badge--warning",
             "Review" => "accounts-status-badge accounts-status-badge--risk",
             _ => "accounts-status-badge accounts-status-badge--ok",
-        };
-
-    private static string GetExceptionClass(string tone) =>
-        tone switch
-        {
-            "risk" => "accounts-exception accounts-exception--risk",
-            "warning" => "accounts-exception accounts-exception--warning",
-            _ => "accounts-exception",
         };
 
     private List<AccountIssueItem> BuildExceptionItems()

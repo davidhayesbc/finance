@@ -1,6 +1,8 @@
 <Router AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <div class="route-stage" @key="GetRouteKey(routeData)">
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        </div>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
     <NotFound>
@@ -18,3 +20,7 @@
 <FluentMenuProvider />
 <FluentTooltipProvider />
 <FluentKeyCodeProvider />
+
+@code {
+    private static string GetRouteKey(RouteData routeData) => routeData.PageType.FullName ?? routeData.PageType.Name;
+}

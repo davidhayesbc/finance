@@ -453,6 +453,10 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     padding: 32px 0 56px;
 }
 
+.route-stage {
+    animation: route-stage-enter 180ms ease-out;
+}
+
 .app-footer {
     padding: 0 0 40px;
     color: var(--text-soft);
@@ -471,6 +475,29 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .page-region {
     min-width: 0;
+}
+
+.page-shell .page-region {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: page-region-settle 240ms ease-out forwards;
+    animation-delay: var(--region-delay, 0ms);
+}
+
+.page-shell .page-region--orientation {
+    --region-delay: 30ms;
+}
+
+.page-shell .page-region--primary {
+    --region-delay: 85ms;
+}
+
+.page-shell .page-region--supporting {
+    --region-delay: 130ms;
+}
+
+.page-shell .page-region--exceptions {
+    --region-delay: 175ms;
 }
 
 .page-shell {
@@ -681,6 +708,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .inspector-panel--sheet {
     background: color-mix(in srgb, var(--surface) 92%, var(--page-bg));
+    animation: inspector-sheet-in 210ms ease-out;
 }
 
 .inspector-panel__header {
@@ -719,6 +747,41 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 .dense-table-surface,
 .chart-frame {
     min-width: 0;
+    position: relative;
+}
+
+.dense-table-surface--updating > :not(.surface-refresh-overlay),
+.chart-frame--updating > .section-band__body > :not(.surface-refresh-overlay) {
+    opacity: 0.72;
+    filter: saturate(0.92);
+    transition: opacity 120ms ease, filter 120ms ease;
+}
+
+.surface-refresh-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 72%, transparent), color-mix(in srgb, var(--surface-raised) 84%, transparent));
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.surface-refresh-overlay span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--surface-border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-strong) 94%, var(--page-bg));
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .dense-table-surface__empty,
@@ -978,6 +1041,65 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     min-height: 220px;
 }
 
+.empty-state-card__message {
+    display: grid;
+    gap: 4px;
+}
+
+.empty-state-card__message strong {
+    font-size: 0.94rem;
+}
+
+.empty-state-card__message span {
+    color: var(--text-muted);
+}
+
+.operational-exception {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface-raised) 94%, var(--page-bg));
+}
+
+.operational-exception__body {
+    display: grid;
+    gap: 4px;
+}
+
+.operational-exception__body p {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.operational-exception--advisory {
+    border-color: rgba(160, 122, 47, 0.42);
+}
+
+.operational-exception--urgent {
+    border-color: rgba(193, 67, 67, 0.42);
+}
+
+.operational-exception__action {
+    border: 0;
+    background: transparent;
+    color: var(--accent-strong);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.operational-exception__action:hover {
+    color: var(--text-strong);
+}
+
 .summary-strip {
     justify-content: space-between;
     margin-bottom: 18px;
@@ -987,8 +1109,8 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 :root[data-theme="dark"] .summary-strip {
-    border: 1px solid rgba(135, 168, 216, 0.24);
-    background: rgba(17, 32, 50, 0.96);
+    border: 1px solid var(--surface-border);
+    background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
 }
 
 .summary-strip--compact {
@@ -1010,7 +1132,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 :root[data-theme="dark"] .summary-strip__label {
-    color: #c7d8ef;
+    color: var(--text-muted);
 }
 
 .balance-badge {
@@ -1024,9 +1146,9 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 :root[data-theme="dark"] .balance-badge::part(control) {
-    border-color: rgba(135, 168, 216, 0.28);
-    background: rgba(26, 43, 66, 0.98);
-    color: #f2f7ff;
+    border-color: var(--surface-border);
+    background: color-mix(in srgb, var(--surface-raised) 92%, var(--page-bg));
+    color: var(--text-strong);
 }
 
 .auth-card,
@@ -1271,33 +1393,33 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 :root[data-theme="dark"] .data-grid--elevated {
-    border-color: rgba(135, 168, 216, 0.24);
-    background: rgba(12, 24, 39, 0.98);
-    box-shadow: 0 22px 34px -26px rgba(0, 0, 0, 0.7);
+    border-color: var(--surface-border);
+    background: color-mix(in srgb, var(--surface-raised) 94%, var(--page-bg));
+    box-shadow: 0 22px 34px -26px rgba(0, 0, 0, 0.44);
 }
 
 :root[data-theme="dark"] .data-grid--elevated th {
-    color: #edf4ff;
-    border-bottom-color: rgba(135, 168, 216, 0.3);
-    background: rgba(20, 37, 58, 0.98);
+    color: var(--text-strong);
+    border-bottom-color: var(--surface-border);
+    background: color-mix(in srgb, var(--surface) 94%, var(--page-bg));
 }
 
 :root[data-theme="dark"] .data-grid--elevated td {
-    color: #dce9fb;
-    border-bottom-color: rgba(135, 168, 216, 0.22);
+    color: var(--text-strong);
+    border-bottom-color: var(--surface-border);
 }
 
 :root[data-theme="dark"] .data-grid--elevated tbody tr:nth-child(even) td {
-    background: rgba(18, 34, 54, 0.88);
+    background: color-mix(in srgb, var(--surface-raised) 90%, rgba(30, 107, 104, 0.05));
 }
 
 :root[data-theme="dark"] .data-grid--elevated tbody tr:hover td {
-    background: rgba(26, 47, 72, 0.94);
+    background: color-mix(in srgb, var(--surface-raised) 82%, var(--accent-soft));
 }
 
 :root[data-theme="dark"] .grid-actions--compact fluent-button::part(control) {
-    background: rgba(23, 39, 61, 0.78);
-    border-color: rgba(145, 178, 223, 0.28);
+    background: color-mix(in srgb, var(--surface-raised) 92%, var(--page-bg));
+    border-color: var(--surface-border);
 }
 
 .data-grid--elevated fluent-button::part(control) {
@@ -1314,12 +1436,12 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 :root[data-theme="dark"] .apexcharts-legend-text,
 :root[data-theme="dark"] .apexcharts-xaxis-label,
 :root[data-theme="dark"] .apexcharts-yaxis-label {
-    fill: #dce9fb !important;
-    color: #dce9fb !important;
+    fill: var(--text-muted) !important;
+    color: var(--text-muted) !important;
 }
 
 :root[data-theme="dark"] .data-grid--elevated fluent-button::part(control) {
-    color: #f4f8ff;
+    color: var(--text-strong);
 }
 
 .account-view-button::part(control) {
@@ -1336,14 +1458,14 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 :root[data-theme="dark"] .account-view-button::part(control) {
-    border-color: rgba(144, 182, 237, 0.62);
-    background: rgba(24, 42, 64, 0.98);
-    color: #f5f9ff;
+    border-color: var(--surface-border);
+    background: color-mix(in srgb, var(--surface-raised) 92%, var(--page-bg));
+    color: var(--text-strong);
 }
 
 :root[data-theme="dark"] .account-view-button:hover::part(control) {
-    border-color: #90b6ed;
-    background: rgba(33, 57, 86, 0.98);
+    border-color: var(--accent-strong);
+    background: color-mix(in srgb, var(--surface-raised) 82%, var(--accent-soft));
 }
 
 .section-heading-row {
@@ -2495,6 +2617,10 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     background: color-mix(in srgb, var(--surface) 90%, transparent);
 }
 
+.forecast-plane {
+    position: relative;
+}
+
 .forecast-section-heading {
     display: grid;
     gap: 6px;
@@ -2580,6 +2706,88 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     overflow: hidden;
     border-radius: 18px;
     background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 58%, #101418) 0%, color-mix(in srgb, var(--surface-raised) 90%, var(--page-bg)) 100%);
+}
+
+.forecast-assumptions-panel {
+    position: absolute;
+    top: 88px;
+    right: 24px;
+    z-index: 4;
+    width: min(360px, calc(100% - 48px));
+    border-color: color-mix(in srgb, var(--surface-border) 74%, var(--accent-soft));
+    background: color-mix(in srgb, var(--surface-strong) 96%, var(--page-bg));
+    box-shadow: 0 18px 44px rgba(17, 20, 23, 0.18);
+}
+
+.forecast-assumptions-panel__stack,
+.forecast-assumptions-list {
+    display: grid;
+    gap: 12px;
+}
+
+.forecast-assumptions-row {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface-raised) 94%, var(--page-bg));
+}
+
+.forecast-assumptions-field {
+    display: grid;
+    gap: 6px;
+}
+
+.forecast-assumptions-field > span {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+}
+
+.forecast-native-select,
+.forecast-native-input,
+.forecast-native-textarea {
+    width: 100%;
+    min-height: 40px;
+    padding: 10px 12px;
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
+    color: var(--text-strong);
+    font: inherit;
+}
+
+.forecast-native-textarea {
+    min-height: 84px;
+    resize: vertical;
+}
+
+.forecast-assumptions-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.forecast-link-action {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--accent-strong);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.forecast-link-action--danger {
+    color: var(--danger-soft);
 }
 
 .forecast-plane__svg {
@@ -3000,6 +3208,10 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     gap: 12px;
 }
 
+.dashboard-watchlist .operational-exception {
+    align-items: center;
+}
+
 .dashboard-watchlist__row {
     display: flex;
     justify-content: space-between;
@@ -3076,6 +3288,19 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .dashboard-watchlist__link:hover {
     color: var(--text-strong);
+}
+
+.accounts-quick-sheet {
+    margin-top: 18px;
+}
+
+.accounts-quick-sheet__facts {
+    display: grid;
+    gap: 8px;
+}
+
+.accounts-quick-sheet__facts span {
+    color: var(--text-muted);
 }
 
 .app-frame {
@@ -3490,6 +3715,12 @@ fluent-anchor.app-rail__link--active::part(control) {
         min-height: 280px;
     }
 
+    .forecast-assumptions-panel {
+        position: static;
+        width: auto;
+        margin-top: 16px;
+    }
+
     .budgets-form-actions,
     .budgets-actions {
         flex-direction: column;
@@ -3537,6 +3768,11 @@ fluent-anchor.app-rail__link--active::part(control) {
         justify-content: flex-start;
     }
 
+    .operational-exception {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
     .dashboard-orientation,
     .dashboard-plane,
     .dashboard-band {
@@ -3546,5 +3782,62 @@ fluent-anchor.app-rail__link--active::part(control) {
 
     .dashboard-posture {
         border-radius: 12px;
+    }
+}
+
+@keyframes page-region-settle {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes route-stage-enter {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes inspector-sheet-in {
+    from {
+        opacity: 0;
+        transform: translateX(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-shell .page-region {
+        opacity: 1;
+        transform: none;
+        animation: none;
+    }
+
+    .route-stage {
+        animation: none;
+    }
+
+    .inspector-panel--sheet {
+        animation: none;
+    }
+
+    .loading-surface__line,
+    .dashboard-skeleton {
+        animation-duration: 2.4s;
     }
 }

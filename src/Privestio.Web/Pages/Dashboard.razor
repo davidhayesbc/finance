@@ -91,7 +91,8 @@
                     Description="Trajectory across the selected range with optional evidence from asset and liability movement."
                     HeaderClass="dashboard-plane__header"
                     CanvasClass="dashboard-plane__body"
-                    IsLoading="@(_isLoading || _isHistoryLoading)"
+                    IsLoading="@(!_hasLoadedHistory && (_isLoading || _isHistoryLoading))"
+                    IsUpdating="@(_hasLoadedHistory && _isHistoryLoading)"
                     IsEmpty="@(_history is null || (_history.Series.Count == 0 && _history.Points.Count == 0))"
                     EmptyTitle="No net worth history yet."
                     EmptyMessage="Sync historical prices and keep account activity current to build a usable trend line.">
@@ -187,23 +188,11 @@
             <div class="dashboard-watchlist">
                 @foreach (var item in BuildWatchlistItems())
                 {
-                    <div class="dashboard-watchlist__row dashboard-watchlist__row--@GetIntentClass(item.Intent)">
-                        <div>
-                            <strong>@item.Title</strong>
-                            <p>@item.Detail</p>
-                        </div>
-                        <div class="dashboard-watchlist__actions">
-                            <span class="dashboard-watchlist__status">@GetIntentLabel(item.Intent)</span>
-                            @if (!string.IsNullOrWhiteSpace(item.Href) && !string.IsNullOrWhiteSpace(item.ActionLabel))
-                            {
-                                <button type="button"
-                                        class="dashboard-watchlist__link"
-                                        @onclick="() => Navigation.NavigateTo(item.Href)">
-                                    @item.ActionLabel
-                                </button>
-                            }
-                        </div>
-                    </div>
+                    <OperationalExceptionRow Title="@item.Title"
+                                             Detail="@item.Detail"
+                                             Severity="@GetSeverity(item.Intent)"
+                                             ActionLabel="@item.ActionLabel"
+                                             OnAction="@(() => NavigateTo(item.Href))" />
                 }
             </div>
             </SectionBand>
@@ -252,6 +241,7 @@
     private bool _isLoading = true;
     private bool _isHistoryLoading;
     private bool _isSyncingHistory;
+    private bool _hasLoadedHistory;
     private IReadOnlyList<NotificationResponse> _notifications = [];
     private IReadOnlyList<SyncConflictResponse> _syncConflicts = [];
     private IReadOnlyList<SecurityConflictResponse> _securityConflicts = [];
@@ -281,6 +271,7 @@
         await Task.WhenAll(summaryTask, historyTask, notificationsTask, conflictsTask, securityConflictsTask, forecastTask);
         _summary = await summaryTask;
         _history = await historyTask;
+        _hasLoadedHistory = true;
         _notifications = await notificationsTask;
         _syncConflicts = await conflictsTask;
         _securityConflicts = await securityConflictsTask;
@@ -570,21 +561,20 @@
         _ => MessageIntent.Info,
     };
 
-    private static string GetIntentClass(MessageIntent intent) => intent switch
+    private static UiSeverity GetSeverity(MessageIntent intent) => intent switch
     {
-        MessageIntent.Error => "error",
-        MessageIntent.Warning => "warning",
-        MessageIntent.Success => "success",
-        _ => "info",
+        MessageIntent.Error => UiSeverity.Urgent,
+        MessageIntent.Warning => UiSeverity.Advisory,
+        _ => UiSeverity.Informational,
     };
 
-    private static string GetIntentLabel(MessageIntent intent) => intent switch
+    private void NavigateTo(string? href)
     {
-        MessageIntent.Error => "Urgent",
-        MessageIntent.Warning => "Advisory",
-        MessageIntent.Success => "Stable",
-        _ => "Info",
-    };
+        if (!string.IsNullOrWhiteSpace(href))
+        {
+            Navigation.NavigateTo(href);
+        }
+    }
 
     private (DateOnly? FromDate, DateOnly ToDate) ResolveHistoryRange()
     {

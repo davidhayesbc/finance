@@ -1,0 +1,46 @@
+<article class="@ComputedClass" aria-live="@AriaLive">
+    <div class="operational-exception__body">
+        <strong>@Title</strong>
+        <p>@Detail</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ActionLabel) && OnAction.HasDelegate)
+    {
+        <button type="button" class="operational-exception__action" @onclick="OnAction">
+            @ActionLabel
+        </button>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Detail { get; set; } = string.Empty;
+
+    [Parameter]
+    public UiSeverity Severity { get; set; } = UiSeverity.Informational;
+
+    [Parameter]
+    public string? ActionLabel { get; set; }
+
+    [Parameter]
+    public EventCallback OnAction { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string AriaLive => Severity == UiSeverity.Urgent ? "assertive" : "polite";
+
+    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
+        ? $"operational-exception operational-exception--{GetSeverityClass()}"
+        : $"operational-exception operational-exception--{GetSeverityClass()} {Class}";
+
+    private string GetSeverityClass() => Severity switch
+    {
+        UiSeverity.Urgent => "urgent",
+        UiSeverity.Advisory => "advisory",
+        _ => "info",
+    };
+}

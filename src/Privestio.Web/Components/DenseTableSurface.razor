@@ -1,4 +1,4 @@
-<div class="@ComputedClass" @attributes="AdditionalAttributes">
+<div class="@ComputedClass" aria-busy="@IsLoadingOrUpdating" @attributes="AdditionalAttributes">
     @if (IsLoading)
     {
         <LoadingSurface Variant="table" Rows="@LoadingRows" Columns="@LoadingColumns" />
@@ -13,6 +13,13 @@
     else
     {
         @ChildContent
+    }
+
+    @if (IsUpdating && !IsLoading)
+    {
+        <div class="surface-refresh-overlay" aria-hidden="true">
+            <span>@UpdatingMessage</span>
+        </div>
     }
 </div>
 
@@ -30,6 +37,12 @@
     public int LoadingColumns { get; set; } = 6;
 
     [Parameter]
+    public bool IsUpdating { get; set; }
+
+    [Parameter]
+    public string UpdatingMessage { get; set; } = "Updating surface...";
+
+    [Parameter]
     public string EmptyTitle { get; set; } = "No rows available.";
 
     [Parameter]
@@ -44,7 +57,19 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
-        ? "dense-table-surface"
-        : $"dense-table-surface {Class}";
+    private bool IsLoadingOrUpdating => IsLoading || IsUpdating;
+
+    private string ComputedClass
+    {
+        get
+        {
+            var baseClass = string.IsNullOrWhiteSpace(Class)
+                ? "dense-table-surface"
+                : $"dense-table-surface {Class}";
+
+            return IsUpdating && !IsLoading
+                ? $"{baseClass} dense-table-surface--updating"
+                : baseClass;
+        }
+    }
 }

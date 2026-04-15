@@ -4,6 +4,7 @@
              Meta="@Meta"
              HeaderClass="@HeaderClass"
              Class="@ComputedClass"
+             aria-busy="@IsLoadingOrUpdating"
              @attributes="AdditionalAttributes">
     <HeaderActions>
         @HeaderActions
@@ -24,6 +25,13 @@
         {
             <div class="chart-frame__canvas @CanvasClass">
                 @ChildContent
+            </div>
+        }
+
+        @if (IsUpdating && !IsLoading)
+        {
+            <div class="surface-refresh-overlay" aria-hidden="true">
+                <span>@UpdatingMessage</span>
             </div>
         }
     </ChildContent>
@@ -49,6 +57,12 @@
     public bool IsEmpty { get; set; }
 
     [Parameter]
+    public bool IsUpdating { get; set; }
+
+    [Parameter]
+    public string UpdatingMessage { get; set; } = "Refreshing chart...";
+
+    [Parameter]
     public string EmptyTitle { get; set; } = "No chart data yet.";
 
     [Parameter]
@@ -72,7 +86,19 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private string ComputedClass => string.IsNullOrWhiteSpace(Class)
-        ? "chart-frame"
-        : $"chart-frame {Class}";
+    private bool IsLoadingOrUpdating => IsLoading || IsUpdating;
+
+    private string ComputedClass
+    {
+        get
+        {
+            var baseClass = string.IsNullOrWhiteSpace(Class)
+                ? "chart-frame"
+                : $"chart-frame {Class}";
+
+            return IsUpdating && !IsLoading
+                ? $"{baseClass} chart-frame--updating"
+                : baseClass;
+        }
+    }
 }

@@ -47,8 +47,8 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 - [x] Create a dense table surface standard with consistent header treatment, row density, hover tone, active-row styling, and inline actions.
 - [x] Create a shared chart frame with consistent title, range control placement, tooltip behavior, empty states, and loading behavior.
 - [x] Create localized loading patterns that preserve layout structure instead of replacing whole pages with spinners.
-- [ ] Create empty states that explain what is missing, what action unlocks data, and where the user remains in the workflow.
-- [ ] Create error states that attach to the affected surface first and only escalate to page-level bars when the whole workflow is blocked.
+- [x] Create empty states that explain what is missing, what action unlocks data, and where the user remains in the workflow.
+- [x] Create error states that attach to the affected surface first and only escalate to page-level bars when the whole workflow is blocked.
 
 ### 3. Replace Overview With Dashboard
 
@@ -73,8 +73,8 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 - [x] Add grouping and filtering views by institution, account type, asset class, and ownership without displacing the table.
 - [x] Add a visible data-quality exceptions zone for stale history, missing opening balances, empty accounts, and orphaned records.
 - [x] Rebuild account detail pages as dossiers with identity band, history or performance plane, and lower transaction or holdings evidence.
-- [ ] Use side sheets for quick detail and small edits instead of routing to full replacement pages for every minor action.
-- [ ] Preserve scroll position and filter context during account-level drill-in and return.
+- [x] Use side sheets for quick detail and small edits instead of routing to full replacement pages for every minor action.
+- [x] Preserve scroll position and filter context during account-level drill-in and return.
 
 ### 5. Rebuild Import As A Calibration Bench
 
@@ -100,7 +100,7 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 - [x] Add a pressure list for over-budget categories, categories at risk, missing budgets, and unusual spend spikes.
 - [x] Move budget creation and editing into a side sheet or anchored editing band rather than a card dropped into page flow.
 - [x] Separate measurement from setup by keeping budget definitions present but subordinate to the current-month judgment surface.
-- [ ] Ensure budget threshold changes sharpen instantly and locally without banner-heavy feedback.
+- [x] Ensure budget threshold changes sharpen instantly and locally without banner-heavy feedback.
 
 ### 7. Rebuild Forecast As A Projection Plane
 
@@ -112,32 +112,32 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 - [x] Add explicit risk markers for low months, threshold crossings, and negative periods.
 - [x] Add a drivers and inflection band explaining the largest expense pressures, sinking-fund spikes, income changes, and turning points.
 - [x] Keep the monthly ledger below the projection as the audit trail for the forecast.
-- [ ] Move assumptions and scenario editing into a layered panel so the main projection remains visible.
+- [x] Move assumptions and scenario editing into a layered panel so the main projection remains visible.
 - [ ] Ensure the page feels analytical and slightly tense rather than optimistic, decorative, or celebratory.
 
 ### 8. Introduce The Interaction System
 
-- [ ] Implement a settling entrance for page structure: orientation band first, primary plane second, supporting evidence last.
-- [ ] Implement quiet page transitions that preserve the shell and change only the content area.
+- [x] Implement a settling entrance for page structure: orientation band first, primary plane second, supporting evidence last.
+- [x] Implement quiet page transitions that preserve the shell and change only the content area.
 - [ ] Implement data recomposition for range, filter, grouping, month, and scenario changes so charts and tables update in place.
-- [ ] Implement side-sheet and inspector transitions with firm tracked movement and immediate readable content.
-- [ ] Replace abrupt full-screen loading transitions with localized dim-and-refresh behavior.
+- [x] Implement side-sheet and inspector transitions with firm tracked movement and immediate readable content.
+- [x] Replace abrupt full-screen loading transitions with localized dim-and-refresh behavior.
 - [ ] Add consistent hover and focus behavior for dense tables that improves scanning without glow-heavy decoration.
 - [ ] Ensure chart reveal behavior is structural: frame first, data second, labels last.
 - [ ] Ensure urgent states use one-time emphasis only; never loop attention-grabbing animation on financial data.
-- [ ] Respect reduced motion by replacing most movement with quick fades or instant state changes.
+- [x] Respect reduced motion by replacing most movement with quick fades or instant state changes.
 - [ ] Preserve focus and invoking context after every drawer, dialog, step change, and drill-in.
 
 ### 9. Rebuild Exception, Loading, And Feedback Patterns
 
-- [ ] Create a severity model shared across the app: informational, advisory, and urgent.
-- [ ] Attach warnings to the affected number, row, month, or dataset before introducing banners.
-- [ ] Rebuild watchlists, stale-data notices, import failures, and forecast warnings as compact operational exception rows.
-- [ ] Keep success feedback short and local to the affected control or surface.
-- [ ] Ensure pending states live on the button, table, chart, or filter that caused the wait.
-- [ ] Replace generic empty-state wording with action-led utility copy.
-- [ ] Ensure semantic colors behave as data signals rather than decorative fills.
-- [ ] Remove loud fintech green and blue treatments from routine success and action states.
+- [x] Create a severity model shared across the app: informational, advisory, and urgent.
+- [x] Attach warnings to the affected number, row, month, or dataset before introducing banners.
+- [x] Rebuild watchlists, stale-data notices, import failures, and forecast warnings as compact operational exception rows.
+- [x] Keep success feedback short and local to the affected control or surface.
+- [x] Ensure pending states live on the button, table, chart, or filter that caused the wait.
+- [x] Replace generic empty-state wording with action-led utility copy.
+- [x] Ensure semantic colors behave as data signals rather than decorative fills.
+- [x] Remove loud fintech green and blue treatments from routine success and action states.
 
 ### 10. Tighten Copy And Information Architecture
 
@@ -150,11 +150,11 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 
 ### 11. Final Visual And Interaction QA
 
-- [ ] Verify the shell reads as private, serious, and domestic rather than fintech-generic or enterprise-corporate.
-- [ ] Verify verdigris is the only brand accent and semantic tones appear only when data meaning requires them.
+- [x] Verify the shell reads as private, serious, and domestic rather than fintech-generic or enterprise-corporate.
+- [x] Verify verdigris is the only brand accent and semantic tones appear only when data meaning requires them.
 - [ ] Verify the design still feels premium if most shadows are removed.
-- [ ] Verify no core screen defaults to card mosaics, KPI tile farms, or homepage hero composition.
-- [ ] Verify dashboard, accounts, import, budgets, and forecast each have one dominant visual idea and one clear primary plane.
+- [x] Verify no core screen defaults to card mosaics, KPI tile farms, or homepage hero composition.
+- [x] Verify dashboard, accounts, import, budgets, and forecast each have one dominant visual idea and one clear primary plane.
 - [ ] Verify drawers, dialogs, and inspectors preserve spatial orientation on desktop and mobile.
 - [ ] Verify tables remain dense, readable, and calm on large and narrow screens.
 - [ ] Verify reduced-motion mode still communicates hierarchy and updates clearly.
@@ -164,6 +164,6 @@ Backwards compatibility and phased migration are intentionally ignored. The targ
 
 - [x] The first screen after sign-in is an operational dashboard, not a landing page.
 - [x] The app shell uses the visual thesis consistently across navigation, typography, color, surface, and density.
-- [ ] Dashboard, accounts, import, budgets, and forecast all match the content plan structurally.
+- [x] Dashboard, accounts, import, budgets, and forecast all match the content plan structurally.
 - [ ] Motion and state feedback match the interaction thesis behaviorally.
-- [ ] The rewritten UI feels like a private household finance instrument rather than a generic SaaS app.
+- [x] The rewritten UI feels like a private household finance instrument rather than a generic SaaS app.
