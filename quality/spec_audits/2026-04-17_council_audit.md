@@ -278,6 +278,7 @@ This refines GPT Finding 9 with the root cause: the `userId` is dead code at the
 After a rollback (which soft-deletes transactions via `RollbackImportCommandHandler`), the rolled-back transactions' fingerprints become invisible. A subsequent re-import of the same file will create duplicate records because the fingerprint check finds no matches.
 
 **Is this correct?** Two interpretations:
+
 - **Intentional (recovery path):** Rollback + re-import is the designed recovery flow for wrong-account imports. The fingerprints must be invisible for this to work.
 - **Unintentional (data integrity risk):** If the user accidentally re-imports without realizing a previous rollback happened, they get duplicate data.
 
@@ -316,6 +317,7 @@ The multi-currency foundation requires correctly tracking balances across mismat
 
 **What the code does:**
 `CreateTransferCommandHandler` instantiates both parts (credit and debit) of the transfer transaction using the exact same `request.Currency` provided by the API:
+
 - `sourceTransaction` has `Amount = -request.Amount, Currency = request.Currency`
 - `destinationTransaction` has `Amount = request.Amount, Currency = request.Currency`
 
