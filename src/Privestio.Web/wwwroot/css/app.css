@@ -1249,7 +1249,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 :root[data-theme="dark"] .data-grid--elevated tbody tr:hover td,
 :root[data-theme="dark"] .data-grid--elevated tbody tr:focus-within td,
 :root[data-theme="dark"] .data-grid--elevated tbody tr.is-active td {
-    background: color-mix(in srgb, var(--surface-raised) 68%, var(--accent));
+    background: rgba(30, 107, 104, 0.28);
     color: var(--text-strong);
 }
 
@@ -1506,7 +1506,8 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 :root[data-theme="dark"] .data-grid--elevated tbody tr:hover td {
-    background: color-mix(in srgb, var(--surface-raised) 82%, var(--accent-soft));
+    background: rgba(30, 107, 104, 0.28);
+    color: var(--text-strong);
 }
 
 :root[data-theme="dark"] .grid-actions--compact fluent-button::part(control) {

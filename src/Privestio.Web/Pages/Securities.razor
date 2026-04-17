@@ -249,21 +249,14 @@
                 menuX = point.X;
                 menuY = point.Y;
             }
-
-            var offset = await JSRuntime.InvokeAsync<ContextMenuPoint?>("uiState.getPageShellOffset");
-            if (offset is { X: > 0, Y: > 0 })
-            {
-                menuX -= offset.X;
-                menuY -= offset.Y;
-            }
         }
         catch
         {
             // Fall back to Blazor event coordinates when JS interop is unavailable.
         }
 
-        _contextMenuX = Math.Max(8, menuX - 4);
-        _contextMenuY = Math.Max(8, menuY - 4);
+        _contextMenuX = Math.Max(8, menuX + 2);
+        _contextMenuY = Math.Max(8, menuY + 2);
         _isContextMenuOpen = true;
     }
 

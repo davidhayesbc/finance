@@ -26,4 +26,10 @@
       PublishedContent="wwwroot\service-worker.published.js"
     />
   </ItemGroup>
+
+  <!-- Prevent duplicate fingerprinted asset entries for appsettings files -->
+  <ItemGroup>
+    <Content Update="wwwroot\appsettings.json" Fingerprint="false" />
+    <Content Update="wwwroot\appsettings.Development.json" Fingerprint="false" />
+  </ItemGroup>
 </Project>
