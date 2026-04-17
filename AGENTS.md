@@ -63,6 +63,26 @@ IMPORTANT! Consider avoiding persistent containers early during development to a
 ## Aspire workload
 IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 
+## Quality Docs
+
+The project has a quality playbook in the `quality/` directory. Read these before making changes:
+
+| File | Purpose |
+|------|---------|
+| `quality/QUALITY.md` | Quality constitution — coverage targets, fitness-to-purpose scenarios, coverage theater prevention rules |
+| `quality/FunctionalTests.cs` | Automated functional tests derived from specs and scenarios. Run with `dotnet test quality/` |
+| `quality/RUN_CODE_REVIEW.md` | Code review protocol with mandatory guardrails (line numbers, read bodies, grep before claiming) |
+| `quality/RUN_INTEGRATION_TESTS.md` | Integration test protocol — end-to-end across all subsystems |
+| `quality/RUN_SPEC_AUDIT.md` | Council of Three multi-model spec audit protocol |
+
+**Key rules from QUALITY.md:**
+
+- Test all 5 account types (Banking, Credit, Investment, Property, Loan) for any balance-related change
+- Test with split transactions for any budget/category change (IsSplit changes category resolution)
+- Verify import idempotency for any import pipeline change (import same file twice → 0 duplicates)
+- Use exact decimal comparison for Money values (never approximate)
+- No coverage theater (see QUALITY.md § Coverage Theater Prevention)
+
 ## Official documentation
 IMPORTANT! Always prefer official documentation when available. The following sites contain the official documentation for Aspire and related components
 
