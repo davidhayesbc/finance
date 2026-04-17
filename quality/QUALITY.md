@@ -73,6 +73,22 @@ The following test patterns are **explicitly prohibited** because they inflate c
 
 **How to verify:** Create a Property account with a $500,000 valuation and $10,000 in expense transactions. Query net worth. Assert the property contributes $500,000 (from valuation), not $490,000 (from opening + transactions). Also verify expenses are correctly reported in spending analysis separately.
 
+### Scenario 11: Divergent Balance Derivation Across Query Handlers
+
+**What happens:** `GetAccountById`, `GetAccounts`, and `GetNetWorthSummary` originally each had their own private `ComputeBalance` method. Because the logic was duplicated rather than shared, a bug fix or behaviour change in one handler was not reflected in the others. A user viewing `/accounts` would see a different balance for a property account than they saw on `/dashboard` — the same account, same data, two different numbers.
+
+**Why this matters:** Balance derivation must be a single authoritative code path. Any handler that computes its own balance independently can silently diverge. This is a systemic correctness risk: the bug does not manifest as an exception but as a wrong number shown to the user.
+
+**How to verify:** `AccountBalanceService` is the single source of truth (Application/Services/AccountBalanceService.cs). Verify:
+1. `AccountBalanceServiceTests` confirms single-overload and batch-overload return identical results for Property and Banking accounts.
+2. `GetAccountByIdQueryHandler`, `GetAccountsQueryHandler`, and `GetNetWorthSummaryQueryHandler` each delegate to `AccountBalanceService` — they contain no `ComputeBalance` private methods.
+3. No new query handler may introduce its own balance computation. Any new handler that returns account balances must inject and call `AccountBalanceService`.
+
+**Balance derivation rules (canonical):**
+- **Property** → `account.GetLatestValuation()?.EstimatedValue.Amount ?? account.OpeningBalance.Amount`
+- **Investment** → `InvestmentPortfolioValuationService.TotalMarketValue ?? account.CurrentBalance.Amount`
+- **Banking / Credit / Loan** → `account.OpeningBalance.Amount + Σ(signed transactions)`
+
 ### Scenario 5: Background Price Fetch Crashes Mid-Batch and Leaves Partial State
 
 **What happens:** `DailyPriceFetchBackgroundService` (DailyPriceFetchBackgroundService.cs) fetches prices for 50 securities. After successfully fetching 30, the Yahoo Finance API returns a 429 (rate limited). The service catches the exception and logs it (lines 89-172). But the 30 prices already fetched are persisted while the remaining 20 have stale prices. The portfolio dashboard shows accurate values for some holdings and yesterday's prices for others — a misleading partial update.
@@ -133,12 +149,13 @@ Every AI session working on Privestio must:
 6. **Verify import idempotency.** Any import pipeline change must be tested by importing the same file twice. Zero duplicates on second import.
 7. **No coverage theater.** Every test must assert a specific value, not just existence. See the Coverage Theater Prevention section.
 8. **Use FluentAssertions consistently.** All new tests use `.Should().Be()`, `.Should().Throw<>()`, etc. Not `Assert.Equal()`.
+9. **Never duplicate balance derivation logic.** Any query or endpoint that returns account balances must delegate to `AccountBalanceService`. Do not write a new `ComputeBalance` private method — this was the root cause of Scenario 11. If `AccountBalanceService` doesn't cover your scenario, extend it.
 
 ## The Human Gate
 
 The following decisions require human judgment — AI sessions should flag and wait:
 
-1. **Changing balance derivation formulas.** The per-account-type balance logic (Banking vs Investment vs Property vs Loan) is a core domain decision. Propose changes; don't implement without review.
+1. **Changing balance derivation formulas.** The per-account-type balance logic (Banking vs Investment vs Property vs Loan) lives exclusively in `AccountBalanceService` (Application/Services/AccountBalanceService.cs). Changes to this service affect every balance shown in the application. Propose changes; don't implement without review.
 2. **Modifying sync conflict resolution policies.** Which fields are "conflict-sensitive" (Money, splits, categories) vs "last-write-wins" is a product decision.
 3. **Changing import fingerprint composition.** The fingerprint formula (institution + account + date + amount + normalized memo + external reference) determines what counts as a "duplicate." Changing it affects every existing user's import history.
 4. **Adding or removing account types/subtypes.** Financial taxonomy is a domain decision.

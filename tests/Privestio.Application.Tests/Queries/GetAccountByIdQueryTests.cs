@@ -376,7 +376,7 @@ public class GetAccountByIdQueryTests
     }
 
     private GetAccountByIdQueryHandler CreateHandler() =>
-        new(_unitOfWorkMock.Object, _investmentPortfolioValuationService);
+        new(_unitOfWorkMock.Object, new AccountBalanceService(_unitOfWorkMock.Object, _investmentPortfolioValuationService));
 
     private static Account CreateBankingAccount(Guid ownerId, decimal openingBalance) =>
         new(

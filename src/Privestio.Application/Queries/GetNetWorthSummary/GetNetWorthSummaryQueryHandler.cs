@@ -2,7 +2,6 @@ using MediatR;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Contracts.Responses;
-using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 
 namespace Privestio.Application.Queries.GetNetWorthSummary;
@@ -11,15 +10,15 @@ public class GetNetWorthSummaryQueryHandler
     : IRequestHandler<GetNetWorthSummaryQuery, NetWorthSummaryResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly InvestmentPortfolioValuationService _investmentPortfolioValuationService;
+    private readonly AccountBalanceService _accountBalanceService;
 
     public GetNetWorthSummaryQueryHandler(
         IUnitOfWork unitOfWork,
-        InvestmentPortfolioValuationService investmentPortfolioValuationService
+        AccountBalanceService accountBalanceService
     )
     {
         _unitOfWork = unitOfWork;
-        _investmentPortfolioValuationService = investmentPortfolioValuationService;
+        _accountBalanceService = accountBalanceService;
     }
 
     public async Task<NetWorthSummaryResponse> Handle(
@@ -52,10 +51,14 @@ public class GetNetWorthSummaryQueryHandler
             cancellationToken
         );
 
-        var computedAccounts = new List<(Account Account, decimal Balance)>(activeAccounts.Count);
+        var computedAccounts = new List<(Domain.Entities.Account Account, decimal Balance)>(activeAccounts.Count);
         foreach (var account in activeAccounts)
         {
-            var balance = await ComputeBalanceAsync(account, signedSums, cancellationToken);
+            var balance = await _accountBalanceService.ComputeCurrentBalanceAsync(
+                account,
+                signedSums,
+                cancellationToken
+            );
             computedAccounts.Add((account, balance));
         }
 
@@ -113,28 +116,4 @@ public class GetNetWorthSummaryQueryHandler
         };
     }
 
-    private async Task<decimal> ComputeBalanceAsync(
-        Account account,
-        IReadOnlyDictionary<Guid, decimal> signedSums,
-        CancellationToken cancellationToken
-    )
-    {
-        if (account.AccountType == AccountType.Property)
-        {
-            var latest = account.GetLatestValuation();
-            return latest?.EstimatedValue.Amount ?? account.OpeningBalance.Amount;
-        }
-
-        if (account.AccountType == AccountType.Investment)
-        {
-            var valuation = await _investmentPortfolioValuationService.CalculateAsync(
-                account,
-                cancellationToken
-            );
-            return valuation.TotalMarketValue ?? account.CurrentBalance.Amount;
-        }
-
-        signedSums.TryGetValue(account.Id, out var sum);
-        return account.OpeningBalance.Amount + sum;
-    }
 }

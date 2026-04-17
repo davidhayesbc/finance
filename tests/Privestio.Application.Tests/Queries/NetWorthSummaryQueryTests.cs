@@ -84,7 +84,7 @@ public class NetWorthSummaryQueryTests
     }
 
     private GetNetWorthSummaryQueryHandler CreateHandler() =>
-        new(_unitOfWorkMock.Object, _investmentPortfolioValuationService);
+        new(_unitOfWorkMock.Object, new AccountBalanceService(_unitOfWorkMock.Object, _investmentPortfolioValuationService));
 
     [Fact]
     public async Task GetNetWorthSummary_WithMixedAccounts_CalculatesCorrectly()

@@ -136,7 +136,7 @@ public class GetAccountsQueryTests
     }
 
     private GetAccountsQueryHandler CreateHandler() =>
-        new(_unitOfWorkMock.Object, _investmentPortfolioValuationService);
+        new(_unitOfWorkMock.Object, new AccountBalanceService(_unitOfWorkMock.Object, _investmentPortfolioValuationService));
 
     [Fact]
     public async Task Handle_NoAccounts_ReturnsEmptyList()
