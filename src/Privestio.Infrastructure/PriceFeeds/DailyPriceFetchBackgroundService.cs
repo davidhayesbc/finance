@@ -118,6 +118,25 @@ public sealed class DailyPriceFetchBackgroundService : BackgroundService
 
             var allQuotes = await priceFeedProvider.GetLatestPricesAsync(lookups, stoppingToken);
 
+            // Completeness check: warn if provider returned fewer quotes than requested
+            var quotedSecurityIds = allQuotes
+                .Where(q => q.Price > 0m)
+                .Select(q => q.SecurityId)
+                .ToHashSet();
+            var missingSecurities = allSecurities
+                .Where(s => !quotedSecurityIds.Contains(s.Id))
+                .ToList();
+
+            if (missingSecurities.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Daily price fetch: {MissingCount}/{TotalCount} securities received no price quote: {Symbols}",
+                    missingSecurities.Count,
+                    allSecurities.Count,
+                    string.Join(", ", missingSecurities.Select(s => s.DisplaySymbol))
+                );
+            }
+
             foreach (var quote in allQuotes.Where(q => q.Price > 0m))
             {
                 var alreadyExists = await unitOfWork.PriceHistories.ExistsBySecurityIdAndDateAsync(

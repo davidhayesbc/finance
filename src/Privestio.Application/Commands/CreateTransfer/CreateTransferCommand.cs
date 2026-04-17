@@ -9,5 +9,6 @@ public record CreateTransferCommand(
     decimal Amount,
     string Currency,
     DateTime Date,
+    Guid UserId,
     string? Notes = null
 ) : IRequest<TransferResponse>;

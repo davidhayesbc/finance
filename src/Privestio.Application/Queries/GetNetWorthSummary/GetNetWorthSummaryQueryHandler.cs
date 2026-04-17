@@ -95,12 +95,19 @@ public class GetNetWorthSummaryQueryHandler
             })
             .ToList();
 
+        var baseCurrency = activeAccounts
+            .Select(a => a.Currency)
+            .GroupBy(c => c)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? "CAD";
+
         return new NetWorthSummaryResponse
         {
             TotalAssets = totalAssets,
             TotalLiabilities = totalLiabilities,
             NetWorth = netWorth,
-            Currency = "CAD",
+            Currency = baseCurrency,
             AssetAllocation = assetAllocation,
             AccountSummaries = accountSummaries,
         };

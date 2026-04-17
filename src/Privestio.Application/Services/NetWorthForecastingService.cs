@@ -128,11 +128,18 @@ public class NetWorthForecastingService
             );
         }
 
+        var baseCurrency = activeAccounts
+            .Select(a => a.Currency)
+            .GroupBy(c => c)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? "CAD";
+
         return new NetWorthForecastResponse
         {
             Periods = periods,
             ScenarioName = scenario.Name,
-            Currency = "CAD",
+            Currency = baseCurrency,
         };
     }
 }

@@ -107,6 +107,14 @@ public class GetCashFlowForecastQueryHandler
             );
         }
 
-        return new CashFlowForecastResponse { Periods = periods.AsReadOnly(), Currency = "CAD" };
+        var baseCurrency = accounts
+            .Where(a => a.IsActive)
+            .Select(a => a.Currency)
+            .GroupBy(c => c)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? "CAD";
+
+        return new CashFlowForecastResponse { Periods = periods.AsReadOnly(), Currency = baseCurrency };
     }
 }

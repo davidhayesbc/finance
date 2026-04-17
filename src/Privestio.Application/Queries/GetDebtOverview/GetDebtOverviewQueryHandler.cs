@@ -73,10 +73,17 @@ public class GetDebtOverviewQueryHandler
             );
         }
 
+        var baseCurrency = debtAccounts
+            .Select(a => a.Currency)
+            .GroupBy(c => c)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? "CAD";
+
         return new DebtOverviewResponse
         {
             TotalDebt = debts.Sum(d => d.Balance),
-            Currency = "CAD",
+            Currency = baseCurrency,
             Debts = debts,
         };
     }

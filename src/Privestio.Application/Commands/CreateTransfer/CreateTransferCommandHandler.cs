@@ -30,6 +30,41 @@ public class CreateTransferCommandHandler : IRequestHandler<CreateTransferComman
                 "Amount must be positive."
             );
 
+        // Load both accounts and verify ownership
+        var sourceAccount = await _unitOfWork.Accounts.GetByIdAsync(
+            request.SourceAccountId,
+            cancellationToken
+        );
+        var destinationAccount = await _unitOfWork.Accounts.GetByIdAsync(
+            request.DestinationAccountId,
+            cancellationToken
+        );
+
+        if (sourceAccount is null)
+            throw new KeyNotFoundException("Source account not found.");
+        if (destinationAccount is null)
+            throw new KeyNotFoundException("Destination account not found.");
+
+        if (sourceAccount.OwnerId != request.UserId)
+            throw new UnauthorizedAccessException(
+                "Cannot transfer from an account owned by another user."
+            );
+        if (destinationAccount.OwnerId != request.UserId)
+            throw new UnauthorizedAccessException(
+                "Cannot transfer to an account owned by another user."
+            );
+
+        // Validate currency compatibility
+        if (
+            sourceAccount.Currency != request.Currency
+            || destinationAccount.Currency != request.Currency
+        )
+            throw new InvalidOperationException(
+                $"Transfer currency '{request.Currency}' must match both account currencies "
+                    + $"(source: '{sourceAccount.Currency}', destination: '{destinationAccount.Currency}'). "
+                    + "Cross-currency transfers are not yet supported."
+            );
+
         var amount = new Money(request.Amount, request.Currency);
 
         // Source: debit (money leaving)

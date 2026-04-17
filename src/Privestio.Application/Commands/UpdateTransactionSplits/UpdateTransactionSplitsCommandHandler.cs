@@ -34,9 +34,18 @@ public class UpdateTransactionSplitsCommandHandler
         if (account is null || account.OwnerId != request.UserId)
             return null;
 
-        // Validate split sum matches transaction amount
-        var splitSum = request.Splits.Sum(s => s.Amount);
-        if (splitSum != transaction.Amount.Amount)
+        // Validate split sum matches transaction amount (using minor-unit rounding)
+        var splitSum = Math.Round(
+            request.Splits.Sum(s => s.Amount),
+            2,
+            MidpointRounding.ToEven
+        );
+        var parentAmount = Math.Round(transaction.Amount.Amount, 2, MidpointRounding.ToEven);
+        if (splitSum != parentAmount)
+            return null;
+
+        // Validate all split currencies match the parent transaction currency
+        if (request.Splits.Any(s => s.Currency != transaction.Amount.CurrencyCode))
             return null;
 
         // Replace all splits
@@ -53,6 +62,10 @@ public class UpdateTransactionSplitsCommandHandler
             );
             transaction.AddSplit(split);
         }
+
+        // Enforce domain invariant before persistence
+        if (!transaction.ValidateSplitInvariant())
+            return null;
 
         await _unitOfWork.Transactions.UpdateAsync(transaction, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -75,9 +75,10 @@ public class GetChangesSinceQueryHandler
             }
         }
 
-        // Get tombstones for deletions
-        var tombstones = await _unitOfWork.SyncTombstones.GetSinceAsync(
+        // Get tombstones for deletions (user-scoped)
+        var tombstones = await _unitOfWork.SyncTombstones.GetSinceForUserAsync(
             sinceToken,
+            request.UserId,
             cancellationToken
         );
 

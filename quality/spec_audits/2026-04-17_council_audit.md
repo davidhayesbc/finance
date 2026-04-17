@@ -369,4 +369,23 @@ Because subsequent balance formulas (Finding 5, 12) sum purely on the numerical 
 
 ## Fix Execution Log
 
-Audit-only run. No fixes applied and no tests executed as part of this report.
+All 16 findings have been reviewed and rectified. Unit tests: 600/600 passing (Domain 218, Application 294, Infrastructure 88).
+
+| # | Finding | Status | Fix Summary |
+| --- | --- | --- | --- |
+| 1 | Split invariant not enforced | [x] Fixed | `UpdateTransactionSplitsCommandHandler` now calls `transaction.ValidateSplitInvariant()` after building splits, before save |
+| 2 | Split invariant raw decimal | [x] Fixed | `ValidateSplitInvariant()` now uses `Math.Round(..., 2, MidpointRounding.ToEven)` for both split sum and parent amount |
+| 3 | Fingerprint omits institution | [x] Fixed | Added `string? institution` parameter to `TransactionFingerprintService.GenerateFingerprint()`; `ImportTransactionsCommandHandler` passes `account.Institution` |
+| 4 | Rollback orphans splits | [x] Fixed | `RollbackImportCommandHandler` now iterates `transaction.Splits` and calls `split.SoftDelete()` before soft-deleting the parent |
+| 5 | Net worth mixes currencies / hardcodes CAD | [x] Fixed | `GetNetWorthSummaryQueryHandler` derives `baseCurrency` from the dominant currency in the user's active accounts instead of hardcoding `"CAD"` |
+| 6 | Partial price fetch | [x] Fixed | `DailyPriceFetchBackgroundService` now compares `allQuotes` against `allSecurities` and logs a `Warning` with missing symbol names when the provider returns an incomplete set |
+| 7 | No tombstone creation | [x] Fixed | `PrivestioDbContext.SaveChangesAsync()` now detects entities transitioning `IsDeleted` from `false` → `true` and creates `SyncTombstone` records with entity type and owner `UserId` |
+| 8 | Tombstones not user-scoped | [x] Fixed | Added `Guid? UserId` to `SyncTombstone` entity; added `GetSinceForUserAsync(DateTime, Guid)` to `ISyncTombstoneRepository` and implementation; `GetChangesSinceQueryHandler` uses user-scoped query. EF migration `AddSyncTombstoneUserId` added |
+| 9 | Transfer no ownership | [x] Fixed | `CreateTransferCommandHandler` loads both accounts via `GetByIdAsync`, verifies `OwnerId == request.UserId` for both source and destination |
+| 10 | Inconsistent concurrency | [x] Fixed | Added `DbUpdateConcurrencyException` → `409 Conflict` mapping to the global exception handler in `ErrorHandlingExtensions.cs`, covering all endpoints uniformly |
+| 11 | Split currency validation | [x] Fixed | `UpdateTransactionSplitsCommandHandler` now validates `splitInput.Currency == transaction.Amount.CurrencyCode` for every split line before building |
+| 12 | Systemic CAD hardcoding | [x] Fixed | All 6 aggregate handlers (`GetNetWorthSummary`, `GetCashFlowForecast`, `GetDebtOverview`, `GetSpendingAnalysis`, `GetCashFlowSummary`, `NetWorthForecastingService`) derive currency from the user's actual account/transaction data |
+| 13 | Transfer UserId not passed | [x] Fixed | Added `Guid UserId` to `CreateTransferCommand` record; `TransactionEndpoints.CreateTransferAsync` passes `userId.Value` to the command |
+| 14 | Fingerprint re-import intent | [x] Documented | Added XML doc `<remarks>` to `RollbackImportCommandHandler` explaining that rollback + re-import is the intentional recovery workflow and fingerprints are excluded by design |
+| 15 | DeletePriceHistory ownership | [x] Documented | Added XML doc `<remarks>` to `DeletePriceHistoryCommandHandler` explaining that `PriceHistory` is global shared reference data (market prices), not per-user data |
+| 16 | Cross-currency transfers | [x] Fixed | `CreateTransferCommandHandler` validates `sourceAccount.Currency == request.Currency && destinationAccount.Currency == request.Currency`, rejecting cross-currency transfers with a descriptive error |

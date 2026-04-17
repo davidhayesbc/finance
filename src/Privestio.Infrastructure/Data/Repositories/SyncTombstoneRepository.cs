@@ -30,6 +30,16 @@ public class SyncTombstoneRepository : ISyncTombstoneRepository
             .OrderBy(t => t.DeletedAtUtc)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<SyncTombstone>> GetSinceForUserAsync(
+        DateTime since,
+        Guid userId,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .SyncTombstones.Where(t => t.DeletedAtUtc > since && t.UserId == userId)
+            .OrderBy(t => t.DeletedAtUtc)
+            .ToListAsync(cancellationToken);
+
     public async Task<SyncTombstone> AddAsync(
         SyncTombstone tombstone,
         CancellationToken cancellationToken = default

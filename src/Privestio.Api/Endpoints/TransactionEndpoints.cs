@@ -258,6 +258,7 @@ public static class TransactionEndpoints
             request.Amount,
             request.Currency,
             request.Date,
+            userId.Value,
             request.Notes
         );
 
