@@ -1246,6 +1246,19 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     background: color-mix(in srgb, var(--surface-raised) 84%, var(--accent-soft));
 }
 
+:root[data-theme="dark"] .data-grid--elevated tbody tr:hover td,
+:root[data-theme="dark"] .data-grid--elevated tbody tr:focus-within td,
+:root[data-theme="dark"] .data-grid--elevated tbody tr.is-active td {
+    background: color-mix(in srgb, var(--surface-raised) 68%, var(--accent));
+    color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .data-grid--elevated tbody tr:hover td > *,
+:root[data-theme="dark"] .data-grid--elevated tbody tr:focus-within td > *,
+:root[data-theme="dark"] .data-grid--elevated tbody tr.is-active td > * {
+    color: inherit;
+}
+
 .data-grid--elevated th:last-child,
 .data-grid--elevated td:last-child {
     width: 1%;

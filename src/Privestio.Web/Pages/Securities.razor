@@ -96,43 +96,44 @@
             <p class="securities-context-hint">Right-click any cell in a row to open actions.</p>
             </FluentCard>
 
-        @if (_isContextMenuOpen)
-        {
-            <div class="securities-context-backdrop" @onclick="CloseContextMenu"></div>
-            <div class="securities-context-menu" style="@ContextMenuStyle">
-                <div class="securities-context-menu__title">@(_contextMenuSecurity?.DisplaySymbol ?? "Security")</div>
-                <button type="button" class="securities-context-menu__action"
-                        disabled="@(_contextMenuSecurity is null || _fetchingPriceFor == _contextMenuSecurity.Id)"
-                        @onclick="FetchPriceFromMenuAsync">
-                    @if (_contextMenuSecurity is not null && _fetchingPriceFor == _contextMenuSecurity.Id)
-                    {
-                        <span>Fetching…</span>
-                    }
-                    else
-                    {
-                        <span>Fetch price</span>
-                    }
-                </button>
-                <button type="button" class="securities-context-menu__action"
-                        disabled="@(_contextMenuSecurity is null || _fetchingHistoricalPricesFor == _contextMenuSecurity.Id)"
-                        @onclick="FetchHistoricalPricesFromMenuAsync">
-                    @if (_contextMenuSecurity is not null && _fetchingHistoricalPricesFor == _contextMenuSecurity.Id)
-                    {
-                        <span>Fetching…</span>
-                    }
-                    else
-                    {
-                        <span>Fetch historical prices</span>
-                    }
-                </button>
-                <button type="button" class="securities-context-menu__action" disabled="@(_contextMenuSecurity is null)"
-                        @onclick="OpenEditFromMenuAsync">Edit</button>
-                <button type="button" class="securities-context-menu__action" disabled="@(_contextMenuSecurity is null)"
-                        @onclick="OpenPriceHistoryFromMenuAsync">Price history</button>
-            </div>
-        }
         }
     </section>
+
+@if (_isContextMenuOpen)
+{
+    <div class="securities-context-backdrop" @onclick="CloseContextMenu"></div>
+    <div class="securities-context-menu" style="@ContextMenuStyle">
+        <div class="securities-context-menu__title">@(_contextMenuSecurity?.DisplaySymbol ?? "Security")</div>
+        <button type="button" class="securities-context-menu__action"
+                disabled="@(_contextMenuSecurity is null || _fetchingPriceFor == _contextMenuSecurity.Id)"
+                @onclick="FetchPriceFromMenuAsync">
+            @if (_contextMenuSecurity is not null && _fetchingPriceFor == _contextMenuSecurity.Id)
+            {
+                <span>Fetching…</span>
+            }
+            else
+            {
+                <span>Fetch price</span>
+            }
+        </button>
+        <button type="button" class="securities-context-menu__action"
+                disabled="@(_contextMenuSecurity is null || _fetchingHistoricalPricesFor == _contextMenuSecurity.Id)"
+                @onclick="FetchHistoricalPricesFromMenuAsync">
+            @if (_contextMenuSecurity is not null && _fetchingHistoricalPricesFor == _contextMenuSecurity.Id)
+            {
+                <span>Fetching…</span>
+            }
+            else
+            {
+                <span>Fetch historical prices</span>
+            }
+        </button>
+        <button type="button" class="securities-context-menu__action" disabled="@(_contextMenuSecurity is null)"
+                @onclick="OpenEditFromMenuAsync">Edit</button>
+        <button type="button" class="securities-context-menu__action" disabled="@(_contextMenuSecurity is null)"
+                @onclick="OpenPriceHistoryFromMenuAsync">Price history</button>
+    </div>
+}
 
 @code {
     private readonly List<SecurityCatalogItemResponse> _securities = [];
@@ -247,6 +248,13 @@
             {
                 menuX = point.X;
                 menuY = point.Y;
+            }
+
+            var offset = await JSRuntime.InvokeAsync<ContextMenuPoint?>("uiState.getPageShellOffset");
+            if (offset is { X: > 0, Y: > 0 })
+            {
+                menuX -= offset.X;
+                menuY -= offset.Y;
             }
         }
         catch

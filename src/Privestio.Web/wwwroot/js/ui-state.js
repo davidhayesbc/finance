@@ -67,9 +67,23 @@ function getLastContextMenuPoint() {
     return lastContextMenuPoint;
 }
 
+function getPageShellOffset() {
+    const shell = document.querySelector('.page-shell');
+    if (!(shell instanceof HTMLElement)) {
+        return { x: 0, y: 0 };
+    }
+
+    const rect = shell.getBoundingClientRect();
+    return {
+        x: rect.left,
+        y: rect.top
+    };
+}
+
 window.uiState = {
     saveScrollState,
     restoreScrollState,
     focusElementById,
-    getLastContextMenuPoint
+    getLastContextMenuPoint,
+    getPageShellOffset
 };
