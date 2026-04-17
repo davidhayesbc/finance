@@ -1,4 +1,12 @@
 const scrollStatePrefix = "privestio-scroll:";
+let lastContextMenuPoint = null;
+
+window.addEventListener("contextmenu", (event) => {
+    lastContextMenuPoint = {
+        x: event.clientX,
+        y: event.clientY
+    };
+}, true);
 
 function getScrollStateKey(key) {
     return `${scrollStatePrefix}${key}`;
@@ -55,8 +63,13 @@ function focusElementById(elementId) {
     return true;
 }
 
+function getLastContextMenuPoint() {
+    return lastContextMenuPoint;
+}
+
 window.uiState = {
     saveScrollState,
     restoreScrollState,
-    focusElementById
+    focusElementById,
+    getLastContextMenuPoint
 };

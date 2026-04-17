@@ -1,6 +1,7 @@
 @page "/securities"
 @inject ISecurityWebService SecurityService
 @inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Securities - Privestio</PageTitle>
 
@@ -25,19 +26,37 @@
                                 Style="min-width: 1220px; width: max-content;"
                                 ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
                                 ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Small">
-                <PropertyColumn Property="@(s => s.DisplaySymbol)" Title="Symbol" Sortable="true" Width="88px" />
+                <TemplateColumn Title="Symbol" SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.DisplaySymbol))"
+                                Width="88px">
+                    <span class="cell-truncate"
+                          @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                          @oncontextmenu:preventDefault="true">@context.DisplaySymbol</span>
+                </TemplateColumn>
                 <TemplateColumn Title="Name" SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.Name))"
                                 Width="220px">
                     <span class="cell-truncate"
-                          title="@(string.IsNullOrWhiteSpace(context.Name) ? "Unnamed security" : context.Name)">@context.Name</span>
+                          title="@(string.IsNullOrWhiteSpace(context.Name) ? "Unnamed security" : context.Name)"
+                          @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                          @oncontextmenu:preventDefault="true">@context.Name</span>
                 </TemplateColumn>
-                <PropertyColumn Property="@(s => s.Exchange)" Title="Exchange" Sortable="true" Width="108px" />
-                <PropertyColumn Property="@(s => s.Currency)" Title="Currency" Sortable="true" Width="88px" />
+                <TemplateColumn Title="Exchange" SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.Exchange ?? string.Empty))"
+                                Width="108px">
+                    <span @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                          @oncontextmenu:preventDefault="true">@DisplayOrDash(context.Exchange)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Currency" SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.Currency ?? string.Empty))"
+                                Width="88px">
+                    <span @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                          @oncontextmenu:preventDefault="true">@DisplayOrDash(context.Currency)</span>
+                </TemplateColumn>
                 <TemplateColumn Title="Cash" Width="72px">
-                    @if (context.IsCashEquivalent)
-                    {
-                        <FluentBadge Appearance="Appearance.Accent">Yes</FluentBadge>
-                    }
+                    <span @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                          @oncontextmenu:preventDefault="true">
+                        @if (context.IsCashEquivalent)
+                        {
+                            <FluentBadge Appearance="Appearance.Accent">Yes</FluentBadge>
+                        }
+                    </span>
                 </TemplateColumn>
                 <TemplateColumn Title="Price source"
                                 SortBy="@(GridSort<SecurityCatalogItemResponse>.ByAscending(s => s.LatestPriceSource ?? string.Empty))"
@@ -45,12 +64,16 @@
                     @if (context.LatestPriceAsOfDate is { } asOfDate)
                     {
                         <span class="cell-truncate"
-                              title="@($"{(string.IsNullOrWhiteSpace(context.LatestPriceSource) ? "No source" : context.LatestPriceSource)} ({asOfDate:yyyy-MM-dd})")">@DisplayOrDash(context.LatestPriceSource)
+                              title="@($"{(string.IsNullOrWhiteSpace(context.LatestPriceSource) ? "No source" : context.LatestPriceSource)} ({asOfDate:yyyy-MM-dd})")"
+                              @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                              @oncontextmenu:preventDefault="true">@DisplayOrDash(context.LatestPriceSource)
                             (@asOfDate.ToString("yyyy-MM-dd"))</span>
                         }
                     else
                         {
-                            <span class="txn-no-value">—</span>
+                            <span class="txn-no-value"
+                                  @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                                  @oncontextmenu:preventDefault="true">—</span>
                         }
                     </TemplateColumn>
                     <TemplateColumn Title="Latest price"
@@ -58,54 +81,56 @@
                                     Width="132px">
                         @if (context.LatestPrice is { } latestPrice)
                         {
-                            <span>@latestPrice.ToString("N4") @DisplayOrDash(context.LatestPriceCurrency)</span>
+                            <span @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                                  @oncontextmenu:preventDefault="true">@latestPrice.ToString("N4") @DisplayOrDash(context.LatestPriceCurrency)</span>
                         }
                         else
                         {
-                            <span class="txn-no-value">—</span>
+                            <span class="txn-no-value"
+                                  @oncontextmenu="@(args => OpenContextMenu(args, context))"
+                                  @oncontextmenu:preventDefault="true">—</span>
                         }
-                    </TemplateColumn>
-                    <TemplateColumn Title="" Width="240px">
-                        <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact grid-actions--dense">
-                            <FluentButton Appearance="Appearance.Stealth" Disabled="@(_fetchingPriceFor == context.Id)"
-                                          OnClick="@(() => FetchPriceAsync(context))"
-                                          aria-label="@($"Fetch price for {context.DisplaySymbol}")">
-                                @if (_fetchingPriceFor == context.Id)
-                                {
-                                    <span>Fetching…</span>
-                                }
-                                else
-                                {
-                                    <span>Fetch price</span>
-                                }
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth"
-                                          Disabled="@(_fetchingHistoricalPricesFor == context.Id)"
-                                          OnClick="@(() => FetchHistoricalPricesAsync(context))"
-                                          aria-label="@($"Fetch historical prices for {context.DisplaySymbol}")">
-                                @if (_fetchingHistoricalPricesFor == context.Id)
-                                {
-                                    <span>Fetching…</span>
-                                }
-                                else
-                                {
-                                    <span>Fetch historical prices</span>
-                                }
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => OpenEditDialogAsync(context))"
-                                          aria-label="@($"Edit {context.DisplaySymbol}")">
-                                Edit
-                            </FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth"
-                                          OnClick="@(() => OpenPriceHistoryDialogAsync(context))"
-                                          aria-label="@($"Price history for {context.DisplaySymbol}")">
-                                Price history
-                            </FluentButton>
-                        </FluentStack>
                     </TemplateColumn>
                 </FluentDataGrid>
             </div>
+            <p class="securities-context-hint">Right-click any cell in a row to open actions.</p>
             </FluentCard>
+
+        @if (_isContextMenuOpen)
+        {
+            <div class="securities-context-backdrop" @onclick="CloseContextMenu"></div>
+            <div class="securities-context-menu" style="@ContextMenuStyle">
+                <div class="securities-context-menu__title">@(_contextMenuSecurity?.DisplaySymbol ?? "Security")</div>
+                <button type="button" class="securities-context-menu__action"
+                        disabled="@(_contextMenuSecurity is null || _fetchingPriceFor == _contextMenuSecurity.Id)"
+                        @onclick="FetchPriceFromMenuAsync">
+                    @if (_contextMenuSecurity is not null && _fetchingPriceFor == _contextMenuSecurity.Id)
+                    {
+                        <span>Fetching…</span>
+                    }
+                    else
+                    {
+                        <span>Fetch price</span>
+                    }
+                </button>
+                <button type="button" class="securities-context-menu__action"
+                        disabled="@(_contextMenuSecurity is null || _fetchingHistoricalPricesFor == _contextMenuSecurity.Id)"
+                        @onclick="FetchHistoricalPricesFromMenuAsync">
+                    @if (_contextMenuSecurity is not null && _fetchingHistoricalPricesFor == _contextMenuSecurity.Id)
+                    {
+                        <span>Fetching…</span>
+                    }
+                    else
+                    {
+                        <span>Fetch historical prices</span>
+                    }
+                </button>
+                <button type="button" class="securities-context-menu__action" disabled="@(_contextMenuSecurity is null)"
+                        @onclick="OpenEditFromMenuAsync">Edit</button>
+                <button type="button" class="securities-context-menu__action" disabled="@(_contextMenuSecurity is null)"
+                        @onclick="OpenPriceHistoryFromMenuAsync">Price history</button>
+            </div>
+        }
         }
     </section>
 
@@ -115,6 +140,12 @@
     private bool _isLoading = true;
     private Guid? _fetchingPriceFor;
     private Guid? _fetchingHistoricalPricesFor;
+    private bool _isContextMenuOpen;
+    private SecurityCatalogItemResponse? _contextMenuSecurity;
+    private double _contextMenuX;
+    private double _contextMenuY;
+
+    private string ContextMenuStyle => $"left: {_contextMenuX}px; top: {_contextMenuY}px;";
 
     protected override async Task OnInitializedAsync()
     {
@@ -201,4 +232,81 @@
     }
 
     private static string DisplayOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private async Task OpenContextMenu(MouseEventArgs args, SecurityCatalogItemResponse security)
+    {
+        _contextMenuSecurity = security;
+
+        var menuX = args.ClientX;
+        var menuY = args.ClientY;
+
+        try
+        {
+            var point = await JSRuntime.InvokeAsync<ContextMenuPoint?>("uiState.getLastContextMenuPoint");
+            if (point is { X: > 0, Y: > 0 })
+            {
+                menuX = point.X;
+                menuY = point.Y;
+            }
+        }
+        catch
+        {
+            // Fall back to Blazor event coordinates when JS interop is unavailable.
+        }
+
+        _contextMenuX = Math.Max(8, menuX - 4);
+        _contextMenuY = Math.Max(8, menuY - 4);
+        _isContextMenuOpen = true;
+    }
+
+    private void CloseContextMenu()
+    {
+        _isContextMenuOpen = false;
+    }
+
+    private async Task FetchPriceFromMenuAsync()
+    {
+        if (_contextMenuSecurity is null)
+            return;
+
+        var security = _contextMenuSecurity;
+        CloseContextMenu();
+        await FetchPriceAsync(security);
+    }
+
+    private async Task FetchHistoricalPricesFromMenuAsync()
+    {
+        if (_contextMenuSecurity is null)
+            return;
+
+        var security = _contextMenuSecurity;
+        CloseContextMenu();
+        await FetchHistoricalPricesAsync(security);
+    }
+
+    private async Task OpenEditFromMenuAsync()
+    {
+        if (_contextMenuSecurity is null)
+            return;
+
+        var security = _contextMenuSecurity;
+        CloseContextMenu();
+        await OpenEditDialogAsync(security);
+    }
+
+    private async Task OpenPriceHistoryFromMenuAsync()
+    {
+        if (_contextMenuSecurity is null)
+            return;
+
+        var security = _contextMenuSecurity;
+        CloseContextMenu();
+        await OpenPriceHistoryDialogAsync(security);
+    }
+
+    private sealed class ContextMenuPoint
+    {
+        public double X { get; init; }
+        public double Y { get; init; }
+    }
 }
