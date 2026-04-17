@@ -1433,6 +1433,55 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     color: var(--text-muted) !important;
 }
 
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-light,
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-dark {
+    color: var(--text-strong);
+    border-color: var(--surface-border);
+    background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+    box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.82);
+}
+
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-light .apexcharts-tooltip-title,
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-dark .apexcharts-tooltip-title {
+    color: var(--text-strong);
+    background: color-mix(in srgb, var(--surface-raised) 84%, rgba(0, 0, 0, 0.42));
+    border-bottom-color: var(--surface-border);
+}
+
+:root[data-theme="dark"] .apexcharts-tooltip-series-group,
+:root[data-theme="dark"] .apexcharts-tooltip-text-y-label,
+:root[data-theme="dark"] .apexcharts-tooltip-text-y-value,
+:root[data-theme="dark"] .apexcharts-tooltip-text-goals-label,
+:root[data-theme="dark"] .apexcharts-tooltip-text-goals-value,
+:root[data-theme="dark"] .apexcharts-tooltip-text-z-value,
+:root[data-theme="dark"] .apexcharts-xaxistooltip,
+:root[data-theme="dark"] .apexcharts-yaxistooltip {
+    color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip,
+:root[data-theme="dark"] .apexcharts-yaxistooltip {
+    background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+    border-color: var(--surface-border);
+    box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.82);
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-bottom:after {
+    border-bottom-color: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-bottom:before {
+    border-bottom-color: var(--surface-border);
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-top:after {
+    border-top-color: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-top:before {
+    border-top-color: var(--surface-border);
+}
+
 :root[data-theme="dark"] .apexcharts-legend-text,
 :root[data-theme="dark"] .apexcharts-xaxis-label,
 :root[data-theme="dark"] .apexcharts-yaxis-label {
