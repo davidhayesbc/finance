@@ -22,6 +22,7 @@
             <div class="table-surface table-surface--grid table-surface--scroll securities-grid-wrap">
                 <FluentDataGrid Items="_securities.AsQueryable()" TGridItem="SecurityCatalogItemResponse"
                                 Class="data-grid--elevated data-grid--securities data-grid--dense" aria-label="Securities" ResizableColumns="true"
+                                Style="min-width: 1220px; width: max-content;"
                                 ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
                                 ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Small">
                 <PropertyColumn Property="@(s => s.DisplaySymbol)" Title="Symbol" Sortable="true" Width="88px" />
@@ -64,7 +65,7 @@
                             <span class="txn-no-value">—</span>
                         }
                     </TemplateColumn>
-                    <TemplateColumn Title="" Width="360px">
+                    <TemplateColumn Title="" Width="240px">
                         <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact grid-actions--dense">
                             <FluentButton Appearance="Appearance.Stealth" Disabled="@(_fetchingPriceFor == context.Id)"
                                           OnClick="@(() => FetchPriceAsync(context))"
