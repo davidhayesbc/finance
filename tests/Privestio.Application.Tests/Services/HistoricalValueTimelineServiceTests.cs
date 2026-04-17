@@ -110,8 +110,8 @@ public class HistoricalValueTimelineServiceTests
             .ReturnsAsync([chequing, visa]);
         _transactions
             .Setup(x =>
-                x.GetByOwnerAndDateRangeAsync(
-                    ownerId,
+                x.GetByAccountIdsAndDateRangeAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     It.IsAny<DateTime>(),
                     It.IsAny<DateTime>(),
                     It.IsAny<CancellationToken>()
@@ -185,14 +185,19 @@ public class HistoricalValueTimelineServiceTests
             .ReturnsAsync([holding]);
         _priceHistories
             .Setup(x =>
-                x.GetBySecurityIdAsync(
-                    security.Id,
-                    null,
+                x.GetBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     new DateOnly(2024, 1, 3),
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(prices);
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, IReadOnlyList<PriceHistory>>)
+                    new Dictionary<Guid, IReadOnlyList<PriceHistory>>
+                    {
+                        [security.Id] = prices,
+                    }
+            );
 
         var service = new HistoricalValueTimelineService(
             _unitOfWork.Object,
@@ -298,24 +303,20 @@ public class HistoricalValueTimelineServiceTests
 
         _priceHistories
             .Setup(x =>
-                x.GetBySecurityIdAsync(
-                    securityA.Id,
-                    null,
+                x.GetBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     new DateOnly(2024, 1, 3),
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(pricesA);
-        _priceHistories
-            .Setup(x =>
-                x.GetBySecurityIdAsync(
-                    securityB.Id,
-                    null,
-                    new DateOnly(2024, 1, 3),
-                    It.IsAny<CancellationToken>()
-                )
-            )
-            .ReturnsAsync(pricesB);
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, IReadOnlyList<PriceHistory>>)
+                    new Dictionary<Guid, IReadOnlyList<PriceHistory>>
+                    {
+                        [securityA.Id] = pricesA,
+                        [securityB.Id] = pricesB,
+                    }
+            );
 
         var service = new HistoricalValueTimelineService(
             _unitOfWork.Object,
@@ -392,14 +393,19 @@ public class HistoricalValueTimelineServiceTests
         };
         _priceHistories
             .Setup(x =>
-                x.GetBySecurityIdAsync(
-                    security.Id,
-                    null,
+                x.GetBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
                     new DateOnly(2024, 1, 2),
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(prices);
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, IReadOnlyList<PriceHistory>>)
+                    new Dictionary<Guid, IReadOnlyList<PriceHistory>>
+                    {
+                        [security.Id] = prices,
+                    }
+            );
 
         var service = new HistoricalValueTimelineService(
             _unitOfWork.Object,

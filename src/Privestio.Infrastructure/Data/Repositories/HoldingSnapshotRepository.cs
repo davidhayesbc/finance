@@ -82,4 +82,41 @@ public class HoldingSnapshotRepository : IHoldingSnapshotRepository
             snapshot.SoftDelete();
         }
     }
+
+    public async Task<decimal?> GetCurrentSnapshotTotalAsync(
+        Guid accountId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // For each security held in this account, find the latest snapshot date and sum
+        // that snapshot's MarketValue. This mirrors the logic in HistoricalValueTimelineService
+        // which also prefers snapshots as the authoritative source for managed-fund accounts.
+        var latestDatePerSecurity = await _context
+            .HoldingSnapshots.Where(s => s.AccountId == accountId && !s.IsDeleted)
+            .GroupBy(s => s.SecurityId)
+            .Select(g => new { SecurityId = g.Key, LatestDate = g.Max(s => s.AsOfDate) })
+            .ToListAsync(cancellationToken);
+
+        if (latestDatePerSecurity.Count == 0)
+            return null;
+
+        var total = 0m;
+        foreach (var entry in latestDatePerSecurity)
+        {
+            var latestSnapshot = await _context
+                .HoldingSnapshots.Where(s =>
+                    s.AccountId == accountId
+                    && s.SecurityId == entry.SecurityId
+                    && s.AsOfDate == entry.LatestDate
+                    && !s.IsDeleted
+                )
+                .OrderByDescending(s => s.RecordedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestSnapshot is not null)
+                total += latestSnapshot.MarketValue.Amount;
+        }
+
+        return total;
+    }
 }

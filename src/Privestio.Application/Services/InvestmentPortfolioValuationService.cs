@@ -64,7 +64,8 @@ public sealed class InvestmentPortfolioValuationService
 
     public async Task<InvestmentPortfolioValuation> CalculateAsync(
         Account account,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool allowExternalPriceFetch = true
     )
     {
         if (account.AccountType != AccountType.Investment)
@@ -111,7 +112,7 @@ public sealed class InvestmentPortfolioValuationService
             .Where(h => !latestPrices.ContainsKey(h.SecurityId) && h.Security is not null)
             .ToList();
 
-        if (missingHoldings.Count > 0)
+        if (missingHoldings.Count > 0 && allowExternalPriceFetch)
         {
             var fetchedAny = await FetchAndPersistMissingPricesAsync(
                 missingHoldings,

@@ -31,6 +31,7 @@ public class AccountBalanceServiceTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ITransactionRepository> _transactionRepositoryMock;
     private readonly Mock<IHoldingRepository> _holdingRepositoryMock;
+    private readonly Mock<IHoldingSnapshotRepository> _holdingSnapshotRepositoryMock;
     private readonly Mock<IPriceHistoryRepository> _priceHistoryRepositoryMock;
     private readonly Mock<IExchangeRateRepository> _exchangeRateRepositoryMock;
     private readonly Mock<IPriceFeedProvider> _priceFeedProviderMock;
@@ -43,6 +44,7 @@ public class AccountBalanceServiceTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _transactionRepositoryMock = new Mock<ITransactionRepository>();
         _holdingRepositoryMock = new Mock<IHoldingRepository>();
+        _holdingSnapshotRepositoryMock = new Mock<IHoldingSnapshotRepository>();
         _priceHistoryRepositoryMock = new Mock<IPriceHistoryRepository>();
         _exchangeRateRepositoryMock = new Mock<IExchangeRateRepository>();
         _priceFeedProviderMock = new Mock<IPriceFeedProvider>();
@@ -50,6 +52,7 @@ public class AccountBalanceServiceTests
 
         _unitOfWorkMock.SetupGet(x => x.Transactions).Returns(_transactionRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.Holdings).Returns(_holdingRepositoryMock.Object);
+        _unitOfWorkMock.SetupGet(x => x.HoldingSnapshots).Returns(_holdingSnapshotRepositoryMock.Object);
         _unitOfWorkMock
             .SetupGet(x => x.PriceHistories)
             .Returns(_priceHistoryRepositoryMock.Object);
@@ -94,6 +97,13 @@ public class AccountBalanceServiceTests
         _holdingRepositoryMock
             .Setup(x => x.GetByAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+
+        // Default: no snapshots — existing investment tests use portfolio valuation path.
+        _holdingSnapshotRepositoryMock
+            .Setup(x =>
+                x.GetCurrentSnapshotTotalAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync((decimal?)null);
 
         _priceHistoryRepositoryMock
             .Setup(x =>
@@ -332,6 +342,151 @@ public class AccountBalanceServiceTests
         var balance = await _sut.ComputeCurrentBalanceAsync(account, CancellationToken.None);
 
         balance.Should().Be(1_500m); // 10 × $150
+    }
+
+    // ── Investment accounts — snapshot-based ──────────────────────────────────
+
+    [Fact]
+    public async Task ComputeCurrentBalance_InvestmentAccount_WithSnapshots_ReturnsSnapshotTotal()
+    {
+        // Sun Life RRSP scenario: managed fund imported from PDF; value is in HoldingSnapshots,
+        // not in Holdings. The snapshot total must be used as the authoritative balance.
+        var ownerId = Guid.NewGuid();
+        var account = CreateAccount(
+            ownerId,
+            AccountType.Investment,
+            AccountSubType.RRSP,
+            openingBalance: 0m
+        );
+
+        _holdingSnapshotRepositoryMock
+            .Setup(x =>
+                x.GetCurrentSnapshotTotalAsync(account.Id, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(1_001_625m);
+
+        var balance = await _sut.ComputeCurrentBalanceAsync(account, CancellationToken.None);
+
+        balance.Should().Be(1_001_625m);
+    }
+
+    [Fact]
+    public async Task ComputeCurrentBalance_InvestmentAccount_WithSnapshots_PortfolioValuationNotCalled()
+    {
+        // When snapshots are present the portfolio valuation service (and Holdings repo) must
+        // not be consulted — snapshots are the authoritative source.
+        var ownerId = Guid.NewGuid();
+        var account = CreateAccount(
+            ownerId,
+            AccountType.Investment,
+            AccountSubType.RRSP,
+            openingBalance: 0m
+        );
+
+        _holdingSnapshotRepositoryMock
+            .Setup(x =>
+                x.GetCurrentSnapshotTotalAsync(account.Id, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(900_000m);
+
+        await _sut.ComputeCurrentBalanceAsync(account, CancellationToken.None);
+
+        _holdingRepositoryMock.Verify(
+            x => x.GetByAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    [Fact]
+    public async Task ComputeCurrentBalance_InvestmentAccount_NoSnapshots_FallsThroughToPortfolioValuation()
+    {
+        // When no snapshots exist the service must fall through to portfolio valuation.
+        var ownerId = Guid.NewGuid();
+        var account = CreateAccount(
+            ownerId,
+            AccountType.Investment,
+            AccountSubType.TFSA,
+            openingBalance: 0m
+        );
+
+        var security = SecurityTestHelper.CreateSecurity("VFV", "Vanguard S&P 500 ETF", "CAD");
+        var holding = SecurityTestHelper.CreateHolding(
+            account.Id,
+            security,
+            quantity: 20m,
+            averageCostPerUnit: new Money(100m)
+        );
+        var priceHistory = SecurityTestHelper.CreatePriceHistory(
+            security,
+            120m,
+            DateOnly.FromDateTime(DateTime.UtcNow)
+        );
+
+        // No snapshots — returns null → portfolio valuation path
+        _holdingSnapshotRepositoryMock
+            .Setup(x =>
+                x.GetCurrentSnapshotTotalAsync(account.Id, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync((decimal?)null);
+
+        _holdingRepositoryMock
+            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([holding]);
+
+        _priceHistoryRepositoryMock
+            .Setup(x =>
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory> { [security.Id] = priceHistory }
+            );
+
+        var balance = await _sut.ComputeCurrentBalanceAsync(account, CancellationToken.None);
+
+        balance.Should().Be(2_400m); // 20 × $120
+    }
+
+    [Fact]
+    public async Task ComputeCurrentBalance_InvestmentAccount_SnapshotTakesPriorityOverHoldings()
+    {
+        // Guard: even when Holdings exist, if snapshots also exist the snapshot total wins.
+        // This ensures managed-fund accounts (Sun Life) always report snapshot-based value.
+        var ownerId = Guid.NewGuid();
+        var account = CreateAccount(
+            ownerId,
+            AccountType.Investment,
+            AccountSubType.RRSP,
+            openingBalance: 0m
+        );
+
+        _holdingSnapshotRepositoryMock
+            .Setup(x =>
+                x.GetCurrentSnapshotTotalAsync(account.Id, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(1_001_625m); // snapshot says $1M+
+
+        // Holdings also exist but must NOT be consulted.
+        var security = SecurityTestHelper.CreateSecurity("SLGF", "Sun Life Growth Fund", "CAD");
+        _holdingRepositoryMock
+            .Setup(x => x.GetByAccountIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+                [
+                    SecurityTestHelper.CreateHolding(
+                        account.Id,
+                        security,
+                        quantity: 1000m,
+                        averageCostPerUnit: new Money(685m)
+                    ),
+                ]
+            );
+
+        var balance = await _sut.ComputeCurrentBalanceAsync(account, CancellationToken.None);
+
+        balance.Should().Be(1_001_625m); // snapshot wins, not $685,000
     }
 
     // ── Banking accounts ──────────────────────────────────────────────────────

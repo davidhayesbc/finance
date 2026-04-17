@@ -39,6 +39,16 @@ public interface IPriceHistoryRepository
     );
 
     /// <summary>
+    /// Returns all price history entries for the given security IDs up to <paramref name="toDate"/>,
+    /// grouped by security ID. Use for batch history scenarios to avoid per-security N+1 queries.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<PriceHistory>>> GetBySecurityIdsAsync(
+        IEnumerable<Guid> securityIds,
+        DateOnly? toDate = null,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// Removes all price history entries for the given securities that were NOT sourced from a
     /// PDF statement (i.e. externally fetched entries from Yahoo Finance, MSN Finance, etc.).
     /// Call this before persisting PDF statement prices so external prices cannot override them.

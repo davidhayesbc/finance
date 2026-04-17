@@ -59,6 +59,18 @@ public interface ITransactionRepository
     );
 
     /// <summary>
+    /// Returns all transactions for the specified account IDs in the given date range.
+    /// Use in batch history scenarios to replace per-account <see cref="GetByOwnerAndDateRangeAsync"/>
+    /// calls and avoid N×full-table-scan queries.
+    /// </summary>
+    Task<IReadOnlyList<Transaction>> GetByAccountIdsAndDateRangeAsync(
+        IEnumerable<Guid> accountIds,
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// Returns the signed sum of all account transactions up to and including the
     /// provided transaction position (date/id).
     /// Credits and Transfers contribute +amount; Debits contribute -amount.
