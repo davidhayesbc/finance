@@ -27,6 +27,12 @@ To run the manifest-based data loader and clear existing loader-managed data bef
 dotnet run --project tools/Privestio.DataLoader -- --manifest ~/privestio-data/manifest.json --data-dir ~/privestio-data --clear-existing-data
 ```
 
+For anonymized repository fixtures that are safe for check-in and repeatable testing, use:
+
+```bash
+dotnet run --project tools/Privestio.DataLoader -- --manifest testdata/anonymized-loader-sample/manifest.json --data-dir testdata/anonymized-loader-sample --clear-existing-data
+```
+
 Use `--dry-run` to validate inputs without writing changes.
 
 ## Checking resources

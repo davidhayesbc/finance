@@ -1,0 +1,25 @@
+Date,Transaction,Name,Memo,Amount
+05/01/2021,DEBIT,Recurring transfer to savings,Scheduled savings transfer,-125.00
+05/02/2021,DEBIT,Transfer to savings,Online transfer,-15.00
+05/03/2021,DEBIT,Credit card payment,Monthly card payment,-2640.4
+05/03/2021,OTHER,Utility payment,Energy provider debit,-84.2
+05/04/2021,OTHER,Mortgage payment,Mortgage debit (primary),-975.35
+05/04/2021,OTHER,Mortgage payment,Mortgage debit (secondary),-1180.5
+05/06/2021,OTHER,Payroll deposit,Employer direct deposit,1875.2
+05/11/2021,ATM,Cash deposit,Branch ATM cash deposit,420.0
+05/13/2021,OTHER,Payroll deposit,Employer direct deposit,2540.75
+05/17/2021,OTHER,Interac e-Transfer,Transfer to family member,-240.0
+05/18/2021,OTHER,Electric utility payment,Hydro pre-authorized payment,-58.65
+05/18/2021,OTHER,Investment contribution,Mutual fund pre-authorized payment,-175.0
+05/19/2021,DEBIT,Credit card payment,Card bill payment,-112.9
+05/20/2021,OTHER,Payroll deposit,Employer direct deposit,1796.45
+05/21/2021,OTHER,Insurance payment,Auto insurance debit,-66.35
+05/21/2021,OTHER,Insurance payment,Vehicle insurance debit,-88.1
+05/25/2021,OTHER,Online merchant payment,Online purchase processor,-42.6
+05/26/2021,CREDIT,Cheque deposit,Cheque deposit correction,95.0
+05/28/2021,OTHER,Benefits deposit,Health reimbursement,135.0
+05/28/2021,OTHER,Payroll deposit,Employer direct deposit,2330.8
+05/31/2021,OTHER,Life insurance payment,Insurance pre-authorized debit,-81.2
+05/31/2021,OTHER,Interest paid,Monthly interest credit,0.11
+06/01/2021,DEBIT,Recurring transfer to savings,Scheduled savings transfer,-125.0
+06/01/2021,OTHER,Service payment,Recurring service subscription,-265.5

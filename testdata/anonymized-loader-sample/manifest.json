@@ -1,0 +1,159 @@
+{
+  "auth": {
+    "email": "sample.user+loader@privestio.local",
+    "password": "Sample_Password_Only_For_Local_Testing_123!",
+    "displayName": "Sample User",
+    "register": true
+  },
+  "categories": [],
+  "payees": [],
+  "tags": [],
+  "importMappings": [
+    {
+      "name": "Wealthsimple Activities CSV",
+      "fileFormat": "csv",
+      "institution": "Wealthsimple",
+      "columnMappings": {
+        "transaction_date": "Date",
+        "net_cash_amount": "Amount",
+        "activity_type": "Description",
+        "settlement_date": "SettlementDate",
+        "activity_sub_type": "ActivitySubType",
+        "direction": "Direction",
+        "symbol": "Symbol",
+        "name": "SecurityName",
+        "quantity": "Quantity",
+        "unit_price": "UnitPrice",
+        "currency": "Currency"
+      },
+      "dateFormat": "yyyy-MM-dd",
+      "hasHeaderRow": true,
+      "ignoreRowPatterns": [
+        "As of "
+      ]
+    },
+    {
+      "name": "Tangerine Chequing CSV",
+      "fileFormat": "csv",
+      "institution": "Tangerine",
+      "columnMappings": {
+        "Date": "Date",
+        "Amount": "Amount",
+        "Name": "Description",
+        "Memo": "Notes"
+      },
+      "dateFormat": "M/d/yyyy",
+      "hasHeaderRow": true
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Sample Wealthsimple TFSA",
+      "accountType": "Investment",
+      "accountSubType": "TFSA",
+      "currency": "CAD",
+      "institution": "Wealthsimple",
+      "accountNumber": "WS-TFSA-001",
+      "openingBalance": 0,
+      "openingDate": "2025-01-31",
+      "imports": [
+        {
+          "file": "wealthsimple/activities-tfsa.csv",
+          "mappingName": "Wealthsimple Activities CSV",
+          "policy": "SkipInvalid"
+        }
+      ],
+      "valuations": []
+    },
+    {
+      "name": "Sample Wealthsimple Chequing",
+      "accountType": "Banking",
+      "accountSubType": "Chequing",
+      "currency": "CAD",
+      "institution": "Wealthsimple",
+      "accountNumber": "WS-CHEQ-001",
+      "openingBalance": 0,
+      "openingDate": "2025-01-27",
+      "imports": [
+        {
+          "file": "wealthsimple/activities-chequing.csv",
+          "mappingName": "Wealthsimple Activities CSV",
+          "policy": "SkipInvalid"
+        }
+      ],
+      "valuations": []
+    },
+    {
+      "name": "Sample Tangerine Joint Chequing",
+      "accountType": "Banking",
+      "accountSubType": "Chequing",
+      "currency": "CAD",
+      "institution": "Tangerine",
+      "openingBalance": 4850.75,
+      "openingDate": "2021-05-01",
+      "imports": [
+        {
+          "file": "tangerine/joint-account.csv",
+          "mappingName": "Tangerine Chequing CSV",
+          "policy": "SkipInvalid"
+        }
+      ],
+      "valuations": [],
+      "adjustments": {
+        "isShared": true,
+        "notes": "Synthetic shared chequing fixture account"
+      }
+    },
+    {
+      "name": "Sample Primary Residence",
+      "accountType": "Property",
+      "accountSubType": "RealEstate",
+      "currency": "CAD",
+      "openingBalance": 640000,
+      "openingDate": "2009-08-01",
+      "imports": [],
+      "valuations": [
+        {
+          "amount": 980000,
+          "effectiveDate": "2017-01-01",
+          "source": "Municipal Assessment"
+        },
+        {
+          "amount": 1045000,
+          "effectiveDate": "2018-01-01",
+          "source": "Municipal Assessment"
+        },
+        {
+          "amount": 1290000,
+          "effectiveDate": "2026-01-01",
+          "source": "Municipal Assessment"
+        }
+      ],
+      "adjustments": {
+        "notes": "Anonymized property fixture"
+      }
+    },
+    {
+      "name": "Sample Primary Residence Mortgage",
+      "accountType": "Loan",
+      "accountSubType": "Mortgage",
+      "currency": "CAD",
+      "institution": "Sample Lender",
+      "openingBalance": -245320.15,
+      "openingDate": "2026-02-17",
+      "imports": [],
+      "valuations": [],
+      "adjustments": {
+        "loanNumber": "MORTGAGE-001",
+        "interestRate": 4.12,
+        "rateType": "Fixed",
+        "termYears": 5,
+        "originalAmortizationYears": 10,
+        "remainingAmortization": "7 years 11 months",
+        "maturityDate": "2031-03-01",
+        "property": "Sample Primary Residence"
+      }
+    }
+  ],
+  "priceHistory": []
+}

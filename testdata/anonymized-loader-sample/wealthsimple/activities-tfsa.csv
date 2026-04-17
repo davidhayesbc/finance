@@ -1,0 +1,21 @@
+transaction_date,settlement_date,account_id,account_type,activity_type,activity_sub_type,direction,symbol,name,currency,quantity,unit_price,commission,net_cash_amount
+2025-01-31,,WS-TFSA-001,TFSA,MoneyMovement,EFT,,,,CAD,100,,,100
+2025-02-01,,WS-TFSA-001,TFSA,BonusPayment,REFER,,,,CAD,30,,,30
+2025-02-02,,WS-TFSA-001,TFSA,BonusPayment,REFER,,,,CAD,30,,,30
+2025-02-03,2025-02-03,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,3.0542,32.74,0,-100
+2025-02-04,2025-02-04,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,2.1235,32.96,0,-70
+2025-02-07,,WS-TFSA-001,TFSA,AdministrativePayment,TRANSFER_FEE_REIMBURSEMENT,,,,CAD,95,,,95
+2025-02-07,,WS-TFSA-001,TFSA,MoneyMovement,EFT,,,,CAD,8000,,,8000
+2025-02-12,2025-02-12,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,2.8987,32.84,0,-95.2
+2025-02-14,2025-02-14,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,243.1012,32.95,0,-8010.5
+2025-02-20,2025-02-20,WS-TFSA-001,TFSA,Trade,BUY,LONG,VEQT,Vanguard All-Equity ETF Portfolio - ETF,CAD,48.9041,45.0,0,-2200.75
+2025-02-24,,WS-TFSA-001,TFSA,MoneyMovement,EFT,,,,CAD,250,,,250
+2025-02-25,2025-02-25,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,7.5989,32.89,0,-249.9
+2025-03-03,,WS-TFSA-001,TFSA,MoneyMovement,EFT,,,,CAD,40,,,40
+2025-03-14,,WS-TFSA-001,TFSA,Interest,,,,,CAD,0.03,,,0.03
+2025-03-21,,WS-TFSA-001,TFSA,MoneyMovement,EFT,,,,CAD,9500,,,9500
+2025-03-24,2025-03-24,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,285.4,32.94,0,-9401.2
+2025-03-31,,WS-TFSA-001,TFSA,Dividend,,,,,CAD,42.15,,,42.15
+2025-04-02,2025-04-02,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,1.2787,32.96,0,-42.15
+2025-04-03,,WS-TFSA-001,TFSA,MoneyMovement,EFT,,,,CAD,2200,,,2200
+2025-04-04,2025-04-04,WS-TFSA-001,TFSA,Trade,BUY,LONG,XEQT,iShares Core Equity ETF Portfolio,CAD,66.6256,32.94,0,-2194.7

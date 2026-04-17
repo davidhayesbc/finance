@@ -10,6 +10,16 @@ dotnet run --project tools/Privestio.DataLoader -- --manifest $env:OneDrive/priv
 
 The `--clear-existing-data` flag clears existing loader-managed data for the authenticated user before import starts.
 
+## Repository Sample Data (Anonymized)
+
+Use the repository fixture set when you need safe, check-in-ready test data:
+
+```powershell
+dotnet run --project tools/Privestio.DataLoader -- --manifest testdata/anonymized-loader-sample/manifest.json --data-dir testdata/anonymized-loader-sample --clear-existing-data
+```
+
+The sample dataset lives under `testdata/anonymized-loader-sample` and is anonymized for local and CI testing.
+
 ## Required Flags
 
 - `--manifest <path>` — path to the manifest JSON file.
