@@ -469,21 +469,25 @@ public sealed class HistoricalValueTimelineService
         CancellationToken cancellationToken
     )
     {
-        var snapshotsBySecurityId = snapshots
-            .GroupBy(s => s.SecurityId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.AsOfDate).ToList());
+        // Group snapshots by statement date. Each statement captures the complete portfolio
+        // at that point in time. Using the latest complete statement for each chart date
+        // avoids including stale values for securities sold between statements.
+        var snapshotsByDate = snapshots
+            .GroupBy(s => s.AsOfDate)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var statementDates = snapshotsByDate.Keys.OrderBy(d => d).ToList();
 
         // Use pre-loaded price histories; order ascending by date for binary search.
+        var allSecurityIds = snapshots.Select(s => s.SecurityId).Distinct();
         var priceHistoriesBySecurityId = new Dictionary<Guid, IReadOnlyList<PriceHistory>>();
-        foreach (var securityId in snapshotsBySecurityId.Keys)
+        foreach (var securityId in allSecurityIds)
         {
             if (preloadedPriceHistories.TryGetValue(securityId, out var prices))
                 priceHistoriesBySecurityId[securityId] = prices; // already ordered ascending
         }
 
-        var currenciesFromSnapshots = snapshotsBySecurityId
-            .Values.SelectMany(list => list)
-            .Select(s => s.UnitPrice.CurrencyCode);
+        var currenciesFromSnapshots = snapshots.Select(s => s.UnitPrice.CurrencyCode);
         var currenciesFromPrices = priceHistoriesBySecurityId
             .Values.SelectMany(values => values)
             .Select(p => p.Price.CurrencyCode);
@@ -508,11 +512,27 @@ public sealed class HistoricalValueTimelineService
                 continue;
             }
 
-            var totalValue = 0m;
-            foreach (var (securityId, securitySnapshots) in snapshotsBySecurityId)
+            // Find the latest complete statement on or before this chart date.
+            var statementDate = default(DateOnly);
+            for (var i = statementDates.Count - 1; i >= 0; i--)
             {
-                var snapshot = securitySnapshots.LastOrDefault(s => s.AsOfDate <= date);
-                if (snapshot is null || snapshot.Quantity <= 0m)
+                if (statementDates[i] <= date)
+                {
+                    statementDate = statementDates[i];
+                    break;
+                }
+            }
+
+            if (statementDate == default)
+            {
+                points.Add(new HistoricalValuePoint(date, 0m, account.Currency));
+                continue;
+            }
+
+            var totalValue = 0m;
+            foreach (var snapshot in snapshotsByDate[statementDate])
+            {
+                if (snapshot.Quantity <= 0m)
                     continue;
 
                 decimal priceAmount;
@@ -523,7 +543,12 @@ public sealed class HistoricalValueTimelineService
                     priceAmount = snapshot.UnitPrice.Amount;
                     priceCurrency = snapshot.UnitPrice.CurrencyCode;
                 }
-                else if (priceHistoriesBySecurityId.TryGetValue(securityId, out var priceHistories))
+                else if (
+                    priceHistoriesBySecurityId.TryGetValue(
+                        snapshot.SecurityId,
+                        out var priceHistories
+                    )
+                )
                 {
                     var price = priceHistories.LastOrDefault(p => p.AsOfDate <= date);
                     if (price is not null)
@@ -805,23 +830,26 @@ public sealed class HistoricalValueTimelineService
         CancellationToken cancellationToken
     )
     {
-        // Group snapshots by security, ordered by date within each group.
-        var snapshotsBySecurityId = snapshots
-            .GroupBy(s => s.SecurityId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.AsOfDate).ToList());
+        // Group snapshots by statement date. Each statement captures the complete portfolio
+        // at that point in time — only include securities from the latest complete statement
+        // for each chart date to avoid stale values from sold/rebalanced securities.
+        var snapshotsByDate = snapshots
+            .GroupBy(s => s.AsOfDate)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var statementDates = snapshotsByDate.Keys.OrderBy(d => d).ToList();
 
         // Load price histories for interpolation between snapshot dates — batch all at once.
+        var allSecurityIds = snapshots.Select(s => s.SecurityId).Distinct();
         var priceHistoriesBySecurityId =
             await _unitOfWork.PriceHistories.GetBySecurityIdsAsync(
-                snapshotsBySecurityId.Keys,
+                allSecurityIds,
                 toDate,
                 cancellationToken
             );
 
         // Collect currencies for FX conversion.
-        var currenciesFromSnapshots = snapshotsBySecurityId
-            .Values.SelectMany(list => list)
-            .Select(s => s.UnitPrice.CurrencyCode);
+        var currenciesFromSnapshots = snapshots.Select(s => s.UnitPrice.CurrencyCode);
         var currenciesFromPrices = priceHistoriesBySecurityId
             .Values.SelectMany(values => values)
             .Select(p => p.Price.CurrencyCode);
@@ -846,12 +874,27 @@ public sealed class HistoricalValueTimelineService
                 continue;
             }
 
-            var totalValue = 0m;
-            foreach (var (securityId, securitySnapshots) in snapshotsBySecurityId)
+            // Find the latest complete statement on or before this chart date.
+            var statementDate = default(DateOnly);
+            for (var i = statementDates.Count - 1; i >= 0; i--)
             {
-                // Find the most recent snapshot on or before this date.
-                var snapshot = securitySnapshots.LastOrDefault(s => s.AsOfDate <= date);
-                if (snapshot is null || snapshot.Quantity <= 0m)
+                if (statementDates[i] <= date)
+                {
+                    statementDate = statementDates[i];
+                    break;
+                }
+            }
+
+            if (statementDate == default)
+            {
+                points.Add(new HistoricalValuePoint(date, 0m, account.Currency));
+                continue;
+            }
+
+            var totalValue = 0m;
+            foreach (var snapshot in snapshotsByDate[statementDate])
+            {
+                if (snapshot.Quantity <= 0m)
                     continue;
 
                 // Use snapshot's own price on the snapshot date; interpolate with
@@ -864,7 +907,12 @@ public sealed class HistoricalValueTimelineService
                     priceAmount = snapshot.UnitPrice.Amount;
                     priceCurrency = snapshot.UnitPrice.CurrencyCode;
                 }
-                else if (priceHistoriesBySecurityId.TryGetValue(securityId, out var priceHistories))
+                else if (
+                    priceHistoriesBySecurityId.TryGetValue(
+                        snapshot.SecurityId,
+                        out var priceHistories
+                    )
+                )
                 {
                     var price = priceHistories.LastOrDefault(p => p.AsOfDate <= date);
                     if (price is not null)

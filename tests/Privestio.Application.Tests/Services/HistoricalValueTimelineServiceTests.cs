@@ -338,6 +338,100 @@ public class HistoricalValueTimelineServiceTests
     }
 
     [Fact]
+    public async Task GetAccountHistoryAsync_SnapshotsWithSoldSecurity_ExcludesStaleSecurities()
+    {
+        var ownerId = Guid.NewGuid();
+        var account = new Account(
+            "Sun Life RRSP",
+            AccountType.Investment,
+            AccountSubType.RRSP,
+            "CAD",
+            new Money(0m, "CAD"),
+            new DateOnly(2024, 1, 1),
+            ownerId
+        );
+
+        var securityA = SecurityTestHelper.CreateSecurity("SLGF", "Sun Life Growth Fund", "CAD");
+        var securityB = SecurityTestHelper.CreateSecurity("SLBF", "Sun Life Bond Fund", "CAD");
+        var securityC = SecurityTestHelper.CreateSecurity("SLEX", "Sun Life Extra Fund", "CAD");
+
+        // Statement 1 (Jan 1): 3 securities
+        // Statement 2 (Jan 3): only 2 securities (securityC was sold)
+        var snapshots = new List<HoldingSnapshot>
+        {
+            new(account.Id, securityA.Id, "SLGF", "Sun Life Growth Fund", 100m, new Money(10m, "CAD"), new DateOnly(2024, 1, 1), "PDFStatement"),
+            new(account.Id, securityB.Id, "SLBF", "Sun Life Bond Fund", 50m, new Money(20m, "CAD"), new DateOnly(2024, 1, 1), "PDFStatement"),
+            new(account.Id, securityC.Id, "SLEX", "Sun Life Extra Fund", 30m, new Money(10m, "CAD"), new DateOnly(2024, 1, 1), "PDFStatement"),
+            new(account.Id, securityA.Id, "SLGF", "Sun Life Growth Fund", 120m, new Money(12m, "CAD"), new DateOnly(2024, 1, 3), "PDFStatement"),
+            new(account.Id, securityB.Id, "SLBF", "Sun Life Bond Fund", 60m, new Money(22m, "CAD"), new DateOnly(2024, 1, 3), "PDFStatement"),
+        };
+
+        _holdingSnapshots
+            .Setup(x =>
+                x.GetByAccountIdAsync(
+                    account.Id,
+                    It.IsAny<DateOnly?>(),
+                    It.IsAny<DateOnly?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(snapshots);
+
+        var pricesA = new List<PriceHistory>
+        {
+            SecurityTestHelper.CreatePriceHistory(securityA, 10m, new DateOnly(2024, 1, 1)),
+            SecurityTestHelper.CreatePriceHistory(securityA, 11m, new DateOnly(2024, 1, 2)),
+            SecurityTestHelper.CreatePriceHistory(securityA, 12m, new DateOnly(2024, 1, 3)),
+        };
+        var pricesB = new List<PriceHistory>
+        {
+            SecurityTestHelper.CreatePriceHistory(securityB, 20m, new DateOnly(2024, 1, 1)),
+            SecurityTestHelper.CreatePriceHistory(securityB, 21m, new DateOnly(2024, 1, 2)),
+            SecurityTestHelper.CreatePriceHistory(securityB, 22m, new DateOnly(2024, 1, 3)),
+        };
+        var pricesC = new List<PriceHistory>
+        {
+            SecurityTestHelper.CreatePriceHistory(securityC, 10m, new DateOnly(2024, 1, 1)),
+        };
+
+        _priceHistories
+            .Setup(x =>
+                x.GetBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    new DateOnly(2024, 1, 3),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, IReadOnlyList<PriceHistory>>)
+                    new Dictionary<Guid, IReadOnlyList<PriceHistory>>
+                    {
+                        [securityA.Id] = pricesA,
+                        [securityB.Id] = pricesB,
+                        [securityC.Id] = pricesC,
+                    }
+            );
+
+        var service = new HistoricalValueTimelineService(
+            _unitOfWork.Object,
+            _exchangeRateProvider.Object
+        );
+
+        var result = await service.GetAccountHistoryAsync(
+            account,
+            new DateOnly(2024, 1, 1),
+            new DateOnly(2024, 1, 3),
+            CancellationToken.None
+        );
+
+        // Jan 1 (statement 1): SLGF 100×10=1000, SLBF 50×20=1000, SLEX 30×10=300 → 2300
+        // Jan 2 (between statements, uses Jan 1 snapshot): SLGF 100×11=1100, SLBF 50×21=1050, SLEX 30×10=300 → 2450
+        // Jan 3 (statement 2, SLEX sold): SLGF 120×12=1440, SLBF 60×22=1320 → 2760 (no SLEX!)
+        result.Should().HaveCount(3);
+        result.Select(p => p.Value).Should().Equal(2300m, 2450m, 2760m);
+    }
+
+    [Fact]
     public async Task GetAccountHistoryAsync_NoSnapshots_FallsBackToHoldingsAndLots()
     {
         var ownerId = Guid.NewGuid();

@@ -88,34 +88,24 @@ public class HoldingSnapshotRepository : IHoldingSnapshotRepository
         CancellationToken cancellationToken = default
     )
     {
-        // For each security held in this account, find the latest snapshot date and sum
-        // that snapshot's MarketValue. This mirrors the logic in HistoricalValueTimelineService
-        // which also prefers snapshots as the authoritative source for managed-fund accounts.
-        var latestDatePerSecurity = await _context
-            .HoldingSnapshots.Where(s => s.AccountId == accountId && !s.IsDeleted)
-            .GroupBy(s => s.SecurityId)
-            .Select(g => new { SecurityId = g.Key, LatestDate = g.Max(s => s.AsOfDate) })
-            .ToListAsync(cancellationToken);
+        // Find the most recent statement date for this account, then sum all snapshots
+        // from that single date. Each PDF statement captures the complete portfolio at a
+        // point in time, so the latest statement is the authoritative current value.
+        // Using per-security-latest would incorrectly include stale values for securities
+        // that were sold or rebalanced out between statement dates.
+        var latestDate = await _context
+            .HoldingSnapshots.Where(s => s.AccountId == accountId)
+            .Select(s => (DateOnly?)s.AsOfDate)
+            .MaxAsync(cancellationToken);
 
-        if (latestDatePerSecurity.Count == 0)
+        if (!latestDate.HasValue)
             return null;
 
-        var total = 0m;
-        foreach (var entry in latestDatePerSecurity)
-        {
-            var latestSnapshot = await _context
-                .HoldingSnapshots.Where(s =>
-                    s.AccountId == accountId
-                    && s.SecurityId == entry.SecurityId
-                    && s.AsOfDate == entry.LatestDate
-                    && !s.IsDeleted
-                )
-                .OrderByDescending(s => s.RecordedAt)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (latestSnapshot is not null)
-                total += latestSnapshot.MarketValue.Amount;
-        }
+        var total = await _context
+            .HoldingSnapshots.Where(s =>
+                s.AccountId == accountId && s.AsOfDate == latestDate.Value
+            )
+            .SumAsync(s => s.MarketValue.Amount, cancellationToken);
 
         return total;
     }
