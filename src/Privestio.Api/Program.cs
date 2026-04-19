@@ -252,6 +252,7 @@ try
     app.MapSecurityEndpoints();
     app.MapLotEndpoints();
     app.MapPortfolioEndpoints();
+    app.MapHouseholdEndpoints();
 
     // Health check endpoints (Task 1.17)
     app.MapHealthChecks("/healthz");

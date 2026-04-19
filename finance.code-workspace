@@ -16,6 +16,7 @@
 			"~/.agents/skills": true,
 			"~/.claude/skills": true,
 			"~/.vscode/extensions/synapsevscode.synapse-1.22.0/copilot/skills": true
-		}
+		},
+		"powershell.cwd": "finance"
 	}
 }

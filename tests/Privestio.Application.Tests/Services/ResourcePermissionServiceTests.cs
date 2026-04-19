@@ -20,7 +20,7 @@ public class ResourcePermissionServiceTests
         _accountRepoMock = new Mock<IAccountRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _unitOfWorkMock.Setup(u => u.Accounts).Returns(_accountRepoMock.Object);
-        _service = new ResourcePermissionService();
+        _service = new ResourcePermissionService(_unitOfWorkMock.Object);
     }
 
     [Fact]

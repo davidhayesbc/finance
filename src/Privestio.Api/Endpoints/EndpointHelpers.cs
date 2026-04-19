@@ -16,4 +16,11 @@ internal static class EndpointHelpers
         var claim = user.FindFirst("domain_user_id") ?? user.FindFirst(ClaimTypes.NameIdentifier);
         return claim is not null && Guid.TryParse(claim.Value, out var id) ? id : null;
     }
+
+    /// <summary>Extracts the email address from the claims principal.</summary>
+    internal static string? GetEmail(ClaimsPrincipal user)
+    {
+        var claim = user.FindFirst(ClaimTypes.Email) ?? user.FindFirst("email");
+        return claim?.Value;
+    }
 }

@@ -916,10 +916,10 @@ public readonly record struct Money(decimal Amount, string CurrencyCode = "CAD")
 | 5.7a | Trusted plugin runtime guardrails: contract validation, startup integrity checks, explicit capability interfaces, and operation logging | 3h | [ ] |
 | 5.8 | Ollama integration: transaction categorization service | 6h | [ ] |
 | 5.9 | AI categorization UI: suggestions, confidence, batch processing | 4h | [ ] |
-| 5.10 | Household entity and multi-user sharing | 4h | [ ] |
-| 5.11 | Shared vs private account visibility | 3h | [ ] |
-| 5.12 | Extend permissions matrix for household sharing roles and admin delegation paths | 4h | [ ] |
-| 5.13 | Role-based access control (Admin/Member) | 3h | [ ] |
+| 5.10 | Household entity and multi-user sharing | 4h | [x] |
+| 5.11 | Shared vs private account visibility | 3h | [x] |
+| 5.12 | Extend permissions matrix for household sharing roles and admin delegation paths | 4h | [x] |
+| 5.13 | Role-based access control (Admin/Member) | 3h | [x] |
 | 5.14 | Property tracking: value, expenses, mortgage amortization | 4h | [x] |
 | 5.15 | Extended data portability formats (including OFX) and recovery UX hardening | 4h | [ ] |
 | 5.16 | Automated PostgreSQL backups in Docker Compose | 3h | [ ] |

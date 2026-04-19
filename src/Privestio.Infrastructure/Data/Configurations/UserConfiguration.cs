@@ -23,9 +23,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.Email).IsUnique();
         builder.HasIndex(u => u.IdentityUserId);
 
+        // User has an optional FK to Household for quick lookup. The detailed membership
+        // (role, joined date) is modeled via HouseholdMember. WithMany() uses no nav prop here
+        // because Household.Members now navigates to HouseholdMember, not User.
         builder
             .HasOne(u => u.Household)
-            .WithMany(h => h.Members)
+            .WithMany()
             .HasForeignKey(u => u.HouseholdId)
             .OnDelete(DeleteBehavior.SetNull);
     }
