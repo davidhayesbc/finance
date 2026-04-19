@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Privestio.Application.Commands.CreateBudget;
 using Privestio.Application.Commands.DeleteBudget;
 using Privestio.Application.Commands.UpdateBudget;
@@ -155,6 +156,15 @@ public static class BudgetEndpoints
         catch (KeyNotFoundException)
         {
             return Results.NotFound();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.Conflict(
+                new
+                {
+                    error = "The budget was modified by another request. Please reload and try again.",
+                }
+            );
         }
     }
 

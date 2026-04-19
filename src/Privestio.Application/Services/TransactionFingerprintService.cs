@@ -24,7 +24,8 @@ public class TransactionFingerprintService
         Money amount,
         string description,
         string? externalId = null,
-        int occurrenceIndex = 0
+        int occurrenceIndex = 0,
+        string? institution = null
     )
     {
         var normalizedDescription = description.Trim().ToUpperInvariant();
@@ -33,6 +34,11 @@ public class TransactionFingerprintService
 
         var input =
             $"{accountId}|{dateString}|{amountString}|{amount.CurrencyCode}|{normalizedDescription}";
+
+        if (!string.IsNullOrWhiteSpace(institution))
+        {
+            input += $"|{institution.Trim().ToUpperInvariant()}";
+        }
 
         if (!string.IsNullOrWhiteSpace(externalId))
         {

@@ -18,6 +18,7 @@ public class GetAccountByIdQueryTests
     private readonly Mock<IAccountRepository> _accountRepositoryMock;
     private readonly Mock<ITransactionRepository> _transactionRepositoryMock;
     private readonly Mock<IHoldingRepository> _holdingRepositoryMock;
+    private readonly Mock<IHoldingSnapshotRepository> _holdingSnapshotRepositoryMock;
     private readonly Mock<IPriceHistoryRepository> _priceHistoryRepositoryMock;
     private readonly Mock<IPriceFeedProvider> _priceFeedProviderMock;
     private readonly Mock<IExchangeRateRepository> _exchangeRateRepositoryMock;
@@ -31,6 +32,7 @@ public class GetAccountByIdQueryTests
         _accountRepositoryMock = new Mock<IAccountRepository>();
         _transactionRepositoryMock = new Mock<ITransactionRepository>();
         _holdingRepositoryMock = new Mock<IHoldingRepository>();
+        _holdingSnapshotRepositoryMock = new Mock<IHoldingSnapshotRepository>();
         _priceHistoryRepositoryMock = new Mock<IPriceHistoryRepository>();
         _priceFeedProviderMock = new Mock<IPriceFeedProvider>();
         _exchangeRateRepositoryMock = new Mock<IExchangeRateRepository>();
@@ -39,6 +41,7 @@ public class GetAccountByIdQueryTests
         _unitOfWorkMock.SetupGet(x => x.Accounts).Returns(_accountRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.Transactions).Returns(_transactionRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.Holdings).Returns(_holdingRepositoryMock.Object);
+        _unitOfWorkMock.SetupGet(x => x.HoldingSnapshots).Returns(_holdingSnapshotRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.PriceHistories).Returns(_priceHistoryRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(x => x.ExchangeRates).Returns(_exchangeRateRepositoryMock.Object);
         _unitOfWorkMock
@@ -93,6 +96,12 @@ public class GetAccountByIdQueryTests
         _holdingRepositoryMock
             .Setup(x => x.GetByAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+
+        _holdingSnapshotRepositoryMock
+            .Setup(x =>
+                x.GetCurrentSnapshotTotalAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync((decimal?)null);
 
         _priceHistoryRepositoryMock
             .Setup(x =>
@@ -424,7 +433,7 @@ public class GetAccountByIdQueryTests
     }
 
     private GetAccountByIdQueryHandler CreateHandler() =>
-        new(_unitOfWorkMock.Object, _investmentPortfolioValuationService);
+        new(_unitOfWorkMock.Object, new AccountBalanceService(_unitOfWorkMock.Object, _investmentPortfolioValuationService));
 
     private static Account CreateBankingAccount(Guid ownerId, decimal openingBalance) =>
         new(

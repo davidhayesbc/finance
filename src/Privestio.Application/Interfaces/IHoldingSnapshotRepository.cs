@@ -27,4 +27,15 @@ public interface IHoldingSnapshotRepository
         DateOnly asOfDate,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Returns the sum of the most recent <see cref="HoldingSnapshot.MarketValue"/> per security
+    /// for the given account, or <c>null</c> if no snapshots exist.
+    /// Use this as the authoritative current balance for snapshot-based investment accounts
+    /// (e.g. managed funds imported from PDF statements).
+    /// </summary>
+    Task<decimal?> GetCurrentSnapshotTotalAsync(
+        Guid accountId,
+        CancellationToken cancellationToken = default
+    );
 }

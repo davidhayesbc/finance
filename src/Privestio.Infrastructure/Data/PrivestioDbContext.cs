@@ -122,13 +122,42 @@ public class PrivestioDbContext : IdentityDbContext<ApplicationUser>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         UpdateTimestamps();
+        CreateTombstonesForSoftDeletes();
         return await base.SaveChangesAsync(cancellationToken);
     }
 
     public override int SaveChanges()
     {
         UpdateTimestamps();
+        CreateTombstonesForSoftDeletes();
         return base.SaveChanges();
+    }
+
+    private void CreateTombstonesForSoftDeletes()
+    {
+        var softDeletedEntries = ChangeTracker
+            .Entries<BaseEntity>()
+            .Where(e =>
+                e.State == EntityState.Modified
+                && e.Entity.IsDeleted
+                && e.OriginalValues.GetValue<bool>(nameof(BaseEntity.IsDeleted)) == false
+            )
+            .ToList();
+
+        foreach (var entry in softDeletedEntries)
+        {
+            var entityType = entry.Entity.GetType().Name;
+
+            // Determine the owner UserId for scoping
+            Guid? userId = entry.Entity switch
+            {
+                Account a => a.OwnerId,
+                Transaction t => t.Account?.OwnerId,
+                _ => null,
+            };
+
+            SyncTombstones.Add(new SyncTombstone(entityType, entry.Entity.Id, userId));
+        }
     }
 
     private void UpdateTimestamps()

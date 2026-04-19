@@ -469,6 +469,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     border-radius: var(--radius-xl);
     background: var(--surface);
     box-shadow: var(--surface-shadow);
+    min-width: 0;
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
 }
@@ -891,9 +892,12 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
     overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .table-surface--scroll {
+    width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
 }
@@ -1242,6 +1246,19 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     background: color-mix(in srgb, var(--surface-raised) 84%, var(--accent-soft));
 }
 
+:root[data-theme="dark"] .data-grid--elevated tbody tr:hover td,
+:root[data-theme="dark"] .data-grid--elevated tbody tr:focus-within td,
+:root[data-theme="dark"] .data-grid--elevated tbody tr.is-active td {
+    background: rgba(30, 107, 104, 0.28);
+    color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .data-grid--elevated tbody tr:hover td > *,
+:root[data-theme="dark"] .data-grid--elevated tbody tr:focus-within td > *,
+:root[data-theme="dark"] .data-grid--elevated tbody tr.is-active td > * {
+    color: inherit;
+}
+
 .data-grid--elevated th:last-child,
 .data-grid--elevated td:last-child {
     width: 1%;
@@ -1320,6 +1337,11 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .securities-grid-wrap .data-grid--elevated {
     min-width: 1380px;
+    width: max-content;
+}
+
+.plugins-grid-wrap .data-grid--plugins {
+    min-width: 1220px;
 }
 
 .data-grid--dense th {
@@ -1341,6 +1363,76 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .data-grid--securities td:nth-child(8) {
     white-space: nowrap;
+}
+
+.data-grid--securities .grid-actions--dense {
+    flex-wrap: wrap;
+}
+
+.securities-context-hint {
+    margin: 10px 4px 0;
+    color: var(--text-soft);
+    font-size: 0.78rem;
+}
+
+.securities-context-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+}
+
+.securities-context-menu {
+    position: fixed;
+    z-index: 41;
+    min-width: 188px;
+    max-width: 216px;
+    padding: 6px;
+    display: grid;
+    gap: 2px;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    background: var(--surface-strong);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+}
+
+.securities-context-menu__title {
+    margin: 0 4px 2px;
+    color: var(--text-soft);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.securities-context-menu__action {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 28px;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    letter-spacing: 0;
+    font-weight: 600;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.securities-context-menu__action:hover:not(:disabled),
+.securities-context-menu__action:focus-visible:not(:disabled) {
+    background: var(--accent-soft);
+    color: var(--text-strong);
+    outline: none;
+}
+
+.securities-context-menu__action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .data-grid--import-preview th,
@@ -1393,6 +1485,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 :root[data-theme="dark"] .data-grid--elevated {
+    --datagrid-hover-color: rgba(30, 107, 104, 0.28);
     border-color: var(--surface-border);
     background: color-mix(in srgb, var(--surface-raised) 94%, var(--page-bg));
     box-shadow: 0 22px 34px -26px rgba(0, 0, 0, 0.44);
@@ -1413,10 +1506,6 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     background: color-mix(in srgb, var(--surface-raised) 90%, rgba(30, 107, 104, 0.05));
 }
 
-:root[data-theme="dark"] .data-grid--elevated tbody tr:hover td {
-    background: color-mix(in srgb, var(--surface-raised) 82%, var(--accent-soft));
-}
-
 :root[data-theme="dark"] .grid-actions--compact fluent-button::part(control) {
     background: color-mix(in srgb, var(--surface-raised) 92%, var(--page-bg));
     border-color: var(--surface-border);
@@ -1431,6 +1520,55 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 .apexcharts-yaxis-label {
     fill: var(--text-muted) !important;
     color: var(--text-muted) !important;
+}
+
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-light,
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-dark {
+    color: var(--text-strong);
+    border-color: var(--surface-border);
+    background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+    box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.82);
+}
+
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-light .apexcharts-tooltip-title,
+:root[data-theme="dark"] .apexcharts-tooltip.apexcharts-theme-dark .apexcharts-tooltip-title {
+    color: var(--text-strong);
+    background: color-mix(in srgb, var(--surface-raised) 84%, rgba(0, 0, 0, 0.42));
+    border-bottom-color: var(--surface-border);
+}
+
+:root[data-theme="dark"] .apexcharts-tooltip-series-group,
+:root[data-theme="dark"] .apexcharts-tooltip-text-y-label,
+:root[data-theme="dark"] .apexcharts-tooltip-text-y-value,
+:root[data-theme="dark"] .apexcharts-tooltip-text-goals-label,
+:root[data-theme="dark"] .apexcharts-tooltip-text-goals-value,
+:root[data-theme="dark"] .apexcharts-tooltip-text-z-value,
+:root[data-theme="dark"] .apexcharts-xaxistooltip,
+:root[data-theme="dark"] .apexcharts-yaxistooltip {
+    color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip,
+:root[data-theme="dark"] .apexcharts-yaxistooltip {
+    background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+    border-color: var(--surface-border);
+    box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.82);
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-bottom:after {
+    border-bottom-color: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-bottom:before {
+    border-bottom-color: var(--surface-border);
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-top:after {
+    border-top-color: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
+}
+
+:root[data-theme="dark"] .apexcharts-xaxistooltip-top:before {
+    border-top-color: var(--surface-border);
 }
 
 :root[data-theme="dark"] .apexcharts-legend-text,
@@ -3408,6 +3546,7 @@ fluent-anchor.app-rail__link--active::part(control) {
 
 .app-workspace .app-main,
 .app-workspace .app-footer {
+    min-width: 0;
     width: auto;
     margin: 0;
 }

@@ -22,15 +22,8 @@ public class GetNetWorthHistoryQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var history = await _historicalValueTimelineService.GetNetWorthHistoryAsync(
-            request.UserId,
-            request.FromDate,
-            request.ToDate,
-            cancellationToken
-        );
-
-        var accountHistories =
-            await _historicalValueTimelineService.GetNetWorthHistoryByAccountAsync(
+        var (history, accountHistories) =
+            await _historicalValueTimelineService.GetNetWorthHistoryWithSeriesAsync(
                 request.UserId,
                 request.FromDate,
                 request.ToDate,

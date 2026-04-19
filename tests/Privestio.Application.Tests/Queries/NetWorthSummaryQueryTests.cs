@@ -20,6 +20,7 @@ public class NetWorthSummaryQueryTests
     private readonly Mock<IAccountRepository> _accountRepoMock;
     private readonly Mock<ITransactionRepository> _transactionRepositoryMock;
     private readonly Mock<IHoldingRepository> _holdingRepositoryMock;
+    private readonly Mock<IHoldingSnapshotRepository> _holdingSnapshotRepositoryMock;
     private readonly Mock<IPriceHistoryRepository> _priceHistoryRepositoryMock;
     private readonly Mock<IPriceFeedProvider> _priceFeedProviderMock;
     private readonly Mock<IExchangeRateRepository> _exchangeRateRepositoryMock;
@@ -32,6 +33,7 @@ public class NetWorthSummaryQueryTests
         _accountRepoMock = new Mock<IAccountRepository>();
         _transactionRepositoryMock = new Mock<ITransactionRepository>();
         _holdingRepositoryMock = new Mock<IHoldingRepository>();
+        _holdingSnapshotRepositoryMock = new Mock<IHoldingSnapshotRepository>();
         _priceHistoryRepositoryMock = new Mock<IPriceHistoryRepository>();
         _priceFeedProviderMock = new Mock<IPriceFeedProvider>();
         _exchangeRateRepositoryMock = new Mock<IExchangeRateRepository>();
@@ -40,6 +42,7 @@ public class NetWorthSummaryQueryTests
         _unitOfWorkMock.SetupGet(u => u.Accounts).Returns(_accountRepoMock.Object);
         _unitOfWorkMock.SetupGet(u => u.Transactions).Returns(_transactionRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(u => u.Holdings).Returns(_holdingRepositoryMock.Object);
+        _unitOfWorkMock.SetupGet(u => u.HoldingSnapshots).Returns(_holdingSnapshotRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(u => u.PriceHistories).Returns(_priceHistoryRepositoryMock.Object);
         _unitOfWorkMock.SetupGet(u => u.ExchangeRates).Returns(_exchangeRateRepositoryMock.Object);
 
@@ -57,6 +60,12 @@ public class NetWorthSummaryQueryTests
         _holdingRepositoryMock
             .Setup(x => x.GetByAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+
+        _holdingSnapshotRepositoryMock
+            .Setup(x =>
+                x.GetCurrentSnapshotTotalAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync((decimal?)null);
 
         _transactionRepositoryMock
             .Setup(x =>
@@ -84,7 +93,7 @@ public class NetWorthSummaryQueryTests
     }
 
     private GetNetWorthSummaryQueryHandler CreateHandler() =>
-        new(_unitOfWorkMock.Object, _investmentPortfolioValuationService);
+        new(_unitOfWorkMock.Object, new AccountBalanceService(_unitOfWorkMock.Object, _investmentPortfolioValuationService));
 
     [Fact]
     public async Task GetNetWorthSummary_WithMixedAccounts_CalculatesCorrectly()

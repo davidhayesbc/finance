@@ -65,13 +65,20 @@ public class GetCashFlowSummaryQueryHandler
             .ThenBy(m => m.Month)
             .ToList();
 
+        var baseCurrency = nonTransferTransactions
+            .Select(t => t.Amount.CurrencyCode)
+            .GroupBy(c => c)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? "CAD";
+
         return new CashFlowSummaryResponse
         {
             TotalIncome = totalIncome,
             TotalExpenses = totalExpenses,
             NetSavings = netSavings,
             SavingsRate = savingsRate,
-            Currency = "CAD",
+            Currency = baseCurrency,
             MonthlyBreakdown = monthlyBreakdown,
         };
     }

@@ -105,6 +105,33 @@ public class PriceHistoryRepository : IPriceHistoryRepository
         return all.GroupBy(p => p.SecurityId).ToDictionary(g => g.Key, g => g.First());
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<PriceHistory>>> GetBySecurityIdsAsync(
+        IEnumerable<Guid> securityIds,
+        DateOnly? toDate = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var ids = securityIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<PriceHistory>>();
+
+        var query = _context.PriceHistories.Where(p => ids.Contains(p.SecurityId));
+
+        if (toDate.HasValue)
+            query = query.Where(p => p.AsOfDate <= toDate.Value);
+
+        var all = await query
+            .OrderBy(p => p.SecurityId)
+            .ThenBy(p => p.AsOfDate)
+            .ToListAsync(cancellationToken);
+
+        return all.GroupBy(p => p.SecurityId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<PriceHistory>)g.ToList()
+            );
+    }
+
     public async Task DeleteExternalPricesForSecuritiesAsync(
         IEnumerable<Guid> securityIds,
         CancellationToken cancellationToken = default

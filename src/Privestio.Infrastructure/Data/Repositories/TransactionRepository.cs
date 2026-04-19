@@ -217,6 +217,27 @@ public class TransactionRepository : ITransactionRepository
             .OrderByDescending(t => t.Date)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Transaction>> GetByAccountIdsAndDateRangeAsync(
+        IEnumerable<Guid> accountIds,
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var idList = accountIds.ToList();
+        if (idList.Count == 0)
+            return [];
+
+        return await _context
+            .Transactions.Where(t =>
+                idList.Contains(t.AccountId) && t.Date >= startDate && t.Date <= endDate
+            )
+            .OrderBy(t => t.AccountId)
+            .ThenBy(t => t.Date)
+            .ThenBy(t => t.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<decimal> GetSignedSumUpToAsync(
         Guid accountId,
         DateTime upToDate,

@@ -88,16 +88,29 @@ public class Transaction : BaseEntity
     }
 
     /// <summary>
-    /// Validates the split sum invariant: splits must sum exactly to this transaction's amount.
+    /// Validates the split sum invariant: splits must sum exactly to this transaction's amount
+    /// after rounding to minor units (2 decimal places, banker's rounding).
+    /// Also validates that all split currencies match the parent transaction currency.
     /// </summary>
     public bool ValidateSplitInvariant()
     {
         if (_splits.Count == 0)
             return true;
 
-        var splitTotal = _splits.Where(s => !s.IsDeleted).Sum(s => s.Amount.Amount);
+        var activeSplits = _splits.Where(s => !s.IsDeleted).ToList();
 
-        return splitTotal == Amount.Amount;
+        // Validate all splits share the parent currency
+        if (activeSplits.Any(s => s.Amount.CurrencyCode != Amount.CurrencyCode))
+            return false;
+
+        var splitTotal = Math.Round(
+            activeSplits.Sum(s => s.Amount.Amount),
+            2,
+            MidpointRounding.ToEven
+        );
+        var parentAmount = Math.Round(Amount.Amount, 2, MidpointRounding.ToEven);
+
+        return splitTotal == parentAmount;
     }
 
     public void AddTag(Tag tag)

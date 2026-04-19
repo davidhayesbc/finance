@@ -182,7 +182,8 @@ public class ImportTransactionsCommandHandler
                 row.Date,
                 new Money(row.Amount),
                 row.Description,
-                row.ExternalId
+                row.ExternalId,
+                institution: account.Institution
             );
             var occurrence = baseOccurrences.GetValueOrDefault(baseFingerprint, 0);
             baseOccurrences[baseFingerprint] = occurrence + 1;
@@ -196,7 +197,8 @@ public class ImportTransactionsCommandHandler
                         new Money(row.Amount),
                         row.Description,
                         row.ExternalId,
-                        occurrence
+                        occurrence,
+                        institution: account.Institution
                     );
             rowsWithFingerprints.Add((row, fingerprint));
         }

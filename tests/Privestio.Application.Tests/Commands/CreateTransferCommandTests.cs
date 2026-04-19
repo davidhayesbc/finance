@@ -4,6 +4,7 @@ using Privestio.Application.Commands.CreateTransfer;
 using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
+using Privestio.Domain.ValueObjects;
 using Xunit;
 
 namespace Privestio.Application.Tests.Commands;
@@ -12,15 +13,19 @@ public class CreateTransferCommandTests
 {
     private readonly Mock<IUnitOfWork> _unitOfWork;
     private readonly Mock<ITransactionRepository> _transactionRepo;
+    private readonly Mock<IAccountRepository> _accountRepo;
     private readonly CreateTransferCommandHandler _handler;
     private readonly List<Transaction> _addedTransactions = [];
+    private readonly Guid _userId = Guid.NewGuid();
 
     public CreateTransferCommandTests()
     {
         _transactionRepo = new Mock<ITransactionRepository>();
+        _accountRepo = new Mock<IAccountRepository>();
         _unitOfWork = new Mock<IUnitOfWork>();
 
         _unitOfWork.Setup(u => u.Transactions).Returns(_transactionRepo.Object);
+        _unitOfWork.Setup(u => u.Accounts).Returns(_accountRepo.Object);
         _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         _transactionRepo
@@ -31,18 +36,29 @@ public class CreateTransferCommandTests
         _handler = new CreateTransferCommandHandler(_unitOfWork.Object);
     }
 
+    private void SetupAccounts(Guid sourceId, Guid destId, Guid ownerId, string currency = "CAD")
+    {
+        var source = new Account("Source", AccountType.Banking, AccountSubType.Chequing, currency, new Money(0m, currency), DateOnly.FromDateTime(DateTime.UtcNow), ownerId);
+        var dest = new Account("Dest", AccountType.Banking, AccountSubType.Chequing, currency, new Money(0m, currency), DateOnly.FromDateTime(DateTime.UtcNow), ownerId);
+
+        _accountRepo.Setup(r => r.GetByIdAsync(sourceId, It.IsAny<CancellationToken>())).ReturnsAsync(source);
+        _accountRepo.Setup(r => r.GetByIdAsync(destId, It.IsAny<CancellationToken>())).ReturnsAsync(dest);
+    }
+
     [Fact]
     public async Task Handle_CreatesLinkedDebitAndCreditTransactions()
     {
         var sourceId = Guid.NewGuid();
         var destId = Guid.NewGuid();
+        SetupAccounts(sourceId, destId, _userId);
 
         var command = new CreateTransferCommand(
             sourceId,
             destId,
             500.00m,
             "CAD",
-            new DateTime(2025, 1, 15)
+            new DateTime(2025, 1, 15),
+            _userId
         );
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -61,12 +77,17 @@ public class CreateTransferCommandTests
     [Fact]
     public async Task Handle_LinksTransactionsBidirectionally()
     {
+        var sourceId = Guid.NewGuid();
+        var destId = Guid.NewGuid();
+        SetupAccounts(sourceId, destId, _userId);
+
         var command = new CreateTransferCommand(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            sourceId,
+            destId,
             100.00m,
             "CAD",
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            _userId
         );
 
         await _handler.Handle(command, CancellationToken.None);
@@ -87,7 +108,8 @@ public class CreateTransferCommandTests
             accountId,
             100.00m,
             "CAD",
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            _userId
         );
 
         var act = () => _handler.Handle(command, CancellationToken.None);
@@ -103,7 +125,8 @@ public class CreateTransferCommandTests
             Guid.NewGuid(),
             -100.00m,
             "CAD",
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            _userId
         );
 
         var act = () => _handler.Handle(command, CancellationToken.None);
@@ -117,8 +140,9 @@ public class CreateTransferCommandTests
         var sourceId = Guid.NewGuid();
         var destId = Guid.NewGuid();
         var date = new DateTime(2025, 1, 15);
+        SetupAccounts(sourceId, destId, _userId);
 
-        var command = new CreateTransferCommand(sourceId, destId, 250.00m, "CAD", date);
+        var command = new CreateTransferCommand(sourceId, destId, 250.00m, "CAD", date, _userId);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -132,16 +156,64 @@ public class CreateTransferCommandTests
     [Fact]
     public async Task Handle_SavesChanges()
     {
+        var sourceId = Guid.NewGuid();
+        var destId = Guid.NewGuid();
+        SetupAccounts(sourceId, destId, _userId);
+
         var command = new CreateTransferCommand(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            sourceId,
+            destId,
             100.00m,
             "CAD",
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            _userId
         );
 
         await _handler.Handle(command, CancellationToken.None);
 
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_SourceNotOwned_ThrowsUnauthorizedAccessException()
+    {
+        var sourceId = Guid.NewGuid();
+        var destId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        SetupAccounts(sourceId, destId, otherUserId);
+
+        var command = new CreateTransferCommand(
+            sourceId,
+            destId,
+            100.00m,
+            "CAD",
+            DateTime.UtcNow,
+            _userId
+        );
+
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task Handle_CurrencyMismatch_ThrowsInvalidOperationException()
+    {
+        var sourceId = Guid.NewGuid();
+        var destId = Guid.NewGuid();
+        SetupAccounts(sourceId, destId, _userId, "USD");
+
+        var command = new CreateTransferCommand(
+            sourceId,
+            destId,
+            100.00m,
+            "CAD",
+            DateTime.UtcNow,
+            _userId
+        );
+
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 }

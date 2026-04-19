@@ -69,7 +69,7 @@ public class ChangeFeedQueryTests
             .ReturnsAsync(new List<Transaction>().AsReadOnly());
 
         _tombstoneRepoMock
-            .Setup(r => r.GetSinceAsync(since, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetSinceForUserAsync(since, _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SyncTombstone>().AsReadOnly());
     }
 
@@ -162,7 +162,7 @@ public class ChangeFeedQueryTests
             .ReturnsAsync(new List<Transaction>().AsReadOnly());
 
         _tombstoneRepoMock
-            .Setup(r => r.GetSinceAsync(sinceToken, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetSinceForUserAsync(sinceToken, _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SyncTombstone>().AsReadOnly());
 
         var query = new GetChangesSinceQuery(_userId, DeviceId, sinceToken);
@@ -205,7 +205,7 @@ public class ChangeFeedQueryTests
             .ReturnsAsync(new List<Transaction> { transaction }.AsReadOnly());
 
         _tombstoneRepoMock
-            .Setup(r => r.GetSinceAsync(sinceToken, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetSinceForUserAsync(sinceToken, _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SyncTombstone>().AsReadOnly());
 
         var query = new GetChangesSinceQuery(_userId, DeviceId, sinceToken);
@@ -246,7 +246,7 @@ public class ChangeFeedQueryTests
             .ReturnsAsync(new List<Transaction>().AsReadOnly());
 
         _tombstoneRepoMock
-            .Setup(r => r.GetSinceAsync(sinceToken, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetSinceForUserAsync(sinceToken, _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SyncTombstone> { tombstone }.AsReadOnly());
 
         var query = new GetChangesSinceQuery(_userId, DeviceId, sinceToken);
@@ -350,7 +350,7 @@ public class ChangeFeedQueryTests
             .ReturnsAsync(new List<Transaction> { transaction }.AsReadOnly());
 
         _tombstoneRepoMock
-            .Setup(r => r.GetSinceAsync(sinceToken, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetSinceForUserAsync(sinceToken, _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SyncTombstone> { tombstone }.AsReadOnly());
 
         var query = new GetChangesSinceQuery(_userId, DeviceId, sinceToken);
@@ -402,7 +402,7 @@ public class ChangeFeedQueryTests
             .ReturnsAsync(new List<Transaction>().AsReadOnly());
 
         _tombstoneRepoMock
-            .Setup(r => r.GetSinceAsync(sinceToken, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetSinceForUserAsync(sinceToken, _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SyncTombstone>().AsReadOnly());
 
         var query = new GetChangesSinceQuery(_userId, DeviceId, sinceToken);
@@ -446,7 +446,7 @@ public class ChangeFeedQueryTests
             .ReturnsAsync(new List<Transaction>().AsReadOnly());
 
         _tombstoneRepoMock
-            .Setup(r => r.GetSinceAsync(sinceToken, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetSinceForUserAsync(sinceToken, _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SyncTombstone>().AsReadOnly());
 
         var query = new GetChangesSinceQuery(_userId, DeviceId, sinceToken);

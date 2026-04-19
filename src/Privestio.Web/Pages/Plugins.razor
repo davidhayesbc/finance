@@ -29,9 +29,9 @@
                 <StatCard Label="Total plugins">@_catalog.Plugins.Count</StatCard>
             </div>
 
-            <div class="table-surface table-surface--grid table-surface--scroll">
+            <div class="table-surface table-surface--grid table-surface--scroll plugins-grid-wrap">
                 <FluentDataGrid Items="_catalog.Plugins.AsQueryable()" TGridItem="RegisteredPluginResponse"
-                                Class="data-grid--elevated" aria-label="Registered plugins"
+                                Class="data-grid--elevated data-grid--plugins" aria-label="Registered plugins"
                                 ResizableColumns="true"
                                 ResizeType="DataGridResizeType.Discrete"
                                 HeaderCellAsButtonWithMenu="true"

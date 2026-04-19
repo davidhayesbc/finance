@@ -265,3 +265,11 @@ dotnet run --project tools/Privestio.DataLoader -- --manifest ~/privestio-data/m
 ```
 
 `--clear-existing-data` clears existing loader-managed data for the authenticated user before import starts.
+
+When test data is needed for development, debugging, or validation, prefer the repository's anonymized fixture set and run it with the data loader:
+
+```bash
+dotnet run --project tools/Privestio.DataLoader -- --manifest testdata/anonymized-loader-sample/manifest.json --data-dir testdata/anonymized-loader-sample --clear-existing-data
+```
+
+The anonymized sample data is located in `testdata/anonymized-loader-sample` and is safe to use for check-in-friendly testing workflows.

@@ -3,15 +3,17 @@
 This repository is set up to use Aspire. Aspire is an orchestrator for the entire application and will take care of configuring dependencies, building, and running the application. The resources that make up the application are defined in `apphost.cs` including application code and external dependencies.
 
 ## General recommendations for working with Aspire
+
 1. Before making any changes always run the apphost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
-1. Changes to the _apphost.cs_ file will require a restart of the application to take effect.
-2. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
-3. Use the Aspire MCP tools to check the status of resources and debug issues.
+2. Changes to the _apphost.cs_ file will require a restart of the application to take effect.
+3. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
+4. Use the Aspire MCP tools to check the status of resources and debug issues.
 
 ## Running the application
+
 To run the application run the following command:
 
-```
+```bash
 aspire run
 ```
 
@@ -25,15 +27,24 @@ To run the manifest-based data loader and clear existing loader-managed data bef
 dotnet run --project tools/Privestio.DataLoader -- --manifest ~/privestio-data/manifest.json --data-dir ~/privestio-data --clear-existing-data
 ```
 
+For anonymized repository fixtures that are safe for check-in and repeatable testing, use:
+
+```bash
+dotnet run --project tools/Privestio.DataLoader -- --manifest testdata/anonymized-loader-sample/manifest.json --data-dir testdata/anonymized-loader-sample --clear-existing-data
+```
+
 Use `--dry-run` to validate inputs without writing changes.
 
 ## Checking resources
+
 To check the status of resources defined in the app model use the _list resources_ tool. This will show you the current state of each resource and if there are any issues. If a resource is not running as expected you can use the _execute resource command_ tool to restart it or perform other actions.
 
 ## Listing integrations
+
 IMPORTANT! When a user asks you to add a resource to the app model you should first use the _list integrations_ tool to get a list of the current versions of all the available integrations. You should try to use the version of the integration which aligns with the version of the Aspire.AppHost.Sdk. Some integration versions may have a preview suffix. Once you have identified the correct integration you should always use the _get integration docs_ tool to fetch the latest documentation for the integration and follow the links to get additional guidance.
 
 ## Debugging issues
+
 IMPORTANT! Aspire is designed to capture rich logs and telemetry for all resources defined in the app model. Use the following diagnostic tools when debugging issues with the application before making changes to make sure you are focusing on the right things.
 
 1. _list structured logs_; use this tool to get details about structured logs.
@@ -51,21 +62,45 @@ IMPORTANT! Aspire is designed to capture rich logs and telemetry for all resourc
 The playwright MCP server has also been configured in this repository and you should use it to perform functional investigations of the resources defined in the app model as you work on the codebase. To get endpoints that can be used for navigation using the playwright MCP server use the list resources tool.
 
 ## Updating the app host
+
 The user may request that you update the Aspire apphost. You can do this using the `aspire update` command. This will update the apphost to the latest version and some of the Aspire specific packages in referenced projects, however you may need to manually update other packages in the solution to ensure compatibility. You can consider using the `dotnet-outdated` with the users consent. To install the `dotnet-outdated` tool use the following command:
 
-```
+```bash
 dotnet tool install --global dotnet-outdated-tool
 ```
 
 ## Persistent containers
+
 IMPORTANT! Consider avoiding persistent containers early during development to avoid creating state management issues when restarting the app.
 
 ## Aspire workload
+
 IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 
+## Quality Docs
+
+The project has a quality playbook in the `quality/` directory. Read these before making changes:
+
+| File | Purpose |
+| ------ | --------- |
+| `quality/QUALITY.md` | Quality constitution — coverage targets, fitness-to-purpose scenarios, coverage theater prevention rules |
+| `quality/FunctionalTests.cs` | Automated functional tests derived from specs and scenarios. Run with `dotnet test quality/` |
+| `quality/RUN_CODE_REVIEW.md` | Code review protocol with mandatory guardrails (line numbers, read bodies, grep before claiming) |
+| `quality/RUN_INTEGRATION_TESTS.md` | Integration test protocol — end-to-end across all subsystems |
+| `quality/RUN_SPEC_AUDIT.md` | Council of Three multi-model spec audit protocol |
+
+**Key rules from QUALITY.md:**
+
+- Test all 5 account types (Banking, Credit, Investment, Property, Loan) for any balance-related change
+- Test with split transactions for any budget/category change (IsSplit changes category resolution)
+- Verify import idempotency for any import pipeline change (import same file twice → 0 duplicates)
+- Use exact decimal comparison for Money values (never approximate)
+- No coverage theater (see QUALITY.md § Coverage Theater Prevention)
+
 ## Official documentation
+
 IMPORTANT! Always prefer official documentation when available. The following sites contain the official documentation for Aspire and related components
 
-1. https://aspire.dev
-2. https://learn.microsoft.com/dotnet/aspire
-3. https://nuget.org (for specific integration package details)
+1. <https://aspire.dev>
+2. <https://learn.microsoft.com/dotnet/aspire>
+3. <https://nuget.org> (for specific integration package details)

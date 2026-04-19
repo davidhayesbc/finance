@@ -118,10 +118,17 @@ public class GetSpendingAnalysisQueryHandler
             .ThenBy(m => m.Month)
             .ToList();
 
+        var baseCurrency = debitTransactions
+            .Select(t => t.Amount.CurrencyCode)
+            .GroupBy(c => c)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? "CAD";
+
         return new SpendingAnalysisResponse
         {
             TotalSpent = totalSpent,
-            Currency = "CAD",
+            Currency = baseCurrency,
             CategoryBreakdown = categoryBreakdown,
             PayeeRanking = payeeRanking,
             MonthlyTrends = monthlyTrends,

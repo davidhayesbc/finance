@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 
 namespace Privestio.Api.Middleware;
 
@@ -40,6 +41,11 @@ public static class ErrorHandlingExtensions
                         StatusCodes.Status404NotFound,
                         "Not found",
                         exception.Message
+                    ),
+                    DbUpdateConcurrencyException => (
+                        StatusCodes.Status409Conflict,
+                        "Concurrency conflict",
+                        "The resource was modified by another request. Please reload and try again."
                     ),
                     _ => (
                         StatusCodes.Status500InternalServerError,
