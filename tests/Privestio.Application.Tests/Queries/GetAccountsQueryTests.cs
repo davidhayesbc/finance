@@ -144,7 +144,7 @@ public class GetAccountsQueryTests
         var ownerId = Guid.NewGuid();
 
         _accountRepositoryMock
-            .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessibleByUserIdAsync(ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Account>());
 
         _transactionRepositoryMock
@@ -190,7 +190,7 @@ public class GetAccountsQueryTests
         AddValuation(property, 850_000m, new DateOnly(2026, 1, 1));
 
         _accountRepositoryMock
-            .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessibleByUserIdAsync(ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Account> { banking, credit, property });
 
         _transactionRepositoryMock
@@ -232,7 +232,7 @@ public class GetAccountsQueryTests
         );
 
         _accountRepositoryMock
-            .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessibleByUserIdAsync(ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Account> { property });
 
         _transactionRepositoryMock
@@ -283,7 +283,7 @@ public class GetAccountsQueryTests
         );
 
         _accountRepositoryMock
-            .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessibleByUserIdAsync(ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Account> { investment });
 
         _transactionRepositoryMock
@@ -346,7 +346,7 @@ public class GetAccountsQueryTests
         var asOfDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
         _accountRepositoryMock
-            .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessibleByUserIdAsync(ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Account> { investment });
 
         _transactionRepositoryMock
@@ -419,7 +419,7 @@ public class GetAccountsQueryTests
         SecurityTestHelper.CreateSecurityResolutionService(_unitOfWorkMock, [security]);
 
         _accountRepositoryMock
-            .Setup(x => x.GetByOwnerIdAsync(ownerId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessibleByUserIdAsync(ownerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Account> { investment });
 
         _transactionRepositoryMock
@@ -486,6 +486,36 @@ public class GetAccountsQueryTests
 
         result.Should().HaveCount(1);
         result[0].CurrentBalance.Should().Be(4000m);
+    }
+
+    [Fact]
+    public async Task Handle_UsesAccessibleAccountQuery()
+    {
+        var userId = Guid.NewGuid();
+
+        _accountRepositoryMock
+            .Setup(x => x.GetAccessibleByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        _transactionRepositoryMock
+            .Setup(x =>
+                x.GetSignedSumsByAccountIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(new Dictionary<Guid, decimal>());
+
+        await CreateHandler().Handle(new GetAccountsQuery(userId), CancellationToken.None);
+
+        _accountRepositoryMock.Verify(
+            x => x.GetAccessibleByUserIdAsync(userId, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+        _accountRepositoryMock.Verify(
+            x => x.GetByOwnerIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
     }
 
     private static Account CreateAccount(

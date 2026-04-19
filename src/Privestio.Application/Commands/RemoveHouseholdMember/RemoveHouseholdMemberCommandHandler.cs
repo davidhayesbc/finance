@@ -42,6 +42,16 @@ public class RemoveHouseholdMemberCommandHandler : IRequestHandler<RemoveHouseho
 
         household.RemoveMember(request.UserIdToRemove);
 
+        var removedUser = await _unitOfWork.Users.GetByIdAsync(
+            request.UserIdToRemove,
+            cancellationToken
+        );
+        if (removedUser is not null)
+        {
+            removedUser.HouseholdId = null;
+            await _unitOfWork.Users.UpdateAsync(removedUser, cancellationToken);
+        }
+
         await _unitOfWork.Households.UpdateAsync(household, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }

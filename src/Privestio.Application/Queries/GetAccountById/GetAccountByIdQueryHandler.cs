@@ -27,9 +27,13 @@ public class GetAccountByIdQueryHandler : IRequestHandler<GetAccountByIdQuery, A
         CancellationToken cancellationToken
     )
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
+        var account = await _unitOfWork.Accounts.GetAccessibleByIdAsync(
+            request.AccountId,
+            request.RequestingUserId,
+            cancellationToken
+        );
 
-        if (account is null || account.OwnerId != request.RequestingUserId)
+        if (account is null)
             return null;
 
         var balance = await ComputeCurrentBalanceAsync(account, cancellationToken);

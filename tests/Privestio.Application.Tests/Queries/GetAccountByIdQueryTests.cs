@@ -139,7 +139,13 @@ public class GetAccountByIdQueryTests
     public async Task Handle_AccountNotFound_ReturnsNull()
     {
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((Account?)null);
 
         var handler = CreateHandler();
@@ -159,8 +165,14 @@ public class GetAccountByIdQueryTests
         var account = CreateBankingAccount(ownerId, openingBalance: 1000m);
 
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(accountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(account);
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(
+                    accountId,
+                    requestingUserId,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync((Account?)null);
 
         var handler = CreateHandler();
         var query = new GetAccountByIdQuery(accountId, requestingUserId);
@@ -177,7 +189,9 @@ public class GetAccountByIdQueryTests
         var account = CreateBankingAccount(ownerId, openingBalance: 500m);
 
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(account.Id, ownerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(account);
 
         _transactionRepositoryMock
@@ -200,7 +214,9 @@ public class GetAccountByIdQueryTests
         var account = CreateBankingAccount(ownerId, openingBalance: 1000m);
 
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(account.Id, ownerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(account);
 
         _transactionRepositoryMock
@@ -226,7 +242,9 @@ public class GetAccountByIdQueryTests
         AddValuation(account, 820_000m, new DateOnly(2025, 9, 1));
 
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(account.Id, ownerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(account);
 
         var handler = CreateHandler();
@@ -250,7 +268,9 @@ public class GetAccountByIdQueryTests
         var account = CreatePropertyAccount(ownerId, openingBalance: 770_000m);
 
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(account.Id, ownerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(account);
 
         var handler = CreateHandler();
@@ -279,7 +299,9 @@ public class GetAccountByIdQueryTests
         );
 
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(account.Id, ownerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(account);
 
         _holdingRepositoryMock
@@ -332,7 +354,9 @@ public class GetAccountByIdQueryTests
         var asOfDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
         _accountRepositoryMock
-            .Setup(x => x.GetByIdAsync(account.Id, It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.GetAccessibleByIdAsync(account.Id, ownerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(account);
 
         _holdingRepositoryMock
@@ -371,6 +395,30 @@ public class GetAccountByIdQueryTests
 
         _transactionRepositoryMock.Verify(
             x => x.GetSignedSumByAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    [Fact]
+    public async Task Handle_UsesAccessibleAccountLookup()
+    {
+        var userId = Guid.NewGuid();
+        var accountId = Guid.NewGuid();
+
+        _accountRepositoryMock
+            .Setup(x => x.GetAccessibleByIdAsync(accountId, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Account?)null);
+
+        var result = await CreateHandler()
+            .Handle(new GetAccountByIdQuery(accountId, userId), CancellationToken.None);
+
+        result.Should().BeNull();
+        _accountRepositoryMock.Verify(
+            x => x.GetAccessibleByIdAsync(accountId, userId, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+        _accountRepositoryMock.Verify(
+            x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
     }

@@ -11,6 +11,7 @@ public class UnitOfWork : IUnitOfWork
     {
         _context = context;
         Accounts = new AccountRepository(context);
+        Users = new UserRepository(context);
         Households = new HouseholdRepository(context);
         Transactions = new TransactionRepository(context);
         ImportBatches = new ImportBatchRepository(context);
@@ -42,6 +43,7 @@ public class UnitOfWork : IUnitOfWork
     }
 
     public IAccountRepository Accounts { get; }
+    public IUserRepository Users { get; }
     public IHouseholdRepository Households { get; }
     public ITransactionRepository Transactions { get; }
     public IImportBatchRepository ImportBatches { get; }

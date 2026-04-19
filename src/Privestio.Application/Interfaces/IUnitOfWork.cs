@@ -3,6 +3,7 @@ namespace Privestio.Application.Interfaces;
 public interface IUnitOfWork
 {
     IAccountRepository Accounts { get; }
+    IUserRepository Users { get; }
     IHouseholdRepository Households { get; }
     ITransactionRepository Transactions { get; }
     IImportBatchRepository ImportBatches { get; }

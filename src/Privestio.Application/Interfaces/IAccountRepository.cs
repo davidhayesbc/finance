@@ -5,8 +5,17 @@ namespace Privestio.Application.Interfaces;
 public interface IAccountRepository
 {
     Task<Account?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Account?> GetAccessibleByIdAsync(
+        Guid accountId,
+        Guid userId,
+        CancellationToken cancellationToken = default
+    );
     Task<IReadOnlyList<Account>> GetByOwnerIdAsync(
         Guid ownerId,
+        CancellationToken cancellationToken = default
+    );
+    Task<IReadOnlyList<Account>> GetAccessibleByUserIdAsync(
+        Guid userId,
         CancellationToken cancellationToken = default
     );
     Task<Account> AddAsync(Account account, CancellationToken cancellationToken = default);

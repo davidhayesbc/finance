@@ -30,10 +30,15 @@ public class CreateHouseholdCommandHandler : IRequestHandler<CreateHouseholdComm
                 "User is already a member of a household. Leave the current household first."
             );
 
+        var owner = await _unitOfWork.Users.GetByIdAsync(request.OwnerId, cancellationToken)
+            ?? throw new KeyNotFoundException($"User {request.OwnerId} not found.");
+
         var household = new Household(request.Name, request.OwnerId);
 
-        // Sync the owner's HouseholdId on the User record.
+        owner.HouseholdId = household.Id;
+
         await _unitOfWork.Households.AddAsync(household, cancellationToken);
+        await _unitOfWork.Users.UpdateAsync(owner, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Re-fetch with members loaded for the response.

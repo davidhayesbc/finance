@@ -28,7 +28,7 @@ public class GetAccountsQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var accounts = await _unitOfWork.Accounts.GetByOwnerIdAsync(
+        var accounts = await _unitOfWork.Accounts.GetAccessibleByUserIdAsync(
             request.OwnerId,
             cancellationToken
         );

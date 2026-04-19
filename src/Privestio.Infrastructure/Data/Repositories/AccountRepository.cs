@@ -21,6 +21,27 @@ public class AccountRepository : IAccountRepository
             .Accounts.Include(a => a.Valuations)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
+    public async Task<Account?> GetAccessibleByIdAsync(
+        Guid accountId,
+        Guid userId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var householdId = await GetUserHouseholdIdAsync(userId, cancellationToken);
+
+        return await _context
+            .Accounts.Include(a => a.Valuations)
+            .FirstOrDefaultAsync(
+                a =>
+                    a.Id == accountId
+                    && (
+                        a.OwnerId == userId
+                        || (householdId.HasValue && a.IsShared && a.Owner!.HouseholdId == householdId)
+                    ),
+                cancellationToken
+            );
+    }
+
     public async Task<IReadOnlyList<Account>> GetByOwnerIdAsync(
         Guid ownerId,
         CancellationToken cancellationToken = default
@@ -30,6 +51,23 @@ public class AccountRepository : IAccountRepository
             .Where(a => a.OwnerId == ownerId)
             .OrderBy(a => a.Name)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Account>> GetAccessibleByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var householdId = await GetUserHouseholdIdAsync(userId, cancellationToken);
+
+        return await _context
+            .Accounts.Include(a => a.Valuations)
+            .Where(a =>
+                a.OwnerId == userId
+                || (householdId.HasValue && a.IsShared && a.Owner!.HouseholdId == householdId)
+            )
+            .OrderBy(a => a.Name)
+            .ToListAsync(cancellationToken);
+    }
 
     public async Task<Account> AddAsync(
         Account account,
@@ -60,4 +98,9 @@ public class AccountRepository : IAccountRepository
 
     public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Accounts.AnyAsync(a => a.Id == id, cancellationToken);
+
+    private async Task<Guid?> GetUserHouseholdIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken
+    ) => await _context.DomainUsers.Where(u => u.Id == userId).Select(u => u.HouseholdId).FirstOrDefaultAsync(cancellationToken);
 }

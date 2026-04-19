@@ -26,8 +26,12 @@ public class GetAccountValueHistoryQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
-        if (account is null || account.OwnerId != request.UserId)
+        var account = await _unitOfWork.Accounts.GetAccessibleByIdAsync(
+            request.AccountId,
+            request.UserId,
+            cancellationToken
+        );
+        if (account is null)
             return null;
 
         var history = await _historicalValueTimelineService.GetAccountHistoryAsync(

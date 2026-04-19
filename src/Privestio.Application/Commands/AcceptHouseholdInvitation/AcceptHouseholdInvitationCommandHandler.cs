@@ -29,6 +29,9 @@ public class AcceptHouseholdInvitationCommandHandler
                 "User is already a member of a household. Leave the current household before accepting a new invitation."
             );
 
+        var user = await _unitOfWork.Users.GetByIdAsync(request.AcceptingUserId, cancellationToken)
+            ?? throw new KeyNotFoundException($"User {request.AcceptingUserId} not found.");
+
         var invitation = await _unitOfWork.Households.GetInvitationByTokenAsync(
             request.Token,
             cancellationToken
@@ -39,8 +42,10 @@ public class AcceptHouseholdInvitationCommandHandler
 
         // Add the user to the household with the invited role.
         invitation.Household.AddMember(request.AcceptingUserId, invitation.Role);
+        user.HouseholdId = invitation.HouseholdId;
 
         await _unitOfWork.Households.UpdateAsync(invitation.Household, cancellationToken);
+        await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var loaded = await _unitOfWork.Households.GetByIdWithMembersAsync(
