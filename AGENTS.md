@@ -4,20 +4,41 @@ This repository is set up to use Aspire. Aspire is an orchestrator for the entir
 
 ## General recommendations for working with Aspire
 
-1. Before making any changes always run the apphost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
+1. Before making any changes, start the apphost in detached mode using `aspire start` and inspect resource state so you are building from a known state.
 2. Changes to the _apphost.cs_ file will require a restart of the application to take effect.
-3. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
+3. Make changes incrementally and validate while the apphost runs in the background (`aspire start`), using the same terminal for diagnostics like `aspire describe` and `aspire logs`.
 4. Use the Aspire MCP tools to check the status of resources and debug issues.
+5. Use process management commands to avoid orphaned or duplicate apphosts: `aspire ps` to list running apphosts and dashboard URLs, and `aspire stop` (or `aspire stop --apphost <path-to-apphost.cs>`) to stop the correct instance gracefully.
 
 ## Running the application
 
-To run the application run the following command:
+For the default development workflow, run the application in the background:
+
+```bash
+aspire start
+```
+
+`aspire start` is equivalent to `aspire run --detach`.
+
+If you need foreground execution attached to the current terminal, run:
 
 ```bash
 aspire run
 ```
 
 If there is already an instance of the application running it will prompt to stop the existing instance. You only need to restart the application if code in `apphost.cs` is changed, but if you experience problems it can be useful to reset everything to the starting state.
+
+## Detached mode and process management
+
+When using detached mode, keep this workflow:
+
+1. Start: `aspire start`
+2. Inspect apphosts and dashboard URLs: `aspire ps`
+3. Inspect resource state while apphost is running: `aspire describe` (or `aspire describe --format Json` for automation)
+4. Fetch logs without stopping the apphost: `aspire logs`
+5. Stop gracefully when done: `aspire stop` or `aspire stop --apphost <path-to-apphost.cs>`
+
+This is the preferred mode for coding-agent workflows, CI environments with a single shell, and remote/SSH environments where opening extra terminals is inconvenient.
 
 ## Running the data loader
 

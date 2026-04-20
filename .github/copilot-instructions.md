@@ -40,6 +40,17 @@ docker/
   Dockerfile.api              - Multi-stage API build
 ```
 
+## Aspire CLI Workflow (Critical)
+
+- Prefer detached mode for local development and coding-agent workflows: use `aspire start` (equivalent to `aspire run --detach`) so the terminal remains available.
+- Keep diagnostics in the same terminal session while AppHost is running: use `aspire describe` (or `aspire describe --format Json`) and `aspire logs`.
+- Manage running AppHosts explicitly:
+  - `aspire ps` to list running apphosts and dashboard URLs
+  - `aspire stop` to stop interactively
+  - `aspire stop --apphost <path-to-apphost.cs>` to stop a specific apphost without prompts
+- Use foreground mode (`aspire run`) only when interactive attached output is explicitly needed.
+- For multi-project work, combine detached mode with isolated mode when running multiple apphosts in parallel.
+
 ## Layer Responsibilities
 
 - **Domain**: Pure C# entities, value objects, domain events, interfaces. Minimal external dependencies (FluentResults only).
