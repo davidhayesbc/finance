@@ -1099,7 +1099,11 @@ namespace Privestio.Infrastructure.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1115,7 +1119,138 @@ namespace Privestio.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OwnerId");
+
                     b.ToTable("Households");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HouseholdId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("InvitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InvitedEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("Token")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("HouseholdId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("InvitedEmail", "Status");
+
+                    b.ToTable("HouseholdInvitations");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HouseholdId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("InvitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("HouseholdId", "UserId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("HouseholdMembers");
                 });
 
             modelBuilder.Entity("Privestio.Domain.Entities.IdempotencyRecord", b =>
@@ -2966,6 +3101,36 @@ namespace Privestio.Infrastructure.Data.Migrations
                     b.Navigation("Security");
                 });
 
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdInvitation", b =>
+                {
+                    b.HasOne("Privestio.Domain.Entities.Household", "Household")
+                        .WithMany("Invitations")
+                        .HasForeignKey("HouseholdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Household");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdMember", b =>
+                {
+                    b.HasOne("Privestio.Domain.Entities.Household", "Household")
+                        .WithMany("Members")
+                        .HasForeignKey("HouseholdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Privestio.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Household");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Privestio.Domain.Entities.ImportBatch", b =>
                 {
                     b.HasOne("Privestio.Domain.Entities.User", "User")
@@ -3232,7 +3397,7 @@ namespace Privestio.Infrastructure.Data.Migrations
             modelBuilder.Entity("Privestio.Domain.Entities.User", b =>
                 {
                     b.HasOne("Privestio.Domain.Entities.Household", "Household")
-                        .WithMany("Members")
+                        .WithMany()
                         .HasForeignKey("HouseholdId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -3269,6 +3434,8 @@ namespace Privestio.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Privestio.Domain.Entities.Household", b =>
                 {
+                    b.Navigation("Invitations");
+
                     b.Navigation("Members");
                 });
 
