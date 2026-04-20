@@ -110,7 +110,7 @@ h1,
 h2,
 h3,
 .brand-link strong {
-    font-family: "Newsreader", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
     letter-spacing: -0.02em;
 }
 
@@ -2136,7 +2136,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .accounts-posture__item strong {
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
     font-size: 1.45rem;
     line-height: 1.05;
 }
@@ -2545,7 +2545,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .budgets-posture__item strong {
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
     font-size: 1.45rem;
     line-height: 1.05;
 }
@@ -2818,7 +2818,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .forecast-posture__item strong {
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
     font-size: 1.45rem;
     line-height: 1.05;
 }
@@ -3126,7 +3126,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .account-dossier-identity__item strong {
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
     font-size: 1.32rem;
     line-height: 1.05;
 }
@@ -3232,7 +3232,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .dashboard-posture__value--serif {
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
     font-size: 1.5rem;
 }
 
@@ -3587,7 +3587,7 @@ fluent-anchor.app-rail__link--active::part(control) {
 }
 
 .app-utility-strip__title {
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
     font-size: 1.05rem;
     letter-spacing: -0.02em;
 }
