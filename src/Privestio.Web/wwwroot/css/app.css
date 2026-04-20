@@ -3188,7 +3188,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .dashboard-orientation {
     display: grid;
-    gap: 16px;
+    gap: 12px;
     background: color-mix(in srgb, var(--surface) 78%, var(--page-bg));
 }
 
@@ -3197,12 +3197,50 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     align-items: start;
 }
 
-.dashboard-orientation__context {
+.dashboard-orientation__controls {
     display: flex;
     justify-content: space-between;
     align-items: end;
     gap: 16px;
     flex-wrap: wrap;
+}
+
+.dashboard-orientation__actions {
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dashboard-alerts-link {
+    min-width: 188px;
+    padding: 10px 12px;
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface-raised) 88%, var(--page-bg));
+    color: var(--text-strong);
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    display: grid;
+    gap: 2px;
+}
+
+.dashboard-alerts-link strong {
+    font-size: 1.32rem;
+    line-height: 1.1;
+}
+
+.dashboard-alerts-link:hover,
+.dashboard-alerts-link:focus-visible {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--surface-raised) 76%, var(--accent-soft));
+}
+
+.dashboard-alerts-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
 }
 
 .dashboard-posture {
@@ -3227,8 +3265,13 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .dashboard-posture__value {
+    display: block;
     font-size: 1.18rem;
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
 }
 
 .dashboard-posture__value--serif {
@@ -3287,7 +3330,16 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .dashboard-lower-grid {
-    grid-template-columns: minmax(280px, 5fr) minmax(0, 7fr);
+    grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+}
+
+.dashboard-band--accounts .table-surface,
+.dashboard-band--accounts .data-grid--dashboard {
+    width: 100%;
+}
+
+.dashboard-plane .apexcharts-legend {
+    justify-content: flex-start !important;
 }
 
 .dashboard-stack {
@@ -3816,7 +3868,8 @@ fluent-anchor.app-rail__link--active::part(control) {
         grid-template-columns: 1fr;
     }
 
-    .dashboard-orientation__context,
+    .dashboard-orientation__controls,
+    .dashboard-orientation__actions,
     .dashboard-allocation-row__meta,
     .dashboard-watchlist__row {
         flex-direction: column;
@@ -3905,6 +3958,11 @@ fluent-anchor.app-rail__link--active::part(control) {
 
     .dashboard-watchlist__actions {
         justify-content: flex-start;
+    }
+
+    .dashboard-alerts-link {
+        width: 100%;
+        min-width: 0;
     }
 
     .operational-exception {

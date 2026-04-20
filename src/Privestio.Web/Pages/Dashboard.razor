@@ -12,18 +12,17 @@
 
 <section class="dashboard-shell" data-testid="dashboard-page">
     <PageRegion Name="orientation" TagName="div" Class="dashboard-orientation" data-testid="dashboard-orientation">
-        <PageHeader Eyebrow="Dashboard" Title="Dashboard"
-                    Description="Current financial position, recent movement, and active issues."
-                    UtilityDescription="Use the active range selector to recompose the page in place and keep the next two actions close.">
-            <Context>
-                <div>
-                    <span class="filter-label">Range</span>
-                    <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
-                                          Disabled="@(_isLoading || _isHistoryLoading || _isSyncingHistory)"
-                                          OnChange="HandleHistoryRangeChangedAsync" />
-                </div>
-            </Context>
-            <Actions>
+        <PageHeader Eyebrow="Dashboard" Title="Dashboard" />
+
+        <div class="dashboard-orientation__controls">
+            <div>
+                <span class="filter-label">Range</span>
+                <HistoryRangeSelector CurrentKey="@_selectedHistoryRange"
+                                      Disabled="@(_isLoading || _isHistoryLoading || _isSyncingHistory)"
+                                      OnChange="HandleHistoryRangeChangedAsync" />
+            </div>
+
+            <div class="dashboard-orientation__actions">
                 <div class="action-cluster">
                     <FluentButton Appearance="Appearance.Outline" @onclick="@(() => Navigation.NavigateTo("/accounts"))">
                         Add transaction
@@ -32,8 +31,14 @@
                         Sync prices
                     </FluentButton>
                 </div>
-            </Actions>
-        </PageHeader>
+
+                <button type="button" class="dashboard-alerts-link" @onclick="NavigateToUnresolvedAlerts">
+                    <span class="summary-strip__label">Unresolved alerts</span>
+                    <strong>@GetUnresolvedAlertCount()</strong>
+                    <span>@GetUnresolvedAlertsActionLabel()</span>
+                </button>
+            </div>
+        </div>
 
         @if (!string.IsNullOrWhiteSpace(_syncMessage))
         {
@@ -44,7 +49,7 @@
     @if (_summary is null && _history is null && !_isLoading)
     {
         <FluentMessageBar Intent="@MessageIntent.Warning">
-            Dashboard data is unavailable right now. The structure remains visible so you can still orient yourself.
+            Dashboard data is unavailable right now.
         </FluentMessageBar>
     }
 
@@ -78,10 +83,7 @@
                 <span class="summary-strip__label">Last refresh</span>
                 <strong class="dashboard-posture__value">@GetLastRefreshLabel()</strong>
             </div>
-            <div class="dashboard-posture__item">
-                <span class="summary-strip__label">Unresolved alerts</span>
-                <strong class="dashboard-posture__value">@BuildWatchlistItems().Count(item => item.Intent != MessageIntent.Success)</strong>
-            </div>
+
         }
     </PageRegion>
 
@@ -212,7 +214,7 @@
                                EmptyMessage="Add your first account to turn this dashboard into a live working surface.">
                 <FluentDataGrid Items="_summary!.AccountSummaries.OrderByDescending(a => a.Balance).ThenBy(a => a.Name).AsQueryable()"
                                 TGridItem="AccountSummary"
-                                Class="data-grid--elevated table-surface table-surface--grid data-grid--dashboard"
+                                Class="data-grid--elevated table-surface table-surface--grid table-surface--scroll data-grid--dashboard"
                                 ResizableColumns="true"
                                 ResizeType="DataGridResizeType.Discrete"
                                 HeaderCellAsButtonWithMenu="true"
@@ -575,6 +577,41 @@
             Navigation.NavigateTo(href);
         }
     }
+
+    private int GetUnresolvedAlertCount()
+    {
+        var pendingNotifications = _notifications.Count(notification =>
+            string.Equals(notification.Severity, "Critical", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(notification.Severity, "Warning", StringComparison.OrdinalIgnoreCase));
+
+        return pendingNotifications + _syncConflicts.Count + _securityConflicts.Count + _staleHoldings.Count;
+    }
+
+    private string GetUnresolvedAlertsActionLabel() => GetUnresolvedAlertCount() > 0
+        ? "Review now"
+        : "Open notifications";
+
+    private string GetUnresolvedAlertsHref()
+    {
+        if (_syncConflicts.Count > 0)
+        {
+            return "/sync/conflicts";
+        }
+
+        if (_securityConflicts.Count > 0)
+        {
+            return "/securities/review";
+        }
+
+        if (_staleHoldings.Count > 0)
+        {
+            return "/accounts";
+        }
+
+        return "/notifications";
+    }
+
+    private void NavigateToUnresolvedAlerts() => Navigation.NavigateTo(GetUnresolvedAlertsHref());
 
     private (DateOnly? FromDate, DateOnly ToDate) ResolveHistoryRange()
     {

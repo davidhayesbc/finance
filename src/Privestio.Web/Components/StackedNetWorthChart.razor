@@ -32,16 +32,24 @@ else
     private List<AccountNetWorthSeries> _series = new();
     private bool _groupedMonthly;
     private readonly ApexChartOptions<ValueHistoryPointResponse> _options = BuildOptions();
+    private static readonly string[] InvestmentPalette = ["#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#1d4ed8"];
+    private static readonly string[] PropertyPalette = ["#b45309", "#d97706", "#f59e0b", "#fbbf24", "#92400e"];
+    private static readonly string[] BankingPalette = ["#0f766e", "#0d9488", "#14b8a6", "#2dd4bf", "#115e59"];
+    private static readonly string[] DebtPalette = ["#b91c1c", "#dc2626", "#ef4444", "#f87171", "#991b1b"];
+    private static readonly string[] OtherPalette = ["#475569", "#64748b", "#94a3b8", "#334155", "#6b7280"];
 
     protected override void OnParametersSet()
     {
         _series = Series
             .Where(s => s.Points.Count > 0)
-            .OrderBy(s => s.AccountName)
+            .OrderBy(s => GetAccountTypeGroupOrder(s.AccountType))
+            .ThenBy(s => s.AccountName)
             .ToList();
 
         if (_series.Count == 0)
             return;
+
+        _options.Colors = BuildSeriesColors(_series);
 
         var allPoints = _series.SelectMany(s => s.Points).OrderBy(p => p.Date).ToList();
         _groupedMonthly = allPoints.Count > 180;
@@ -83,6 +91,68 @@ else
     private string GetXAxisLabel(ValueHistoryPointResponse point) =>
         _groupedMonthly ? point.Date.ToString("MMM yyyy") : point.Date.ToString("MMM d");
 
+    private static List<string> BuildSeriesColors(IReadOnlyList<AccountNetWorthSeries> series)
+    {
+        var groupColorIndex = new Dictionary<int, int>();
+        var colors = new List<string>(series.Count);
+
+        foreach (var accountSeries in series)
+        {
+            var group = GetAccountTypeGroupOrder(accountSeries.AccountType);
+            var palette = GetPalette(group);
+            var paletteIndex = groupColorIndex.TryGetValue(group, out var current)
+                ? current
+                : 0;
+
+            colors.Add(palette[paletteIndex % palette.Length]);
+            groupColorIndex[group] = paletteIndex + 1;
+        }
+
+        return colors;
+    }
+
+    private static int GetAccountTypeGroupOrder(string accountType)
+    {
+        if (string.IsNullOrWhiteSpace(accountType))
+        {
+            return 99;
+        }
+
+        if (ContainsAny(accountType, "invest", "rrsp", "tfsa", "resp", "fhsa", "registered", "broker", "security", "portfolio", "crypto"))
+        {
+            return 1;
+        }
+
+        if (ContainsAny(accountType, "property", "real estate", "mortgage", "home"))
+        {
+            return 2;
+        }
+
+        if (ContainsAny(accountType, "bank", "cash", "chequing", "checking", "saving"))
+        {
+            return 3;
+        }
+
+        if (ContainsAny(accountType, "credit", "loan", "liability", "debt"))
+        {
+            return 4;
+        }
+
+        return 5;
+    }
+
+    private static string[] GetPalette(int group) => group switch
+    {
+        1 => InvestmentPalette,
+        2 => PropertyPalette,
+        3 => BankingPalette,
+        4 => DebtPalette,
+        _ => OtherPalette,
+    };
+
+    private static bool ContainsAny(string value, params string[] terms) =>
+        terms.Any(term => value.Contains(term, StringComparison.OrdinalIgnoreCase));
+
     private static ApexChartOptions<ValueHistoryPointResponse> BuildOptions() =>
         new()
         {
@@ -92,6 +162,6 @@ else
             Tooltip = new Tooltip { Enabled = true, Shared = true, Intersect = false },
             Grid = new Grid { StrokeDashArray = 2 },
             Xaxis = new XAxis { Tooltip = new XAxisTooltip { Enabled = false } },
-            Legend = new Legend { Position = LegendPosition.Top },
+            Legend = new Legend { Position = LegendPosition.Bottom },
         };
 }
