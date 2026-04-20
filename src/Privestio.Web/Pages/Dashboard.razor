@@ -31,12 +31,6 @@
                         Sync prices
                     </FluentButton>
                 </div>
-
-                <button type="button" class="dashboard-alerts-link" @onclick="NavigateToUnresolvedAlerts">
-                    <span class="summary-strip__label">Unresolved alerts</span>
-                    <strong>@GetUnresolvedAlertCount()</strong>
-                    <span>@GetUnresolvedAlertsActionLabel()</span>
-                </button>
             </div>
         </div>
 
@@ -85,6 +79,27 @@
             </div>
 
         }
+    </PageRegion>
+
+    <PageRegion Name="primary" Class="dashboard-alerts-section" aria-label="Unresolved alerts" data-testid="dashboard-alerts-box">
+        <div class="dashboard-alerts-box dashboard-alerts-box--full-width">
+            <button type="button" class="dashboard-alerts-link" @onclick="NavigateToUnresolvedAlerts">
+                <span class="summary-strip__label">Unresolved alerts</span>
+                <strong>@GetUnresolvedAlertCount()</strong>
+                <span>@GetUnresolvedAlertsActionLabel()</span>
+            </button>
+
+            <div class="dashboard-alerts-box__list" aria-label="Alert details">
+                @foreach (var item in BuildWatchlistItems())
+                {
+                    <OperationalExceptionRow Title="@item.Title"
+                                             Detail="@item.Detail"
+                                             Severity="@GetSeverity(item.Intent)"
+                                             ActionLabel="@item.ActionLabel"
+                                             OnAction="@(() => NavigateTo(item.Href))" />
+                }
+            </div>
+        </div>
     </PageRegion>
 
     <PageRegion Name="primary" Class="dashboard-plane" aria-labelledby="dashboard-net-worth-heading" data-testid="dashboard-net-worth-plane">
@@ -181,25 +196,6 @@
     </div>
 
     <div class="dashboard-lower-grid">
-        <PageRegion Name="exceptions" Class="dashboard-band dashboard-band--watchlist" aria-labelledby="dashboard-watchlist-heading">
-            <SectionBand Title="Watchlist"
-                         TitleId="dashboard-watchlist-heading"
-                         Description="Items that need review before they distort balances, budgets, or forecast confidence."
-                         HeaderClass="dashboard-band__header">
-
-            <div class="dashboard-watchlist">
-                @foreach (var item in BuildWatchlistItems())
-                {
-                    <OperationalExceptionRow Title="@item.Title"
-                                             Detail="@item.Detail"
-                                             Severity="@GetSeverity(item.Intent)"
-                                             ActionLabel="@item.ActionLabel"
-                                             OnAction="@(() => NavigateTo(item.Href))" />
-                }
-            </div>
-            </SectionBand>
-        </PageRegion>
-
         <PageRegion Name="supporting" Class="dashboard-band dashboard-band--accounts" aria-labelledby="dashboard-accounts-heading">
             <SectionBand Title="Accounts"
                          TitleId="dashboard-accounts-heading"

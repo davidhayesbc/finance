@@ -3207,10 +3207,36 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .dashboard-orientation__actions {
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     justify-content: flex-end;
     gap: 12px;
     flex-wrap: wrap;
+}
+
+.dashboard-alerts-box {
+    display: grid;
+    gap: 10px;
+    width: min(100%, 560px);
+    min-width: min(340px, 100%);
+}
+
+.dashboard-alerts-section {
+    display: block;
+}
+
+.dashboard-alerts-box--full-width {
+    width: 100%;
+    min-width: 0;
+}
+
+.dashboard-alerts-box__list {
+    display: grid;
+    gap: 10px;
+}
+
+.dashboard-alerts-box__list .operational-exception {
+    align-items: center;
+    background: color-mix(in srgb, var(--surface-raised) 92%, var(--page-bg));
 }
 
 .dashboard-alerts-link {
@@ -3245,7 +3271,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .dashboard-posture {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     border-radius: 14px;
     overflow: hidden;
     background: color-mix(in srgb, var(--surface-raised) 96%, var(--page-bg));
@@ -3276,7 +3302,6 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 
 .dashboard-posture__value--serif {
     font-family: "Familjen Grotesk Variable", "Familjen Grotesk", "Segoe UI Variable Text", "Avenir Next", "Helvetica Neue", sans-serif;
-    font-size: 1.5rem;
 }
 
 .dashboard-posture__value--gain {
@@ -3309,7 +3334,6 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 .dashboard-plane__header p,
 .dashboard-band__header p,
 .dashboard-pressure-item span,
-.dashboard-watchlist__row p,
 .dashboard-allocation-row__meta span {
     margin: 0;
     color: var(--text-muted);
@@ -3330,7 +3354,7 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 }
 
 .dashboard-lower-grid {
-    grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .dashboard-band--accounts .table-surface,
@@ -3393,91 +3417,8 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     font-size: 1.18rem;
 }
 
-.dashboard-watchlist {
-    display: grid;
-    gap: 12px;
-}
-
-.dashboard-watchlist .operational-exception {
-    align-items: center;
-}
-
-.dashboard-watchlist__row {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    align-items: start;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--surface-border);
-    background: color-mix(in srgb, var(--surface-raised) 94%, var(--page-bg));
-}
-
-.dashboard-watchlist__row strong,
 .dashboard-allocation-row__meta strong {
     font-size: 0.97rem;
-}
-
-.dashboard-watchlist__status {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 0 10px;
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--chip-bg) 90%, transparent);
-    color: var(--text-muted);
-    font-size: 0.76rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.dashboard-watchlist__row--error {
-    border-color: rgba(193, 67, 67, 0.42);
-}
-
-.dashboard-watchlist__row--error .dashboard-watchlist__status {
-    background: color-mix(in srgb, var(--danger-soft) 16%, transparent);
-    color: var(--danger-soft);
-}
-
-.dashboard-watchlist__row--warning {
-    border-color: rgba(160, 122, 47, 0.42);
-}
-
-.dashboard-watchlist__row--warning .dashboard-watchlist__status {
-    background: color-mix(in srgb, #a07a2f 16%, transparent);
-    color: #8b661f;
-}
-
-.dashboard-watchlist__row--success .dashboard-watchlist__status {
-    background: color-mix(in srgb, var(--success-soft) 16%, transparent);
-    color: var(--success-soft);
-}
-
-.dashboard-watchlist__actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-}
-
-.dashboard-watchlist__link {
-    border: 0;
-    background: transparent;
-    color: var(--accent-strong);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.dashboard-watchlist__link:hover {
-    color: var(--text-strong);
 }
 
 .accounts-quick-sheet {
@@ -3870,8 +3811,7 @@ fluent-anchor.app-rail__link--active::part(control) {
 
     .dashboard-orientation__controls,
     .dashboard-orientation__actions,
-    .dashboard-allocation-row__meta,
-    .dashboard-watchlist__row {
+    .dashboard-allocation-row__meta {
         flex-direction: column;
         align-items: stretch;
     }
@@ -3956,12 +3896,12 @@ fluent-anchor.app-rail__link--active::part(control) {
         padding: 14px 16px;
     }
 
-    .dashboard-watchlist__actions {
-        justify-content: flex-start;
-    }
-
     .dashboard-alerts-link {
         width: 100%;
+        min-width: 0;
+    }
+
+    .dashboard-alerts-box {
         min-width: 0;
     }
 
