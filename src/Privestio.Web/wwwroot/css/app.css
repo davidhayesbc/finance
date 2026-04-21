@@ -3239,36 +3239,6 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     background: color-mix(in srgb, var(--surface-raised) 92%, var(--page-bg));
 }
 
-.dashboard-alerts-link {
-    min-width: 188px;
-    padding: 10px 12px;
-    border: 1px solid var(--surface-border);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--surface-raised) 88%, var(--page-bg));
-    color: var(--text-strong);
-    cursor: pointer;
-    text-align: left;
-    font: inherit;
-    display: grid;
-    gap: 2px;
-}
-
-.dashboard-alerts-link strong {
-    font-size: 1.32rem;
-    line-height: 1.1;
-}
-
-.dashboard-alerts-link:hover,
-.dashboard-alerts-link:focus-visible {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--surface-raised) 76%, var(--accent-soft));
-}
-
-.dashboard-alerts-link:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-}
-
 .dashboard-posture {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3894,11 +3864,6 @@ fluent-anchor.app-rail__link--active::part(control) {
     .app-utility-strip {
         flex-direction: column;
         padding: 14px 16px;
-    }
-
-    .dashboard-alerts-link {
-        width: 100%;
-        min-width: 0;
     }
 
     .dashboard-alerts-box {

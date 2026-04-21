@@ -83,12 +83,6 @@
 
     <PageRegion Name="primary" Class="dashboard-alerts-section" aria-label="Unresolved alerts" data-testid="dashboard-alerts-box">
         <div class="dashboard-alerts-box dashboard-alerts-box--full-width">
-            <button type="button" class="dashboard-alerts-link" @onclick="NavigateToUnresolvedAlerts">
-                <span class="summary-strip__label">Unresolved alerts</span>
-                <strong>@GetUnresolvedAlertCount()</strong>
-                <span>@GetUnresolvedAlertsActionLabel()</span>
-            </button>
-
             <div class="dashboard-alerts-box__list" aria-label="Alert details">
                 @foreach (var item in BuildWatchlistItems())
                 {
@@ -573,41 +567,6 @@
             Navigation.NavigateTo(href);
         }
     }
-
-    private int GetUnresolvedAlertCount()
-    {
-        var pendingNotifications = _notifications.Count(notification =>
-            string.Equals(notification.Severity, "Critical", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(notification.Severity, "Warning", StringComparison.OrdinalIgnoreCase));
-
-        return pendingNotifications + _syncConflicts.Count + _securityConflicts.Count + _staleHoldings.Count;
-    }
-
-    private string GetUnresolvedAlertsActionLabel() => GetUnresolvedAlertCount() > 0
-        ? "Review now"
-        : "Open notifications";
-
-    private string GetUnresolvedAlertsHref()
-    {
-        if (_syncConflicts.Count > 0)
-        {
-            return "/sync/conflicts";
-        }
-
-        if (_securityConflicts.Count > 0)
-        {
-            return "/securities/review";
-        }
-
-        if (_staleHoldings.Count > 0)
-        {
-            return "/accounts";
-        }
-
-        return "/notifications";
-    }
-
-    private void NavigateToUnresolvedAlerts() => Navigation.NavigateTo(GetUnresolvedAlertsHref());
 
     private (DateOnly? FromDate, DateOnly ToDate) ResolveHistoryRange()
     {
