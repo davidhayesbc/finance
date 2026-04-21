@@ -309,7 +309,7 @@ public class TransactionRepository : ITransactionRepository
             return new Dictionary<Guid, int>();
 
         var counts = await _context
-            .Transactions.Where(t => idList.Contains(t.AccountId) && t.CategoryId == null && !t.IsSplit)
+            .Transactions.Where(t => idList.Contains(t.AccountId) && t.CategoryId == null && !t.Splits.Any())
             .GroupBy(t => t.AccountId)
             .Select(g => new
             {
