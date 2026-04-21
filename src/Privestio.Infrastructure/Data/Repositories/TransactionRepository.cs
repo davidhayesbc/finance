@@ -320,4 +320,19 @@ public class TransactionRepository : ITransactionRepository
 
         return counts;
     }
+
+    public async Task<IReadOnlyList<Transaction>> GetUncategorizedByAccountIdAsync(
+        Guid accountId,
+        int maxRows,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await _context
+            .Transactions.Where(t =>
+                t.AccountId == accountId && t.CategoryId == null && !t.Splits.Any()
+            )
+            .OrderByDescending(t => t.Date)
+            .Take(maxRows)
+            .ToListAsync(cancellationToken);
+    }
 }

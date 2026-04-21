@@ -114,4 +114,14 @@ public interface ITransactionRepository
         IEnumerable<Guid> accountIds,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Returns up to <paramref name="maxRows"/> uncategorized transactions for a single account,
+    /// ordered by date descending. Used to feed AI rule suggestion without requiring a file upload.
+    /// </summary>
+    Task<IReadOnlyList<Transaction>> GetUncategorizedByAccountIdAsync(
+        Guid accountId,
+        int maxRows,
+        CancellationToken cancellationToken = default
+    );
 }

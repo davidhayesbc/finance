@@ -28,6 +28,10 @@ public interface IImportService
         Guid mappingId,
         int maxSuggestions = 8
     );
+    Task<IReadOnlyList<RuleSuggestionResponse>> SuggestRulesFromDbAsync(
+        Guid accountId,
+        int maxSuggestions = 8
+    );
     Task<AcceptRuleSuggestionResponse?> AcceptSuggestedRuleAsync(
         Guid accountId,
         AcceptRuleSuggestionRequest request
@@ -247,6 +251,29 @@ public class ImportService : IImportService
         catch
         {
             return null;
+        }
+    }
+
+    public async Task<IReadOnlyList<RuleSuggestionResponse>> SuggestRulesFromDbAsync(
+        Guid accountId,
+        int maxSuggestions = 8
+    )
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync(
+                $"/api/v1/rules/suggestions/{accountId}/from-db?maxSuggestions={maxSuggestions}",
+                null
+            );
+            if (!response.IsSuccessStatusCode)
+                return [];
+
+            return await response.Content.ReadFromJsonAsync<IReadOnlyList<RuleSuggestionResponse>>()
+                ?? [];
+        }
+        catch
+        {
+            return [];
         }
     }
 }

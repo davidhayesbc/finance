@@ -4,6 +4,7 @@ using Privestio.Application.Commands.AcceptSuggestedCategorizationRule;
 using Privestio.Application.Commands.CreateCategorizationRule;
 using Privestio.Application.Commands.DeleteCategorizationRule;
 using Privestio.Application.Commands.SuggestCategorizationRules;
+using Privestio.Application.Commands.SuggestCategorizationRulesFromDb;
 using Privestio.Application.Commands.UpdateCategorizationRule;
 using Privestio.Application.Queries.GetCategorizationRules;
 using Privestio.Contracts.Requests;
@@ -43,6 +44,11 @@ public static class RuleEndpoints
             .WithName("SuggestRules")
             .WithSummary("Generate AI rule suggestions from an import sample")
             .DisableAntiforgery();
+
+        group
+            .MapPost("/suggestions/{accountId:guid}/from-db", SuggestRulesFromDbAsync)
+            .WithName("SuggestRulesFromDb")
+            .WithSummary("Generate AI rule suggestions from existing uncategorized transactions");
 
         group
             .MapPost("/suggestions/{accountId:guid}/accept", AcceptSuggestionAsync)
@@ -183,6 +189,39 @@ public static class RuleEndpoints
         catch (InvalidOperationException ex)
         {
             return Results.BadRequest(new { Message = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> SuggestRulesFromDbAsync(
+        Guid accountId,
+        IMediator mediator,
+        ClaimsPrincipal user,
+        int maxSuggestions = 8,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var command = new SuggestCategorizationRulesFromDbCommand(
+            accountId,
+            userId.Value,
+            Math.Max(1, Math.Min(maxSuggestions, 20))
+        );
+
+        try
+        {
+            var suggestions = await mediator.Send(command, cancellationToken);
+            return Results.Ok(suggestions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Results.Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
         }
     }
 
