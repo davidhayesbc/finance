@@ -5,6 +5,11 @@ namespace Privestio.Application.Interfaces;
 
 public interface ITransactionRepository
 {
+    Task<IReadOnlyList<Transaction>> GetByAccountIdAsync(
+        Guid accountId,
+        CancellationToken cancellationToken = default
+    );
+
     Task<Transaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<Transaction> Items, string? NextCursor)> GetPagedAsync(
         Guid accountId,
@@ -96,6 +101,16 @@ public interface ITransactionRepository
     /// Missing keys indicate the account has no transactions (sum = 0).
     /// </summary>
     Task<IReadOnlyDictionary<Guid, decimal>> GetSignedSumsByAccountIdsAsync(
+        IEnumerable<Guid> accountIds,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Returns uncategorized transaction counts by account ID for the provided account IDs.
+    /// Split transactions are excluded because split line categories carry categorization state.
+    /// Missing keys indicate an account has zero uncategorized transactions.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetUncategorizedCountsByAccountIdsAsync(
         IEnumerable<Guid> accountIds,
         CancellationToken cancellationToken = default
     );

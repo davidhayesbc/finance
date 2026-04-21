@@ -9,6 +9,7 @@ using Privestio.Application.Configuration;
 using Privestio.Application.Interfaces;
 using Privestio.Application.Services;
 using Privestio.Domain.Interfaces;
+using Privestio.Infrastructure.Ai;
 using Privestio.Infrastructure.Data;
 using Privestio.Infrastructure.Data.Services;
 using Privestio.Infrastructure.ExchangeRates;
@@ -78,6 +79,16 @@ public static class DependencyInjection
         services.AddSingleton<TransactionFingerprintService>();
         services.AddScoped<IRuleEvaluator, CategorizationRuleEvaluator>();
         services.AddScoped<IFilePreviewService, CsvFilePreviewService>();
+
+        services.Configure<OllamaOptions>(configuration.GetSection("Ollama"));
+        services.AddHttpClient<IOllamaRuleSuggestionService, OllamaRuleSuggestionService>(
+            (serviceProvider, client) =>
+            {
+                var options = serviceProvider.GetRequiredService<IOptions<OllamaOptions>>().Value;
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds);
+            }
+        );
 
         // Price feed providers (Phase 5.4)
         services.Configure<PricingOptions>(configuration.GetSection("Pricing"));

@@ -27,6 +27,16 @@ public class TransactionRepository : ITransactionRepository
             .Include(t => t.Payee)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<Transaction>> GetByAccountIdAsync(
+        Guid accountId,
+        CancellationToken cancellationToken = default
+    ) =>
+        await _context
+            .Transactions.Where(t => t.AccountId == accountId)
+            .OrderByDescending(t => t.Date)
+            .ThenByDescending(t => t.Id)
+            .ToListAsync(cancellationToken);
+
     public async Task<(IReadOnlyList<Transaction> Items, string? NextCursor)> GetPagedAsync(
         Guid accountId,
         int pageSize,
@@ -287,5 +297,27 @@ public class TransactionRepository : ITransactionRepository
             .ToDictionaryAsync(x => x.AccountId, x => x.SignedSum, cancellationToken);
 
         return sums;
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetUncategorizedCountsByAccountIdsAsync(
+        IEnumerable<Guid> accountIds,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var idList = accountIds.ToList();
+        if (idList.Count == 0)
+            return new Dictionary<Guid, int>();
+
+        var counts = await _context
+            .Transactions.Where(t => idList.Contains(t.AccountId) && t.CategoryId == null && !t.IsSplit)
+            .GroupBy(t => t.AccountId)
+            .Select(g => new
+            {
+                AccountId = g.Key,
+                Count = g.Count(),
+            })
+            .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
+
+        return counts;
     }
 }

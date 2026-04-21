@@ -1,8 +1,11 @@
 @page "/import"
 @inject IImportService ImportService
 @inject IAccountService AccountService
+@inject ICategoryService CategoryService
 @inject IPluginCatalogWebService PluginCatalogService
 @inject NavigationManager Navigation
+
+@using Microsoft.AspNetCore.Components
 
 <PageTitle>Import Transactions — Privestio</PageTitle>
 
@@ -213,6 +216,74 @@
                         </section>
                     }
 
+                    <section class="import-stage__panel">
+                        <div class="import-section-heading import-section-heading--split">
+                            <div>
+                                <h3 class="section-heading">AI rule suggestions</h3>
+                                <p>Use local Ollama to suggest reusable rules. Suggestions do not categorize transactions until you accept one.</p>
+                            </div>
+                            <FluentButton Appearance="Appearance.Outline"
+                                          Disabled="@(_isSuggesting || _isLoading || _selectedFile is null || _selectedAccountId is null)"
+                                          Loading="_isSuggesting"
+                                          OnClick="SuggestRulesAsync">
+                                Suggest Rules (AI)
+                            </FluentButton>
+                        </div>
+
+                        @if (_ruleSuggestions.Count == 0)
+                        {
+                            <p class="field-hint">No suggestions yet. Generate suggestions after previewing your import file.</p>
+                        }
+                        else
+                        {
+                            <FluentDataGrid Items="_ruleSuggestions.AsQueryable()" aria-label="AI rule suggestions" TGridItem="RuleSuggestionResponse"
+                                            Class="data-grid--elevated table-surface table-surface--grid" ResizableColumns="true"
+                                            ResizeType="DataGridResizeType.Discrete" HeaderCellAsButtonWithMenu="true" ResizeColumnOnAllRows="false"
+                                            ShowHover="true" DisplayMode="DataGridDisplayMode.Table" RowSize="DataGridRowSize.Medium">
+                                <TemplateColumn Title="Suggestion" SortBy="@(GridSort<RuleSuggestionResponse>.ByAscending(r => r.Name))" Width="260px">
+                                    <span class="cell-truncate" title="@context.Name">@context.Name</span>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Suggested Category" SortBy="@(GridSort<RuleSuggestionResponse>.ByAscending(r => r.SuggestedCategoryName))" Width="200px">
+                                    <span class="cell-truncate" title="@context.SuggestedCategoryName">@context.SuggestedCategoryName</span>
+                                </TemplateColumn>
+                                <PropertyColumn Property="@(r => r.MatchCount)" Title="Matches" Width="90px" />
+                                <PropertyColumn Property="@(r => r.MatchRate)" Title="Match Rate" Format="P1" Width="110px" />
+                                <TemplateColumn Title="Rule Conditions" Width="360px">
+                                    <span class="cell-truncate cell-truncate--mono" title="@context.Conditions">@context.Conditions</span>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Accept" Width="320px">
+                                    <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact">
+                                        <FluentSelect TOption="string"
+                                                      Value="@GetSelectedCategoryId(context)"
+                                                      ValueChanged="@(value => SetSelectedCategoryId(context, value))"
+                                                      Width="200px"
+                                                      AriaLabel="Select category for accepted rule">
+                                            <FluentOption TOption="string" Value="">Select category</FluentOption>
+                                            @foreach (var category in _categories.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
+                                            {
+                                                <FluentOption TOption="string" Value="@category.Id.ToString()">@category.Name</FluentOption>
+                                            }
+                                        </FluentSelect>
+                                        <FluentSelect TOption="string"
+                                                      Value="@GetSelectedApplyScope(context)"
+                                                      ValueChanged="@(value => SetSelectedApplyScope(context, value))"
+                                                      Width="220px"
+                                                      AriaLabel="Select apply scope for accepted rule">
+                                            <FluentOption TOption="string" Value="AllMatching">All matching transactions</FluentOption>
+                                            <FluentOption TOption="string" Value="UncategorizedOnly">Uncategorized only</FluentOption>
+                                        </FluentSelect>
+                                        <FluentButton Appearance="Appearance.Accent"
+                                                      Disabled="@(_isAccepting || !CanAcceptSuggestion(context))"
+                                                      Loading="_isAccepting"
+                                                      OnClick="@(() => AcceptSuggestionAsync(context))">
+                                            Accept
+                                        </FluentButton>
+                                    </FluentStack>
+                                </TemplateColumn>
+                            </FluentDataGrid>
+                        }
+                    </section>
+
                     <div class="action-cluster">
                         <FluentButton Appearance="Appearance.Accent" Disabled="@(_previewResult.ImportedCount == 0 || _isLoading)" Loading="_isLoading" OnClick="CommitImportAsync">
                             Commit Import (@_previewResult.ImportedCount transactions)
@@ -322,6 +393,14 @@
         new(4, ImportStep.Complete, "Commit", "Confirm the result and move to the next useful action."),
     ];
 
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "accountId")]
+    public Guid? PreselectedAccountId { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "focus")]
+    public string? FocusArea { get; set; }
+
     private ImportStep _step = ImportStep.Upload;
     private List<AccountResponse> _accounts = [];
     private string? _selectedAccountIdStr;
@@ -333,11 +412,19 @@
     private ImportResultResponse? _previewResult;
     private ImportResultResponse? _importResult;
     private Dictionary<string, string> _columnMappings = new();
+    private readonly Dictionary<string, string> _selectedCategoryBySuggestion =
+        new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _selectedApplyScopeBySuggestion =
+        new(StringComparer.Ordinal);
     private Guid? _activeMappingId;
     private List<SampleRow> _sampleRows = [];
+    private List<CategoryResponse> _categories = [];
+    private List<RuleSuggestionResponse> _ruleSuggestions = [];
     private string? _errorMessage;
     private string? _successMessage;
     private bool _isLoading;
+    private bool _isSuggesting;
+    private bool _isAccepting;
     private readonly HashSet<string> _registeredImportFormats = new(StringComparer.OrdinalIgnoreCase);
     private string _buyKeywords = "buy, purchase, contribution, reinvest, deposit, in, long";
     private string _sellKeywords = "sell, redeem, withdraw, out";
@@ -390,6 +477,18 @@
     protected override async Task OnInitializedAsync()
     {
         _accounts = (await AccountService.GetAccountsAsync()).ToList();
+        _categories = (await CategoryService.GetCategoriesAsync()).ToList();
+        ApplyPreselectedAccount();
+
+        if (
+            string.Equals(FocusArea, "ai", StringComparison.OrdinalIgnoreCase)
+            && _selectedAccountId is not null
+        )
+        {
+            _successMessage =
+                "Account selected from AI rules workspace. Upload a sample file, preview it, then generate AI suggestions.";
+        }
+
         var catalog = await PluginCatalogService.GetPluginCatalogAsync();
         foreach (var format in catalog?.TransactionImportFormats ?? [])
         {
@@ -398,6 +497,12 @@
                 _registeredImportFormats.Add(format.Trim());
             }
         }
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        ApplyPreselectedAccount();
+        return Task.CompletedTask;
     }
 
     private async Task HandleFileSelectedAsync(FluentInputFileEventArgs args)
@@ -670,6 +775,95 @@
         _isLoading = false;
     }
 
+    private async Task SuggestRulesAsync()
+    {
+        if (_selectedAccountId is null || _selectedFile is null)
+        {
+            return;
+        }
+
+        _isSuggesting = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var mappingId = await EnsureActiveMappingAsync();
+        if (!mappingId.HasValue)
+        {
+            _errorMessage = "Failed to persist column mapping for AI suggestions.";
+            _isSuggesting = false;
+            return;
+        }
+
+        _selectedFile.Position = 0;
+        _ruleSuggestions = (
+            await ImportService.SuggestRulesAsync(
+                _selectedAccountId.Value,
+                _selectedFile,
+                _selectedFileName!,
+                mappingId.Value,
+                maxSuggestions: 8
+            )
+        ).ToList();
+
+        _selectedCategoryBySuggestion.Clear();
+        _selectedApplyScopeBySuggestion.Clear();
+
+        if (_ruleSuggestions.Count == 0)
+        {
+            _errorMessage = "No rule suggestions were returned by Ollama. Try with a larger or more repetitive sample.";
+        }
+        else
+        {
+            _successMessage = $"Generated {_ruleSuggestions.Count} suggested rule(s).";
+        }
+
+        _isSuggesting = false;
+    }
+
+    private async Task AcceptSuggestionAsync(RuleSuggestionResponse suggestion)
+    {
+        if (_selectedAccountId is null)
+        {
+            return;
+        }
+
+        var selectedCategoryId = GetSelectedCategoryId(suggestion);
+        if (!Guid.TryParse(selectedCategoryId, out var categoryId))
+        {
+            _errorMessage = "Select a category before accepting the rule suggestion.";
+            return;
+        }
+
+        _isAccepting = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var request = new AcceptRuleSuggestionRequest
+        {
+            Name = suggestion.Name,
+            Priority = suggestion.Priority,
+            Conditions = suggestion.Conditions,
+            CategoryId = categoryId,
+            IsEnabled = true,
+            ApplyScope = ParseApplyScope(GetSelectedApplyScope(suggestion)),
+        };
+
+        var result = await ImportService.AcceptSuggestedRuleAsync(_selectedAccountId.Value, request);
+        if (result is null)
+        {
+            _errorMessage = "Failed to accept and apply the suggested rule.";
+            _isAccepting = false;
+            return;
+        }
+
+        _ruleSuggestions.Remove(suggestion);
+        _selectedCategoryBySuggestion.Remove(GetSuggestionKey(suggestion));
+        _selectedApplyScopeBySuggestion.Remove(GetSuggestionKey(suggestion));
+        _successMessage =
+            $"Rule \"{result.Rule.Name}\" created and applied to {result.AppliedTransactionCount} transaction(s) in this account.";
+        _isAccepting = false;
+    }
+
     private async Task SaveMappingAsync()
     {
         if (_filePreview is null)
@@ -720,6 +914,9 @@
         _columnMappings.Clear();
         _activeMappingId = null;
         _sampleRows.Clear();
+        _ruleSuggestions.Clear();
+        _selectedCategoryBySuggestion.Clear();
+        _selectedApplyScopeBySuggestion.Clear();
         _errorMessage = null;
         _successMessage = null;
         _buyKeywords = "buy, purchase, contribution, reinvest, deposit, in, long";
@@ -728,6 +925,22 @@
         _cashEquivalentSymbols = "CASH";
         _ignoreRowPatterns = string.Empty;
         _amountSignFlipped = false;
+    }
+
+    private void ApplyPreselectedAccount()
+    {
+        if (PreselectedAccountId is null)
+        {
+            return;
+        }
+
+        var accountExists = _accounts.Any(account => account.Id == PreselectedAccountId.Value);
+        if (!accountExists)
+        {
+            return;
+        }
+
+        _selectedAccountIdStr = PreselectedAccountId.Value.ToString();
     }
 
     private bool IsDetectedFormatRegistered()
@@ -810,6 +1023,51 @@
         string.IsNullOrWhiteSpace(value)
             ? null
             : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private bool CanAcceptSuggestion(RuleSuggestionResponse suggestion) =>
+        Guid.TryParse(GetSelectedCategoryId(suggestion), out _);
+
+    private string GetSelectedCategoryId(RuleSuggestionResponse suggestion) =>
+        _selectedCategoryBySuggestion.TryGetValue(GetSuggestionKey(suggestion), out var value)
+            ? value
+            : string.Empty;
+
+    private void SetSelectedCategoryId(RuleSuggestionResponse suggestion, string? categoryId)
+    {
+        var key = GetSuggestionKey(suggestion);
+        if (string.IsNullOrWhiteSpace(categoryId))
+        {
+            _selectedCategoryBySuggestion.Remove(key);
+            return;
+        }
+
+        _selectedCategoryBySuggestion[key] = categoryId;
+    }
+
+    private string GetSelectedApplyScope(RuleSuggestionResponse suggestion) =>
+        _selectedApplyScopeBySuggestion.TryGetValue(GetSuggestionKey(suggestion), out var value)
+            ? value
+            : "AllMatching";
+
+    private void SetSelectedApplyScope(RuleSuggestionResponse suggestion, string? scope)
+    {
+        var key = GetSuggestionKey(suggestion);
+        if (string.IsNullOrWhiteSpace(scope))
+        {
+            _selectedApplyScopeBySuggestion.Remove(key);
+            return;
+        }
+
+        _selectedApplyScopeBySuggestion[key] = scope;
+    }
+
+    private static RuleApplyScope ParseApplyScope(string? value) =>
+        Enum.TryParse<RuleApplyScope>(value, ignoreCase: true, out var parsed)
+            ? parsed
+            : RuleApplyScope.AllMatching;
+
+    private static string GetSuggestionKey(RuleSuggestionResponse suggestion) =>
+        $"{suggestion.Name}|{suggestion.Conditions}|{suggestion.Priority}";
 
     private static string FormatInstitution(AccountResponse account) =>
         string.IsNullOrWhiteSpace(account.Institution) ? "No institution" : account.Institution;

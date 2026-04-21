@@ -14,6 +14,9 @@
                 Description="Keep rule priority, JSON conditions, and enablement in an interface that feels like an operations panel instead of raw scaffolding."
                 Compact="true">
         <Actions>
+            <FluentButton Appearance="Appearance.Outline" OnClick='@(() => Navigation.NavigateTo("/rules/ai"))' aria-label="Open AI rule workspace">
+                AI Rule Workspace
+            </FluentButton>
             <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateForm" aria-label="Create new rule">
                 New Rule
             </FluentButton>

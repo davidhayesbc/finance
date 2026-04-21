@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Privestio.Application.Commands.CreateAccount;
 using Privestio.Application.Commands.UpdateAccount;
 using Privestio.Application.Queries.GetAccountById;
+using Privestio.Application.Queries.GetAccountUncategorizedCounts;
 using Privestio.Application.Queries.GetAccounts;
 using Privestio.Application.Queries.GetAccountValueHistory;
 using Privestio.Contracts.Requests;
@@ -26,6 +27,11 @@ public static class AccountEndpoints
             .MapGet("/{id:guid}", GetAccountByIdAsync)
             .WithName("GetAccountById")
             .WithSummary("Get a specific account by ID");
+
+        group
+            .MapGet("/uncategorized-counts", GetAccountUncategorizedCountsAsync)
+            .WithName("GetAccountUncategorizedCounts")
+            .WithSummary("Get uncategorized transaction counts for each accessible account");
 
         group
             .MapGet("/{id:guid}/history", GetAccountValueHistoryAsync)
@@ -75,6 +81,23 @@ public static class AccountEndpoints
             cancellationToken
         );
         return result is null ? Results.NotFound() : Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetAccountUncategorizedCountsAsync(
+        IMediator mediator,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken
+    )
+    {
+        var userId = EndpointHelpers.GetUserId(user);
+        if (userId is null)
+            return Results.Unauthorized();
+
+        var result = await mediator.Send(
+            new GetAccountUncategorizedCountsQuery(userId.Value),
+            cancellationToken
+        );
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetAccountValueHistoryAsync(

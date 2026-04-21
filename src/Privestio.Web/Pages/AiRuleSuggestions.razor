@@ -1,0 +1,119 @@
+@page "/rules/ai"
+@inject IAccountService AccountService
+@inject NavigationManager Navigation
+
+<PageTitle>AI Rule Suggestions — Privestio</PageTitle>
+
+<section class="page-shell panel-stack" data-testid="ai-rule-suggestions-page">
+    <PageHeader Eyebrow="Rules" Title="AI rule suggestions"
+                Description="Start with accounts that still have uncategorized activity, then drill into a selected account to generate and accept reusable AI rule suggestions."
+                Compact="true">
+        <Actions>
+            <FluentButton Appearance="Appearance.Outline" OnClick="@(() => Navigation.NavigateTo("/rules"))">
+                Manual Rules
+            </FluentButton>
+        </Actions>
+    </PageHeader>
+
+    <MessageStack ErrorMessage="@_errorMessage" SuccessMessage="@_successMessage" />
+
+    @if (_isLoading)
+    {
+        <LoadingSpinner AriaLabel="Loading accounts with uncategorized transactions" />
+    }
+    else if (_rows.Count == 0)
+    {
+        <EmptyStateCard Message="No uncategorized transactions detected across your accessible accounts." />
+    }
+    else
+    {
+        <FluentCard Class="surface-card data-card">
+            <FluentDataGrid Items="_rows.AsQueryable()"
+                            aria-label="Accounts with uncategorized transactions"
+                            TGridItem="AccountUncategorizedRow"
+                            Class="data-grid--elevated"
+                            ResizableColumns="true"
+                            ResizeType="DataGridResizeType.Discrete"
+                            HeaderCellAsButtonWithMenu="true"
+                            ResizeColumnOnAllRows="false"
+                            ShowHover="true"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            RowSize="DataGridRowSize.Medium">
+                <TemplateColumn Title="Account" SortBy="@(GridSort<AccountUncategorizedRow>.ByAscending(r => r.AccountName))" Width="260px">
+                    <span class="cell-truncate" title="@context.AccountName">@context.AccountName</span>
+                </TemplateColumn>
+                <PropertyColumn Property="@(r => r.AccountType)" Title="Type" Width="160px" />
+                <PropertyColumn Property="@(r => r.Institution)" Title="Institution" Width="220px" />
+                <PropertyColumn Property="@(r => r.UncategorizedCount)" Title="Uncategorized" Width="130px" />
+                <TemplateColumn Title="Actions" Width="220px">
+                    <FluentButton Appearance="Appearance.Accent"
+                                  OnClick="@(() => OpenImportForAccount(context.AccountId))">
+                        Drill Into AI Suggestions
+                    </FluentButton>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    }
+</section>
+
+@code {
+    private readonly List<AccountUncategorizedRow> _rows = [];
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var accounts = await AccountService.GetAccountsAsync();
+            var uncategorizedCounts = await AccountService.GetUncategorizedCountsAsync();
+            var countByAccountId = uncategorizedCounts.ToDictionary(c => c.AccountId, c => c.UncategorizedCount);
+
+            _rows.Clear();
+            _rows.AddRange(
+                accounts
+                    .Select(account =>
+                    {
+                        var count = countByAccountId.GetValueOrDefault(account.Id, 0);
+                        return new AccountUncategorizedRow(
+                            account.Id,
+                            account.Name,
+                            account.AccountType,
+                            string.IsNullOrWhiteSpace(account.Institution) ? "-" : account.Institution,
+                            count
+                        );
+                    })
+                    .Where(row => row.UncategorizedCount > 0)
+                    .OrderByDescending(row => row.UncategorizedCount)
+                    .ThenBy(row => row.AccountName, StringComparer.OrdinalIgnoreCase)
+            );
+
+            if (_rows.Count > 0)
+            {
+                _successMessage = $"{_rows.Count} account(s) need categorization cleanup.";
+            }
+        }
+        catch
+        {
+            _errorMessage = "Unable to load account categorization posture.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenImportForAccount(Guid accountId)
+    {
+        Navigation.NavigateTo($"/import?accountId={accountId}&focus=ai");
+    }
+
+    private sealed record AccountUncategorizedRow(
+        Guid AccountId,
+        string AccountName,
+        string AccountType,
+        string Institution,
+        int UncategorizedCount
+    );
+}

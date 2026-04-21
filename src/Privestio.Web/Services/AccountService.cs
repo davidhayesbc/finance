@@ -8,6 +8,7 @@ public interface IAccountService
 {
     Task<IReadOnlyList<AccountResponse>> GetAccountsAsync();
     Task<AccountResponse?> GetAccountByIdAsync(Guid id);
+    Task<IReadOnlyList<AccountUncategorizedCountResponse>> GetUncategorizedCountsAsync();
     Task<AccountValueHistoryResponse?> GetAccountValueHistoryAsync(
         Guid id,
         DateOnly? fromDate = null,
@@ -49,6 +50,21 @@ public class AccountService : IAccountService
         catch
         {
             return null;
+        }
+    }
+
+    public async Task<IReadOnlyList<AccountUncategorizedCountResponse>> GetUncategorizedCountsAsync()
+    {
+        try
+        {
+            var counts = await _httpClient.GetFromJsonAsync<List<AccountUncategorizedCountResponse>>(
+                "/api/v1/accounts/uncategorized-counts"
+            );
+            return counts ?? [];
+        }
+        catch
+        {
+            return [];
         }
     }
 

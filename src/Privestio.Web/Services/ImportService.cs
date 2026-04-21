@@ -21,6 +21,17 @@ public interface IImportService
     Task<ImportMappingResponse?> CreateMappingAsync(CreateImportMappingRequest request);
     Task<ImportMappingResponse?> UpdateMappingAsync(Guid id, UpdateImportMappingRequest request);
     Task<bool> DeleteMappingAsync(Guid id);
+    Task<IReadOnlyList<RuleSuggestionResponse>> SuggestRulesAsync(
+        Guid accountId,
+        Stream fileStream,
+        string fileName,
+        Guid mappingId,
+        int maxSuggestions = 8
+    );
+    Task<AcceptRuleSuggestionResponse?> AcceptSuggestedRuleAsync(
+        Guid accountId,
+        AcceptRuleSuggestionRequest request
+    );
 }
 
 public class ImportService : IImportService
@@ -185,6 +196,57 @@ public class ImportService : IImportService
         catch
         {
             return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<RuleSuggestionResponse>> SuggestRulesAsync(
+        Guid accountId,
+        Stream fileStream,
+        string fileName,
+        Guid mappingId,
+        int maxSuggestions = 8
+    )
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var streamContent = new StreamContent(fileStream);
+            content.Add(streamContent, "file", fileName);
+
+            var url =
+                $"/api/v1/rules/suggestions/{accountId}?mappingId={mappingId}&maxSuggestions={maxSuggestions}";
+            var response = await _httpClient.PostAsync(url, content);
+            if (!response.IsSuccessStatusCode)
+                return [];
+
+            var suggestions = await response.Content.ReadFromJsonAsync<List<RuleSuggestionResponse>>();
+            return suggestions ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task<AcceptRuleSuggestionResponse?> AcceptSuggestedRuleAsync(
+        Guid accountId,
+        AcceptRuleSuggestionRequest request
+    )
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"/api/v1/rules/suggestions/{accountId}/accept",
+                request
+            );
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<AcceptRuleSuggestionResponse>();
+        }
+        catch
+        {
+            return null;
         }
     }
 }
