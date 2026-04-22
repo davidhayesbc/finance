@@ -83,48 +83,67 @@
                 }
                 else
                 {
-                    <FluentDataGrid Items="_ruleSuggestions.AsQueryable()"
-                                    aria-label="AI rule suggestions"
-                                    TGridItem="RuleSuggestionResponse"
-                                    Class="data-grid--elevated"
-                                    ShowHover="true"
-                                    DisplayMode="DataGridDisplayMode.Table"
-                                    RowSize="DataGridRowSize.Large">
-                        <PropertyColumn Property="@(r => r.Name)" Title="Rule Name" Width="220px" />
-                        <PropertyColumn Property="@(r => r.SuggestedCategoryName)" Title="Suggested Category" Width="200px" />
-                        <PropertyColumn Property="@(r => r.Rationale)" Title="Rationale" Width="300px" />
-                        <PropertyColumn Property="@(r => r.MatchCount)" Title="Matches" Width="90px" />
-                        <PropertyColumn Property="@(r => r.MatchRate)" Title="Match Rate" Format="P1" Width="110px" />
-                        <TemplateColumn Title="Accept" Width="360px">
-                            <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact">
-                                <FluentSelect TOption="string"
-                                              Value="@GetSelectedCategoryId(context)"
-                                              ValueChanged="@(value => SetSelectedCategoryId(context, value))"
-                                              Width="200px"
-                                              AriaLabel="Select category for accepted rule">
-                                    <FluentOption TOption="string" Value="">Select category</FluentOption>
-                                    @foreach (var category in _categories.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
+                    <div class="table-surface table-surface--grid table-surface--scroll ai-suggestions-grid-wrap">
+                        <FluentDataGrid Items="_ruleSuggestions.AsQueryable()"
+                                        aria-label="AI rule suggestions"
+                                        TGridItem="RuleSuggestionResponse"
+                                        Class="data-grid--elevated data-grid--dense data-grid--ai-suggestions"
+                                        ShowHover="true"
+                                        DisplayMode="DataGridDisplayMode.Table"
+                                        RowSize="DataGridRowSize.Medium">
+                            <PropertyColumn Property="@(r => r.Name)" Title="Rule" Width="180px" />
+                            <PropertyColumn Property="@(r => r.SuggestedCategoryName)" Title="Category" Width="150px" />
+                            <TemplateColumn Title="Matching transactions" Width="380px">
+                                <div class="ai-suggestion-matches" title="Representative matching transactions">
+                                    @foreach (var sample in context.MatchSamples)
                                     {
-                                        <FluentOption TOption="string" Value="@category.Id.ToString()">@category.Name</FluentOption>
+                                        <div class="ai-suggestion-match-row">
+                                            <span class="cell-truncate" title="@sample.Description">@sample.Description</span>
+                                            <span class="ai-suggestion-match-amount">@sample.Amount.ToString("C2")</span>
+                                            @if (sample.Frequency > 1)
+                                            {
+                                                <span class="ai-suggestion-match-frequency">x@sample.Frequency</span>
+                                            }
+                                        </div>
                                     }
-                                </FluentSelect>
-                                <FluentSelect TOption="string"
-                                              Value="@GetSelectedApplyScope(context)"
-                                              ValueChanged="@(value => SetSelectedApplyScope(context, value))"
-                                              Width="200px"
-                                              AriaLabel="Select apply scope for accepted rule">
-                                    <FluentOption TOption="string" Value="AllMatching">All matching</FluentOption>
-                                    <FluentOption TOption="string" Value="UncategorizedOnly">Uncategorized only</FluentOption>
-                                </FluentSelect>
-                                <FluentButton Appearance="Appearance.Accent"
-                                              Disabled="@(_isAccepting || !CanAcceptSuggestion(context))"
-                                              Loading="@_isAccepting"
-                                              OnClick="@(() => AcceptSuggestionAsync(context))">
-                                    Accept
-                                </FluentButton>
-                            </FluentStack>
-                        </TemplateColumn>
-                    </FluentDataGrid>
+                                </div>
+                            </TemplateColumn>
+                            <PropertyColumn Property="@(r => r.Rationale)" Title="Rationale" Width="240px" />
+                            <PropertyColumn Property="@(r => r.MatchCount)" Title="Matches" Width="78px" />
+                            <PropertyColumn Property="@(r => r.MatchRate)" Title="Rate" Format="P1" Width="70px" />
+                            <TemplateColumn Title="Accept" Width="300px">
+                                <div class="ai-suggestion-actions">
+                                    <FluentStack Orientation="Orientation.Horizontal" Class="grid-actions grid-actions--compact ai-suggestion-actions__selectors">
+                                        <FluentSelect TOption="string"
+                                                      Value="@GetSelectedCategoryId(context)"
+                                                      ValueChanged="@(value => SetSelectedCategoryId(context, value))"
+                                                      Width="148px"
+                                                      AriaLabel="Select category for accepted rule">
+                                            <FluentOption TOption="string" Value="">Category</FluentOption>
+                                            @foreach (var category in _categories.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
+                                            {
+                                                <FluentOption TOption="string" Value="@category.Id.ToString()">@category.Name</FluentOption>
+                                            }
+                                        </FluentSelect>
+                                        <FluentSelect TOption="string"
+                                                      Value="@GetSelectedApplyScope(context)"
+                                                      ValueChanged="@(value => SetSelectedApplyScope(context, value))"
+                                                      Width="148px"
+                                                      AriaLabel="Select apply scope for accepted rule">
+                                            <FluentOption TOption="string" Value="AllMatching">All matching</FluentOption>
+                                            <FluentOption TOption="string" Value="UncategorizedOnly">Uncategorized</FluentOption>
+                                        </FluentSelect>
+                                    </FluentStack>
+                                    <FluentButton Appearance="Appearance.Accent"
+                                                  Disabled="@(_isAccepting || !CanAcceptSuggestion(context))"
+                                                  Loading="@_isAccepting"
+                                                  OnClick="@(() => AcceptSuggestionAsync(context))">
+                                        Accept
+                                    </FluentButton>
+                                </div>
+                            </TemplateColumn>
+                        </FluentDataGrid>
+                    </div>
                 }
             </section>
         }

@@ -1441,6 +1441,52 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.ai-suggestions-grid-wrap {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+.ai-suggestions-grid-wrap .data-grid--ai-suggestions {
+    min-width: 1420px;
+    width: max-content;
+}
+.data-grid--ai-suggestions td {
+    padding: 10px 12px;
+}
+.ai-suggestion-matches {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+.ai-suggestion-match-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 0.78rem;
+    line-height: 1.25;
+}
+.ai-suggestion-match-amount {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+.ai-suggestion-match-frequency {
+    color: var(--text-soft);
+    font-size: 0.73rem;
+    white-space: nowrap;
+}
+.ai-suggestion-actions {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+.ai-suggestion-actions__selectors {
+    justify-content: flex-start;
+}
+.ai-suggestion-actions fluent-button::part(control) {
+    min-width: 94px;
+}
 
 .data-grid--import-errors td:nth-child(2),
 .data-grid--import-errors td:nth-child(3) {

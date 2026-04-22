@@ -95,6 +95,7 @@ public class SuggestCategorizationRulesFromDbCommandHandler
                 continue;
 
             var matchRate = Math.Round((decimal)matchCount / rows.Count, 4);
+            var matchSamples = BuildMatchSamples(rows, conditions);
             suggestions.Add(
                 new RuleSuggestionResponse
                 {
@@ -105,6 +106,7 @@ public class SuggestCategorizationRulesFromDbCommandHandler
                     Rationale = draft.Rationale.Trim(),
                     MatchCount = matchCount,
                     MatchRate = matchRate,
+                    MatchSamples = matchSamples,
                 }
             );
         }
@@ -117,26 +119,49 @@ public class SuggestCategorizationRulesFromDbCommandHandler
         RuleConditions conditions
     )
     {
-        var count = 0;
-        foreach (var row in rows)
-        {
-            if (
-                !row.Description.Contains(
-                    conditions.DescriptionContains,
-                    StringComparison.OrdinalIgnoreCase
+        return rows.Count(row => Matches(row, conditions));
+    }
+
+    private static IReadOnlyList<RuleSuggestionMatchSampleResponse> BuildMatchSamples(
+        IReadOnlyCollection<RuleSuggestionInputRow> rows,
+        RuleConditions conditions
+    ) =>
+        rows.Where(row => Matches(row, conditions))
+            .GroupBy(row =>
+                new RuleSuggestionGroupKey(
+                    NormalizeDescriptionForGrouping(row.Description),
+                    decimal.Round(row.Amount, 2, MidpointRounding.ToEven)
                 )
             )
-                continue;
+            .OrderByDescending(group => group.Count())
+            .Select(group =>
+                new RuleSuggestionMatchSampleResponse
+                {
+                    Description = group.First().Description,
+                    Amount = decimal.Round(group.First().Amount, 2, MidpointRounding.ToEven),
+                    Frequency = group.Count(),
+                }
+            )
+            .Take(3)
+            .ToList();
 
-            if (conditions.MinAmount.HasValue && row.Amount < conditions.MinAmount.Value)
-                continue;
+    private static bool Matches(RuleSuggestionInputRow row, RuleConditions conditions)
+    {
+        if (
+            !row.Description.Contains(
+                conditions.DescriptionContains,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+            return false;
 
-            if (conditions.MaxAmount.HasValue && row.Amount > conditions.MaxAmount.Value)
-                continue;
+        if (conditions.MinAmount.HasValue && row.Amount < conditions.MinAmount.Value)
+            return false;
 
-            count++;
-        }
-        return count;
+        if (conditions.MaxAmount.HasValue && row.Amount > conditions.MaxAmount.Value)
+            return false;
+
+        return true;
     }
 
     private static string NormalizeDescriptionForGrouping(string description) =>

@@ -105,6 +105,10 @@ public class SuggestCategorizationRulesFromDbCommandTests
         result.Should().HaveCount(1);
         result[0].MatchCount.Should().Be(3);
         result[0].MatchRate.Should().Be(0.75m);
+        result[0].MatchSamples.Should().HaveCount(1);
+        result[0].MatchSamples[0].Description.Should().ContainEquivalentOf("FortisBC");
+        result[0].MatchSamples[0].Amount.Should().Be(63.55m);
+        result[0].MatchSamples[0].Frequency.Should().Be(3);
     }
 
     private void SetupBaseDependencies()
