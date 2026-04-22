@@ -9,7 +9,7 @@ namespace Privestio.Application.Commands.SuggestCategorizationRulesFromDb;
 public class SuggestCategorizationRulesFromDbCommandHandler
     : IRequestHandler<SuggestCategorizationRulesFromDbCommand, IReadOnlyList<RuleSuggestionResponse>>
 {
-    private const int MaxRowsForPrompt = 300;
+    private const int MaxRowsForPrompt = 60;
 
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOllamaRuleSuggestionService _ollamaService;
@@ -28,6 +28,8 @@ public class SuggestCategorizationRulesFromDbCommandHandler
         CancellationToken cancellationToken
     )
     {
+        var effectiveMaxSuggestions = Math.Max(1, Math.Min(request.MaxSuggestions, 4));
+
         var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
         if (account is null)
             throw new KeyNotFoundException("Account not found.");
@@ -38,7 +40,7 @@ public class SuggestCategorizationRulesFromDbCommandHandler
 
         var transactions = await _unitOfWork.Transactions.GetUncategorizedByAccountIdAsync(
             request.AccountId,
-            Math.Min(MaxRowsForPrompt, request.MaxSuggestions * 20),
+            Math.Min(MaxRowsForPrompt, effectiveMaxSuggestions * 4),
             cancellationToken
         );
 
@@ -50,9 +52,21 @@ public class SuggestCategorizationRulesFromDbCommandHandler
         if (rows.Count == 0)
             return [];
 
+        var promptRows = rows
+            .GroupBy(r =>
+                new RuleSuggestionGroupKey(
+                    NormalizeDescriptionForGrouping(r.Description),
+                    decimal.Round(r.Amount, 2, MidpointRounding.ToEven)
+                )
+            )
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.First())
+            .Take(MaxRowsForPrompt)
+            .ToList();
+
         var drafts = await _ollamaService.SuggestRulesAsync(
-            rows,
-            request.MaxSuggestions,
+            promptRows,
+            effectiveMaxSuggestions,
             cancellationToken
         );
 
@@ -63,7 +77,7 @@ public class SuggestCategorizationRulesFromDbCommandHandler
                 && !string.IsNullOrWhiteSpace(d.SuggestedCategoryName)
             )
             .DistinctBy(d => d.DescriptionContains.Trim().ToUpperInvariant())
-            .Take(request.MaxSuggestions)
+            .Take(effectiveMaxSuggestions)
             .ToList();
 
         var suggestions = new List<RuleSuggestionResponse>(uniqueDrafts.Count);
@@ -125,9 +139,20 @@ public class SuggestCategorizationRulesFromDbCommandHandler
         return count;
     }
 
+    private static string NormalizeDescriptionForGrouping(string description) =>
+        string.Join(
+            ' ',
+            description
+                .Trim()
+                .ToUpperInvariant()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        );
+
     private sealed record RuleConditions(
         string DescriptionContains,
         decimal? MinAmount,
         decimal? MaxAmount
     );
+
+    private sealed record RuleSuggestionGroupKey(string NormalizedDescription, decimal RoundedAmount);
 }

@@ -190,6 +190,14 @@ public static class RuleEndpoints
         {
             return Results.BadRequest(new { Message = ex.Message });
         }
+        catch (TimeoutException ex)
+        {
+            return Results.Problem(
+                title: "AI suggestion request timed out",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status504GatewayTimeout
+            );
+        }
     }
 
     private static async Task<IResult> SuggestRulesFromDbAsync(
@@ -222,6 +230,18 @@ public static class RuleEndpoints
         catch (KeyNotFoundException)
         {
             return Results.NotFound();
+        }
+        catch (TimeoutException ex)
+        {
+            return Results.Problem(
+                title: "AI suggestion request timed out",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status504GatewayTimeout
+            );
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { Message = ex.Message });
         }
     }
 

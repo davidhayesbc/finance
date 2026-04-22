@@ -8,16 +8,18 @@ var postgres = builder.AddPostgres("postgres").WithPgAdmin().WithDataVolume();
 var privestioDb = postgres.AddDatabase("privestio");
 
 // Ollama (local LLM for AI rule suggestions)
-var ollama = builder.AddOllama("ollama").AddModel("llama3.1:8b");
+var ollama = builder.AddOllama("ollama").WithDataVolume();
+var ollamaModel = ollama.AddModel("llama3.1:8b");
 
 // API
 var api = builder
     .AddProject("api", "../Privestio.Api/Privestio.Api.csproj")
     .WithReference(privestioDb)
-    .WithReference(ollama)
+    .WithReference(ollamaModel)
     .WithEnvironment("Ollama__BaseUrl", ollama.GetEndpoint("http"))
     .WithEnvironment("Ollama__Model", "llama3.1:8b")
-    .WaitFor(privestioDb);
+    .WaitFor(privestioDb)
+    .WaitFor(ollamaModel);
 
 // Web (Blazor WASM PWA)
 builder
