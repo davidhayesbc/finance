@@ -10,6 +10,7 @@ public static class TransactionFormatHelper
         {
             "Credit" => "+",
             "Debit" => "-",
+            "Transfer" => transaction.Amount < 0 ? "-" : "+",
             _ => string.Empty,
         };
 
@@ -21,6 +22,9 @@ public static class TransactionFormatHelper
         {
             "Credit" => "transaction-amount--positive",
             "Debit" => "transaction-amount--negative",
+            "Transfer" => transaction.Amount < 0
+                ? "transaction-amount--negative"
+                : "transaction-amount--positive",
             _ => string.Empty,
         };
 }

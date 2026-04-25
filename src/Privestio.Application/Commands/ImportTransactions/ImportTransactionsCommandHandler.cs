@@ -235,10 +235,17 @@ public class ImportTransactionsCommandHandler
             );
             var normalizedDescription =
                 Truncate(inferredPresentation.Description, 500) ?? "Imported Transaction";
+            // Transfer transactions carry sign in the Amount (negative = outgoing, positive = incoming),
+            // matching how CreateTransferCommandHandler stores transfers.
+            // Credit/Debit transactions always store a positive Amount; sign is encoded in the Type.
+            var transactionAmount =
+                inferredPresentation.Type == TransactionType.Transfer
+                    ? new Money(item.Row.Amount)
+                    : new Money(Math.Abs(item.Row.Amount));
             var transaction = new Transaction(
                 request.AccountId,
                 item.Row.Date,
-                new Money(Math.Abs(item.Row.Amount)),
+                transactionAmount,
                 normalizedDescription,
                 inferredPresentation.Type
             )
@@ -799,7 +806,7 @@ public class ImportTransactionsCommandHandler
             .Where(candidate =>
                 candidate.Type == TransactionType.Transfer
                 && candidate.LinkedTransferId is null
-                && Math.Abs(candidate.Amount.Amount - transaction.Amount.Amount) <= 0.01m
+                && Math.Abs(Math.Abs(candidate.Amount.Amount) - Math.Abs(transaction.Amount.Amount)) <= 0.01m
                 && Math.Abs((candidate.Date.Date - transaction.Date.Date).Days) <= 3
                 && IsOppositeTransferDirection(candidate.Description, inferredPresentation.Direction)
             )
