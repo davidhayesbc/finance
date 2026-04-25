@@ -87,10 +87,14 @@ public class ImportTransactionsCommandTests
             DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
             _userId
         );
+        account.AccountNumber = "4000168507";
 
         _accountRepo
             .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(account);
+        _accountRepo
+            .Setup(r => r.GetByOwnerIdAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([account]);
 
         _holdingRepo
             .Setup(r => r.GetByAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
@@ -353,6 +357,162 @@ public class ImportTransactionsCommandTests
                 r.AddRangeAsync(
                     It.Is<IEnumerable<Transaction>>(txns =>
                         txns.First().Type == TransactionType.Credit
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_TangerineInternalTransfer_StoresTransferTypeAndResolvedAccountName()
+    {
+        var sourceAccount = new Account(
+            "Tangerine Family Treats",
+            AccountType.Banking,
+            AccountSubType.Savings,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId,
+            institution: "Tangerine"
+        );
+        sourceAccount.AccountNumber = "3032223739";
+
+        var destinationAccount = new Account(
+            "Tangerine Joint Account",
+            AccountType.Banking,
+            AccountSubType.Chequing,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId,
+            institution: "Tangerine"
+        );
+        destinationAccount.AccountNumber = "4000168507";
+
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(destinationAccount);
+        _accountRepo
+            .Setup(r => r.GetByOwnerIdAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([destinationAccount, sourceAccount]);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(
+                DateTime.Parse("2021-05-01"),
+                35.00m,
+                "Internet Deposit from Tangerine",
+                Notes: "Completed transfer from Tangerine SAV account 3032223739 ~ Internet Deposit",
+                ActivityType: "Internet Deposit from Tangerine"
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        await _handler.Handle(command, CancellationToken.None);
+
+        _transactionRepo.Verify(
+            r =>
+                r.AddRangeAsync(
+                    It.Is<IEnumerable<Transaction>>(txns =>
+                        txns.Any(t =>
+                            t.Type == TransactionType.Transfer
+                            && t.Description == "Transfer from Tangerine Family Treats"
+                            && t.Notes == "Completed transfer from Tangerine SAV account 3032223739 ~ Internet Deposit"
+                            && t.ActivityType == "Internet Deposit from Tangerine"
+                        )
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_TangerineInternalTransfer_LinksMatchingCounterpartTransactionAcrossAccounts()
+    {
+        var sourceAccount = new Account(
+            "Tangerine Family Treats",
+            AccountType.Banking,
+            AccountSubType.Savings,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId,
+            institution: "Tangerine"
+        );
+        sourceAccount.AccountNumber = "3032223739";
+
+        var destinationAccount = new Account(
+            "Tangerine Joint Account",
+            AccountType.Banking,
+            AccountSubType.Chequing,
+            "CAD",
+            new Domain.ValueObjects.Money(0m),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1)),
+            _userId,
+            institution: "Tangerine"
+        );
+        destinationAccount.AccountNumber = "4000168507";
+
+        _accountRepo
+            .Setup(r => r.GetByIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(destinationAccount);
+        _accountRepo
+            .Setup(r => r.GetByOwnerIdAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([destinationAccount, sourceAccount]);
+
+        var existingCounterpart = new Transaction(
+            sourceAccount.Id,
+            DateTime.Parse("2021-05-01"),
+            new Domain.ValueObjects.Money(35m),
+            "Transfer to Tangerine Joint Account",
+            TransactionType.Transfer
+        );
+
+        _transactionRepo
+            .Setup(r => r.GetByAccountIdAsync(sourceAccount.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([existingCounterpart]);
+        _transactionRepo
+            .Setup(r => r.UpdateAsync(It.IsAny<Transaction>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Transaction t, CancellationToken _) => t);
+
+        var rows = new List<ImportedTransactionRow>
+        {
+            new(
+                DateTime.Parse("2021-05-01"),
+                35.00m,
+                "Internet Deposit from Tangerine",
+                Notes: "Completed transfer from Tangerine SAV account 3032223739 ~ Internet Deposit",
+                ActivityType: "Internet Deposit from Tangerine"
+            ),
+        };
+        SetupParseResult(rows);
+
+        var command = CreateCommand("transactions.csv");
+        await _handler.Handle(command, CancellationToken.None);
+
+        _transactionRepo.Verify(
+            r =>
+                r.AddRangeAsync(
+                    It.Is<IEnumerable<Transaction>>(txns =>
+                        txns.Any(t =>
+                            t.Type == TransactionType.Transfer
+                            && t.LinkedTransferId == existingCounterpart.Id
+                        )
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+
+        _transactionRepo.Verify(
+            r =>
+                r.UpdateAsync(
+                    It.Is<Transaction>(t =>
+                        t.Id == existingCounterpart.Id && t.LinkedTransferId.HasValue
                     ),
                     It.IsAny<CancellationToken>()
                 ),

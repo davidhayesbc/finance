@@ -152,23 +152,56 @@
                                 RowSize="DataGridRowSize.Medium"
                                 ItemKey="@(account => account.Id)">
                     <TemplateColumn Title="Account" SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Name))" Width="250px">
-                        <div class="accounts-ledger__identity">
-                            <strong>@context.Name</strong>
-                            <span>@BuildAccountSubline(context)</span>
-                        </div>
+                        <button type="button"
+                                id="@GetRowCellButtonId(context.Id, "account")"
+                                class="accounts-ledger__row-link"
+                                @onclick='@(() => OpenAccountDetailAsync(context.Id))'
+                                aria-label='@($"Open details for {context.Name}")'>
+                            <div class="accounts-ledger__identity">
+                                <strong>@context.Name</strong>
+                                <span>@BuildAccountSubline(context)</span>
+                            </div>
+                        </button>
                     </TemplateColumn>
-                    <PropertyColumn Property="@(account => account.AccountType)" Title="Type" Sortable="true" Width="140px" />
+                    <TemplateColumn Title="Type" SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.AccountType))" Width="140px">
+                        <button type="button"
+                                class="accounts-ledger__row-link"
+                                @onclick='@(() => OpenAccountDetailAsync(context.Id))'
+                                aria-label='@($"Open details for {context.Name}")'>
+                            @context.AccountType
+                        </button>
+                    </TemplateColumn>
                     <TemplateColumn Title="Institution" SortBy="@(GridSort<AccountResponse>.ByAscending(a => a.Institution ?? string.Empty))" Width="180px">
-                        <span class="cell-truncate" title="@FormatInstitution(context)">@FormatInstitution(context)</span>
+                        <button type="button"
+                                class="accounts-ledger__row-link"
+                                @onclick='@(() => OpenAccountDetailAsync(context.Id))'
+                                aria-label='@($"Open details for {context.Name}")'>
+                            <span class="cell-truncate" title="@FormatInstitution(context)">@FormatInstitution(context)</span>
+                        </button>
                     </TemplateColumn>
                     <TemplateColumn Title="Status" SortBy="@(GridSort<AccountResponse>.ByAscending(a => BuildStatusLabel(a)))" Width="120px">
-                        <span class="@GetStatusBadgeClass(context)">@BuildStatusLabel(context)</span>
+                        <button type="button"
+                                class="accounts-ledger__row-link"
+                                @onclick='@(() => OpenAccountDetailAsync(context.Id))'
+                                aria-label='@($"Open details for {context.Name}")'>
+                            <span class="@GetStatusBadgeClass(context)">@BuildStatusLabel(context)</span>
+                        </button>
                     </TemplateColumn>
                     <TemplateColumn Title="Last updated" SortBy="@(GridSort<AccountResponse>.ByDescending(a => a.UpdatedAt))" Width="140px">
-                        @FormatUpdated(context.UpdatedAt)
+                        <button type="button"
+                                class="accounts-ledger__row-link"
+                                @onclick='@(() => OpenAccountDetailAsync(context.Id))'
+                                aria-label='@($"Open details for {context.Name}")'>
+                            @FormatUpdated(context.UpdatedAt)
+                        </button>
                     </TemplateColumn>
                     <TemplateColumn Title="Balance" SortBy="@(GridSort<AccountResponse>.ByDescending(a => Math.Abs(a.CurrentBalance)))" Width="150px">
-                        <div class="accounts-ledger__numeric">@FormatMoney(context.CurrentBalance, context.Currency)</div>
+                        <button type="button"
+                                class="accounts-ledger__row-link accounts-ledger__row-link--numeric"
+                                @onclick='@(() => OpenAccountDetailAsync(context.Id))'
+                                aria-label='@($"Open details for {context.Name}")'>
+                            <div class="accounts-ledger__numeric">@FormatMoney(context.CurrentBalance, context.Currency)</div>
+                        </button>
                     </TemplateColumn>
                     <TemplateColumn Title="Action" Width="110px">
                         <div class="grid-actions grid-actions--compact">
@@ -444,6 +477,8 @@
     private static string GetQuickViewButtonId(Guid accountId) => $"accounts-quick-{accountId:N}";
 
     private static string GetOpenButtonId(Guid accountId) => $"accounts-open-{accountId:N}";
+
+    private static string GetRowCellButtonId(Guid accountId, string columnKey) => $"accounts-row-{columnKey}-{accountId:N}";
 
     private void ApplyFilterFromQuery()
     {

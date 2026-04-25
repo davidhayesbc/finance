@@ -93,6 +93,63 @@ public class UiRegressionTests : PlaywrightTestBase
     }
 
     [Fact]
+    public async Task AccountsPage_AllowsRowDrillIn_ToAccountDetail()
+    {
+        var auth = await RegisterAndAuthenticateAsync(
+            displayName: "Accounts Row Drilldown User"
+        );
+        var account = await CreateAccountViaApiAsync(
+            auth.AccessToken,
+            "Accounts Row Drilldown Chequing",
+            "Banking",
+            "Chequing"
+        );
+
+        await GotoRelativeAsync("/accounts");
+        await Page.GetByTestId("accounts-page").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
+        var openButtonId = $"accounts-open-{account.Id:N}";
+        var rowLink = Page.Locator($"#{openButtonId}").First;
+        await rowLink.WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+        await rowLink.ClickAsync();
+
+        await Page.WaitForURLAsync(new Regex($"{Regex.Escape(BaseUrl)}/accounts/{account.Id}.*"));
+        Assert.True(await Page.GetByTestId("account-detail-page").IsVisibleAsync());
+    }
+
+    [Fact]
+    public async Task AccountDetailPage_ShowsRefreshDate_AndSortableTransactionGrid()
+    {
+        var auth = await RegisterAndAuthenticateAsync(
+            displayName: "Account Detail Transactions User"
+        );
+        var account = await CreateAccountViaApiAsync(
+            auth.AccessToken,
+            "Account Detail Transactions Chequing",
+            "Banking",
+            "Chequing"
+        );
+        await CreateTransactionViaApiAsync(
+            auth.AccessToken,
+            account.Id,
+            amount: 42.10m,
+            description: "Regression Transaction"
+        );
+
+        await GotoRelativeAsync($"/accounts/{account.Id}");
+    await Page.GetByTestId("account-detail-page").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+
+        Assert.True(await Page.Locator("text=Refresh date").First.IsVisibleAsync());
+        await Page.GetByTestId("account-transactions-panel").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+        await Page.GetByTestId("account-transactions-grid").WaitForAsync(new() { State = Microsoft.Playwright.WaitForSelectorState.Visible });
+        Assert.True(await Page.GetByTestId("account-transactions-type-filter").IsVisibleAsync());
+
+        var amountSort = Page.Locator("button[aria-label='Sort by amount']").First;
+        Assert.True(await amountSort.IsVisibleAsync());
+        await amountSort.ClickAsync();
+    }
+
+    [Fact]
     public async Task ImportPage_ShowsWorkflowHeader_WhenAuthenticated()
     {
         await GotoRelativeAsync("/import");

@@ -117,6 +117,51 @@ public static class TransactionEndpoints
         if (userId is null || account is null || account.OwnerId != userId.Value)
             return Results.Forbid();
 
+        Guid? fromAccountId = null;
+        string? fromAccountName = null;
+        Guid? toAccountId = null;
+        string? toAccountName = null;
+
+        if (transaction.Type == TransactionType.Transfer && transaction.LinkedTransferId.HasValue)
+        {
+            var linked = await unitOfWork.Transactions.GetByIdAsync(
+                transaction.LinkedTransferId.Value,
+                cancellationToken
+            );
+
+            if (linked is not null)
+            {
+                var linkedAccount = await unitOfWork.Accounts.GetByIdAsync(
+                    linked.AccountId,
+                    cancellationToken
+                );
+
+                var isIncoming = transaction.Description.StartsWith(
+                    "Transfer from",
+                    StringComparison.OrdinalIgnoreCase
+                );
+                var isOutgoing = transaction.Description.StartsWith(
+                    "Transfer to",
+                    StringComparison.OrdinalIgnoreCase
+                );
+
+                if (isIncoming)
+                {
+                    fromAccountId = linked.AccountId;
+                    fromAccountName = linkedAccount?.Name;
+                    toAccountId = transaction.AccountId;
+                    toAccountName = account.Name;
+                }
+                else if (isOutgoing)
+                {
+                    fromAccountId = transaction.AccountId;
+                    fromAccountName = account.Name;
+                    toAccountId = linked.AccountId;
+                    toAccountName = linkedAccount?.Name;
+                }
+            }
+        }
+
         return Results.Ok(
             new
             {
@@ -127,6 +172,10 @@ public static class TransactionEndpoints
                 Currency = transaction.Amount.CurrencyCode,
                 transaction.Description,
                 TransactionType = transaction.Type.ToString(),
+                FromAccountId = fromAccountId,
+                FromAccountName = fromAccountName,
+                ToAccountId = toAccountId,
+                ToAccountName = toAccountName,
                 transaction.CategoryId,
                 transaction.PayeeId,
                 transaction.IsReconciled,

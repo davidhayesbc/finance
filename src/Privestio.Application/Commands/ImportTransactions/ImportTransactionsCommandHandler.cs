@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -214,6 +215,10 @@ public class ImportTransactionsCommandHandler
         var transactions = new List<Transaction>();
         var importedRows = new List<ImportedTransactionRow>();
         var duplicateCount = 0;
+        var ownerAccounts = await _unitOfWork.Accounts.GetByOwnerIdAsync(
+            account.OwnerId,
+            cancellationToken
+        );
 
         foreach (var item in rowsWithFingerprints)
         {
@@ -223,15 +228,19 @@ public class ImportTransactionsCommandHandler
                 continue;
             }
 
-            var type = item.Row.Amount >= 0 ? TransactionType.Credit : TransactionType.Debit;
+            var inferredPresentation = InferImportedTransactionPresentation(
+                item.Row,
+                account,
+                ownerAccounts
+            );
             var normalizedDescription =
-                Truncate(item.Row.Description, 500) ?? "Imported Transaction";
+                Truncate(inferredPresentation.Description, 500) ?? "Imported Transaction";
             var transaction = new Transaction(
                 request.AccountId,
                 item.Row.Date,
                 new Money(Math.Abs(item.Row.Amount)),
                 normalizedDescription,
-                type
+                inferredPresentation.Type
             )
             {
                 ImportFingerprint = item.Fingerprint,
@@ -247,6 +256,18 @@ public class ImportTransactionsCommandHandler
                 Quantity = NormalizeNullableDecimal(item.Row.Quantity),
                 UnitPrice = NormalizeNullableDecimal(item.Row.UnitPrice),
             };
+
+            if (
+                inferredPresentation.Type == TransactionType.Transfer
+                && inferredPresentation.CounterpartyAccountId.HasValue
+            )
+            {
+                await TryLinkToExistingTransferAsync(
+                    transaction,
+                    inferredPresentation,
+                    cancellationToken
+                );
+            }
 
             transactions.Add(transaction);
             importedRows.Add(item.Row);
@@ -705,6 +726,158 @@ public class ImportTransactionsCommandHandler
         !string.IsNullOrWhiteSpace(value)
         && terms.Any(term => value.Contains(term, StringComparison.OrdinalIgnoreCase));
 
+    private static ImportedTransactionPresentation InferImportedTransactionPresentation(
+        ImportedTransactionRow row,
+        Account destinationAccount,
+        IReadOnlyList<Account> ownerAccounts
+    )
+    {
+        var defaultType = row.Amount >= 0 ? TransactionType.Credit : TransactionType.Debit;
+
+        if (
+            destinationAccount.AccountType != AccountType.Banking
+            || !string.Equals(destinationAccount.Institution, "Tangerine", StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return new ImportedTransactionPresentation(defaultType, row.Description);
+        }
+
+        var direction = InferTangerineTransferDirection(row);
+        if (direction is null)
+            return new ImportedTransactionPresentation(defaultType, row.Description);
+
+        var counterpartAccountNumber = ExtractTangerineCounterpartyAccountNumber(row);
+        var counterpartName = ResolveCounterpartyAccountName(
+            counterpartAccountNumber,
+            destinationAccount,
+            ownerAccounts
+        );
+        var counterpartAccountId = ownerAccounts
+            .FirstOrDefault(account =>
+                account.Id != destinationAccount.Id
+                && !string.IsNullOrWhiteSpace(counterpartAccountNumber)
+                && string.Equals(
+                    account.AccountNumber,
+                    counterpartAccountNumber,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            ?.Id;
+
+        var counterpartLabel = counterpartName
+            ?? counterpartAccountNumber
+            ?? (direction == TransferDirection.Incoming ? "Tangerine savings" : "Tangerine account");
+
+        var description = direction == TransferDirection.Incoming
+            ? $"Transfer from {counterpartLabel}"
+            : $"Transfer to {counterpartLabel}";
+
+        return new ImportedTransactionPresentation(
+            TransactionType.Transfer,
+            description,
+            counterpartAccountId,
+            direction
+        );
+    }
+
+    private async Task TryLinkToExistingTransferAsync(
+        Transaction transaction,
+        ImportedTransactionPresentation inferredPresentation,
+        CancellationToken cancellationToken
+    )
+    {
+        var counterpartyAccountId = inferredPresentation.CounterpartyAccountId;
+        if (!counterpartyAccountId.HasValue)
+            return;
+
+        var candidates = await _unitOfWork.Transactions.GetByAccountIdAsync(
+            counterpartyAccountId.Value,
+            cancellationToken
+        ) ?? [];
+
+        var bestMatch = candidates
+            .Where(candidate =>
+                candidate.Type == TransactionType.Transfer
+                && candidate.LinkedTransferId is null
+                && Math.Abs(candidate.Amount.Amount - transaction.Amount.Amount) <= 0.01m
+                && Math.Abs((candidate.Date.Date - transaction.Date.Date).Days) <= 3
+                && IsOppositeTransferDirection(candidate.Description, inferredPresentation.Direction)
+            )
+            .OrderBy(candidate => Math.Abs((candidate.Date.Date - transaction.Date.Date).Days))
+            .ThenByDescending(candidate => candidate.CreatedAt)
+            .FirstOrDefault();
+
+        if (bestMatch is null)
+            return;
+
+        transaction.LinkedTransferId = bestMatch.Id;
+        bestMatch.LinkedTransferId = transaction.Id;
+        await _unitOfWork.Transactions.UpdateAsync(bestMatch, cancellationToken);
+    }
+
+    private static bool IsOppositeTransferDirection(
+        string description,
+        TransferDirection? incomingOrOutgoing
+    )
+    {
+        if (!incomingOrOutgoing.HasValue)
+            return true;
+
+        var isFrom = description.StartsWith("Transfer from", StringComparison.OrdinalIgnoreCase);
+        var isTo = description.StartsWith("Transfer to", StringComparison.OrdinalIgnoreCase);
+
+        return incomingOrOutgoing.Value == TransferDirection.Incoming ? isTo : isFrom;
+    }
+
+    private static TransferDirection? InferTangerineTransferDirection(ImportedTransactionRow row)
+    {
+        var combined = $"{row.Description} {row.Notes}";
+
+        if (
+            combined.Contains("transfer from", StringComparison.OrdinalIgnoreCase)
+            || combined.Contains("deposit from", StringComparison.OrdinalIgnoreCase)
+            || combined.Contains("point from", StringComparison.OrdinalIgnoreCase)
+        )
+            return TransferDirection.Incoming;
+
+        if (
+            combined.Contains("transfer to", StringComparison.OrdinalIgnoreCase)
+            || combined.Contains("withdrawal to", StringComparison.OrdinalIgnoreCase)
+            || combined.Contains("point to", StringComparison.OrdinalIgnoreCase)
+        )
+            return TransferDirection.Outgoing;
+
+        return null;
+    }
+
+    private static string? ExtractTangerineCounterpartyAccountNumber(ImportedTransactionRow row)
+    {
+        var combined = $"{row.Description} {row.Notes}";
+        var match = Regex.Match(combined, @"(?<!\d)(\d{7,12})(?!\d)");
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    private static string? ResolveCounterpartyAccountName(
+        string? counterpartAccountNumber,
+        Account destinationAccount,
+        IReadOnlyList<Account> ownerAccounts
+    )
+    {
+        if (string.IsNullOrWhiteSpace(counterpartAccountNumber))
+            return null;
+
+        return ownerAccounts
+            .FirstOrDefault(account =>
+                account.Id != destinationAccount.Id
+                && string.Equals(
+                    account.AccountNumber,
+                    counterpartAccountNumber,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            ?.Name;
+    }
+
     private static decimal InferUnitPriceFromAmount(ImportedTransactionRow row, decimal quantity) =>
         quantity <= 0
             ? 0m
@@ -756,4 +929,17 @@ public class ImportTransactionsCommandHandler
         IReadOnlyList<string> IncomeKeywords,
         IReadOnlyList<string> CashEquivalentSymbols
     );
+
+    private record ImportedTransactionPresentation(
+        TransactionType Type,
+        string Description,
+        Guid? CounterpartyAccountId = null,
+        TransferDirection? Direction = null
+    );
+
+    private enum TransferDirection
+    {
+        Incoming,
+        Outgoing,
+    }
 }

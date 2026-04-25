@@ -1759,6 +1759,26 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     white-space: nowrap;
 }
 
+.txn-sort-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    padding: 0;
+}
+
+.txn-sort-button--right {
+    margin-left: auto;
+}
+
 .txn-table tbody tr.txn-row {
     border-bottom: 1px solid var(--surface-border);
     transition: background 0.12s;
@@ -2288,6 +2308,25 @@ fluent-button[appearance="stealth"]:hover::part(control) {
 .accounts-ledger__identity {
     display: grid;
     gap: 4px;
+}
+
+.accounts-ledger__row-link {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+}
+
+.accounts-ledger__row-link:hover {
+    color: var(--text-strong);
+}
+
+.accounts-ledger__row-link--numeric {
+    text-align: right;
 }
 
 .accounts-ledger__numeric {

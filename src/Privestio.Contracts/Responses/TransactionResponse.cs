@@ -9,6 +9,10 @@ public record TransactionResponse
     public string Currency { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string TransactionType { get; init; } = string.Empty;
+    public Guid? FromAccountId { get; init; }
+    public string? FromAccountName { get; init; }
+    public Guid? ToAccountId { get; init; }
+    public string? ToAccountName { get; init; }
     public Guid? CategoryId { get; init; }
     public string? CategoryName { get; init; }
     public Guid? PayeeId { get; init; }

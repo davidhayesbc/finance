@@ -2,7 +2,6 @@
 @inject IAccountService AccountService
 @inject IPriceHistoryService PriceHistoryService
 @inject IPortfolioService PortfolioService
-@inject ITransactionService TransactionService
 @inject NavigationManager Navigation
 
 <PageTitle>@(_account?.Name ?? "Account") — Privestio</PageTitle>
@@ -80,8 +79,8 @@ else
                     <p>@BuildBalanceDetail()</p>
                 </article>
                 <article class="account-dossier-identity__item">
-                    <span>Opened</span>
-                    <strong>@_account.OpeningDate.ToString("MMM d, yyyy")</strong>
+                    <span>Refresh date</span>
+                    <strong>@FormatRefreshDate()</strong>
                     <p>@BuildFreshnessDetail()</p>
                 </article>
             </div>
@@ -133,6 +132,7 @@ else
                                                DefaultAmount="@(_account.CurrentBalance)"
                                                OnValuationSaved="HandleValuationSaved" />
                     <PropertyExpensesSection AccountId="Id" Currency="@_account.Currency" />
+                    <TransactionListSection AccountId="Id" />
                     <MortgageAmortizationSection />
                 </div>
             }
@@ -143,7 +143,7 @@ else
                                                  IsLoading="_isLoadingPerformance"
                                                  ErrorMessage="@_performanceErrorMessage" />
                     <HoldingsLotsSection AccountId="Id" OnAliasChanged="HandleAliasChanged" />
-                    <InvestmentTransactionsSection Transactions="_transactions" IsLoading="_isLoadingTransactions" />
+                    <TransactionListSection AccountId="Id" />
                 </div>
             }
             else
@@ -162,12 +162,10 @@ else
     private AccountResponse? _account;
     private AccountValueHistoryResponse? _valueHistory;
     private PortfolioPerformanceResponse? _performance;
-    private readonly List<TransactionResponse> _transactions = new();
 
     private bool _isLoading = true;
     private bool _isLoadingValueHistory = true;
     private bool _isLoadingPerformance = true;
-    private bool _isLoadingTransactions = true;
     private bool _isSyncingHistoricalPrices;
 
     private string? _valueHistoryErrorMessage;
@@ -200,8 +198,7 @@ else
             {
                 await Task.WhenAll(
                     LoadValueHistoryAsync(),
-                    LoadPerformanceAsync(),
-                    LoadInvestmentTransactionsAsync()
+                    LoadPerformanceAsync()
                 );
             }
             else
@@ -299,33 +296,6 @@ else
         }
     }
 
-    private async Task LoadInvestmentTransactionsAsync()
-    {
-        _isLoadingTransactions = true;
-
-        try
-        {
-            var fromDate = DateTime.Today.AddDays(-90);
-            var result = await TransactionService.GetTransactionsAsync(
-                Id,
-                pageSize: 15,
-                fromDate: fromDate,
-                toDate: DateTime.Today
-            );
-
-            _transactions.Clear();
-            _transactions.AddRange(result.Items);
-        }
-        catch
-        {
-            _transactions.Clear();
-        }
-        finally
-        {
-            _isLoadingTransactions = false;
-        }
-    }
-
     private decimal GetDisplayedCurrentBalance()
     {
         if (IsInvestmentAccount && _performance?.TotalMarketValue is { } marketValue)
@@ -368,6 +338,8 @@ else
                 ? $"Updated {Math.Floor(age.TotalDays)} days ago."
                 : $"Last updated on {_account.UpdatedAt:MMM d, yyyy}.";
     }
+
+    private string FormatRefreshDate() => _account?.UpdatedAt.ToString("MMM d, yyyy") ?? "Unknown";
 
     private string FormatMoney(decimal amount) => $"{amount:C} {_account?.Currency ?? "CAD"}";
 

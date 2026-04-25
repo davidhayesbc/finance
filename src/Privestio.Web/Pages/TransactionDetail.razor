@@ -42,6 +42,14 @@ else
             <StatCard Label="Category">@(_transaction.CategoryName ?? "Uncategorized")</StatCard>
         </div>
 
+        @if (!string.IsNullOrWhiteSpace(_transaction.FromAccountName) || !string.IsNullOrWhiteSpace(_transaction.ToAccountName))
+        {
+            <FluentCard Class="surface-card">
+                <h2 class="section-heading">Transfer route</h2>
+                <p class="section-copy">@BuildTransferRouteLabel(_transaction)</p>
+            </FluentCard>
+        }
+
         @if (!string.IsNullOrEmpty(_transaction.Notes))
         {
             <FluentCard Class="surface-card">
@@ -266,6 +274,18 @@ else
         _editSplits.Count >= 2
         && _editSplits.All(s => s.CategoryId != Guid.Empty)
         && _editSplits.Sum(s => s.Amount) == _transaction?.Amount;
+
+    private static string BuildTransferRouteLabel(TransactionResponse transaction)
+    {
+        var from = string.IsNullOrWhiteSpace(transaction.FromAccountName)
+            ? "Unknown"
+            : transaction.FromAccountName;
+        var to = string.IsNullOrWhiteSpace(transaction.ToAccountName)
+            ? "Unknown"
+            : transaction.ToAccountName;
+
+        return $"{from} -> {to}";
+    }
 
     private async Task SaveSplitsAsync()
     {

@@ -203,6 +203,39 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
             ?? throw new InvalidOperationException("Account creation did not return an account payload.");
     }
 
+    protected async Task CreateTransactionViaApiAsync(
+        string accessToken,
+        Guid accountId,
+        decimal amount,
+        string description,
+        string transactionType = "Debit",
+        string currency = "CAD"
+    )
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{ApiBaseUrl}/api/v1/transactions/")
+        {
+            Content = JsonContent.Create(
+                new TestCreateTransactionRequest
+                {
+                    AccountId = accountId,
+                    Date = DateTime.UtcNow,
+                    Amount = amount,
+                    Currency = currency,
+                    Description = description,
+                    TransactionType = transactionType,
+                }
+            ),
+        };
+
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            accessToken
+        );
+
+        using var response = await _apiClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
     private async Task CaptureUiReviewArtifactsAsync(string artifactPrefix)
     {
         var outputDirectory = GetUiReviewArtifactsDirectory();
@@ -259,5 +292,15 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
     {
         public Guid Id { get; init; }
         public string Name { get; init; } = string.Empty;
+    }
+
+    protected sealed record TestCreateTransactionRequest
+    {
+        public Guid AccountId { get; init; }
+        public DateTime Date { get; init; }
+        public decimal Amount { get; init; }
+        public string Currency { get; init; } = "CAD";
+        public string Description { get; init; } = string.Empty;
+        public string TransactionType { get; init; } = "Debit";
     }
 }
