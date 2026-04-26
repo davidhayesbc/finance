@@ -14,7 +14,11 @@ builder.Services.AddTransient<AuthenticatedHttpMessageHandler>();
 builder.Services.AddScoped(sp =>
 {
 	var handler = sp.GetRequiredService<AuthenticatedHttpMessageHandler>();
-	return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+	return new HttpClient(handler)
+	{
+		BaseAddress = new Uri(apiBaseUrl),
+		Timeout = TimeSpan.FromMinutes(5),
+	};
 });
 
 // Fluent UI services

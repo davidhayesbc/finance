@@ -143,6 +143,26 @@ public class CategorizationRuleEvaluatorTests
     }
 
     [Fact]
+    public async Task EvaluateAsync_WithSuggestionStyleDecimalConditionsJson_Matches()
+    {
+        var transaction = CreateTransaction(63.55m, "EFT Withdrawal to FortisBC Energy");
+        var conditionsJson =
+            "{\"DescriptionContains\":\"FORTISBC ENERGY\",\"MinAmount\":60.10,\"MaxAmount\":70.25}";
+
+        var rule = new CategorizationRule(
+            "Fortis recurring utility payment",
+            1,
+            conditionsJson,
+            JsonSerializer.Serialize(new { CategoryId = Guid.NewGuid() }),
+            _userId
+        );
+
+        var result = await _evaluator.EvaluateAsync(transaction, [rule]);
+
+        result.IsMatch.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task EvaluateAsync_ActionWithPayeeAndTags_ReturnsFullAction()
     {
         var categoryId = Guid.NewGuid();

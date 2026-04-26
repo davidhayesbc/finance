@@ -11,6 +11,111 @@ namespace Privestio.Infrastructure.Tests.Ai;
 public class OllamaRuleSuggestionServiceTests
 {
     [Fact]
+    public async Task SuggestRulesAsync_WhenProfilesAreConfigured_UsesDefaultProfileSettings()
+    {
+        string? postedBody = null;
+
+        using var handler = new StubHttpMessageHandler(request =>
+        {
+            var path = request.RequestUri?.PathAndQuery ?? string.Empty;
+            if (path == "/api/chat")
+            {
+                postedBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                return JsonResponse(
+                    HttpStatusCode.OK,
+                    "{\"message\":{\"content\":\"{\\\"suggestions\\\":[{\\\"name\\\":\\\"Groceries\\\",\\\"descriptionContains\\\":\\\"SAVE ON FOODS\\\",\\\"minAmount\\\":null,\\\"maxAmount\\\":null,\\\"suggestedCategoryName\\\":\\\"Groceries\\\",\\\"rationale\\\":\\\"Recurring merchant\\\"}]}\"}}"
+                );
+            }
+
+            return JsonResponse(HttpStatusCode.NotFound, "{}");
+        });
+
+        using var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:11434/"),
+        };
+
+        var options = new OllamaOptions
+        {
+            DefaultProfile = "Balanced",
+            Profiles = new Dictionary<string, OllamaModelProfileOptions>(
+                StringComparer.OrdinalIgnoreCase
+            )
+            {
+                ["Balanced"] = new OllamaModelProfileOptions
+                {
+                    Name = "Balanced",
+                    Model = "qwen2.5:7b",
+                    Temperature = 0.05,
+                    MaxOutputTokens = 260,
+                },
+            },
+            Model = "llama3.1:8b",
+            Temperature = 0.1,
+            MaxOutputTokens = 420,
+        };
+
+        var service = CreateService(client, options);
+        var rows = new List<RuleSuggestionInputRow> { new("SAVE ON FOODS", 132.44m) };
+
+        var suggestions = await service.SuggestRulesAsync(rows, 3);
+
+        suggestions.Should().HaveCount(1);
+        postedBody.Should().NotBeNullOrWhiteSpace();
+        postedBody.Should().Contain("\"model\":\"qwen2.5:7b\"");
+        postedBody.Should().Contain("\"temperature\":0.05");
+        postedBody.Should().Contain("\"num_predict\":260");
+    }
+
+    [Fact]
+    public async Task SuggestRulesAsync_WhenDefaultProfileIsMissing_UsesLegacyModelSettings()
+    {
+        string? postedBody = null;
+
+        using var handler = new StubHttpMessageHandler(request =>
+        {
+            var path = request.RequestUri?.PathAndQuery ?? string.Empty;
+            if (path == "/api/chat")
+            {
+                postedBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                return JsonResponse(
+                    HttpStatusCode.OK,
+                    "{\"message\":{\"content\":\"{\\\"suggestions\\\":[{\\\"name\\\":\\\"Groceries\\\",\\\"descriptionContains\\\":\\\"SAVE ON FOODS\\\",\\\"minAmount\\\":null,\\\"maxAmount\\\":null,\\\"suggestedCategoryName\\\":\\\"Groceries\\\",\\\"rationale\\\":\\\"Recurring merchant\\\"}]}\"}}"
+                );
+            }
+
+            return JsonResponse(HttpStatusCode.NotFound, "{}");
+        });
+
+        using var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:11434/"),
+        };
+
+        var options = new OllamaOptions
+        {
+            DefaultProfile = "Balanced",
+            Profiles = new Dictionary<string, OllamaModelProfileOptions>(
+                StringComparer.OrdinalIgnoreCase
+            ),
+            Model = "llama3.1:8b",
+            Temperature = 0.1,
+            MaxOutputTokens = 420,
+        };
+
+        var service = CreateService(client, options);
+        var rows = new List<RuleSuggestionInputRow> { new("SAVE ON FOODS", 132.44m) };
+
+        var suggestions = await service.SuggestRulesAsync(rows, 3);
+
+        suggestions.Should().HaveCount(1);
+        postedBody.Should().NotBeNullOrWhiteSpace();
+        postedBody.Should().Contain("\"model\":\"llama3.1:8b\"");
+        postedBody.Should().Contain("\"temperature\":0.1");
+        postedBody.Should().Contain("\"num_predict\":420");
+    }
+
+    [Fact]
     public async Task SuggestRulesAsync_ModelMissing_PullsAndRetriesSuccessfully()
     {
         var calls = new List<string>();
@@ -120,14 +225,18 @@ public class OllamaRuleSuggestionServiceTests
             .WithMessage("*timed out*");
     }
 
-    private static OllamaRuleSuggestionService CreateService(HttpClient client)
+    private static OllamaRuleSuggestionService CreateService(
+        HttpClient client,
+        OllamaOptions? explicitOptions = null
+    )
     {
         var options = Options.Create(
-            new OllamaOptions
-            {
-                Model = "llama3.1:8b",
-                Temperature = 0.1,
-            }
+            explicitOptions
+                ?? new OllamaOptions
+                {
+                    Model = "llama3.1:8b",
+                    Temperature = 0.1,
+                }
         );
 
         return new OllamaRuleSuggestionService(

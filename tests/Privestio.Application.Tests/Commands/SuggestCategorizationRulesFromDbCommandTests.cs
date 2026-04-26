@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Moq;
+using System.Text.Json;
 using Privestio.Application.Commands.SuggestCategorizationRulesFromDb;
 using Privestio.Application.Interfaces;
 using Privestio.Domain.Entities;
@@ -111,6 +112,129 @@ public class SuggestCategorizationRulesFromDbCommandTests
         result[0].MatchSamples[0].Frequency.Should().Be(3);
     }
 
+    [Fact]
+    public async Task Handle_WhenRequestedSuggestionsAreHigh_RequestsOnlyBoundedRowsFromRepository()
+    {
+        // Arrange
+        SetupBaseDependencies();
+
+        _ollamaService
+            .Setup(s =>
+                s.SuggestRulesAsync(
+                    It.IsAny<IReadOnlyList<RuleSuggestionInputRow>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync([]);
+
+        var handler = new SuggestCategorizationRulesFromDbCommandHandler(
+            _unitOfWork.Object,
+            _ollamaService.Object
+        );
+
+        var command = new SuggestCategorizationRulesFromDbCommand(_accountId, _userId, MaxSuggestions: 8);
+
+        // Act
+        _ = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        _transactionRepository.Verify(r =>
+            r.GetUncategorizedByAccountIdAsync(
+                _accountId,
+                160,
+                It.IsAny<CancellationToken>()
+            )
+        );
+    }
+
+    [Fact]
+    public async Task Handle_WhenAiDraftsDoNotMatchRows_FiltersOutAllSuggestions()
+    {
+        // Arrange
+        SetupBaseDependencies();
+
+        _ollamaService
+            .Setup(s =>
+                s.SuggestRulesAsync(
+                    It.IsAny<IReadOnlyList<RuleSuggestionInputRow>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                [
+                    new RuleSuggestionDraft(
+                        Name: "Gym monthly",
+                        DescriptionContains: "GOODLIFE FITNESS",
+                        MinAmount: 25m,
+                        MaxAmount: 100m,
+                        SuggestedCategoryName: "Fitness",
+                        Rationale: "Recurring gym charge"
+                    ),
+                ]
+            );
+
+        var handler = new SuggestCategorizationRulesFromDbCommandHandler(
+            _unitOfWork.Object,
+            _ollamaService.Object
+        );
+
+        var command = new SuggestCategorizationRulesFromDbCommand(_accountId, _userId, MaxSuggestions: 8);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsConditionsJson_ThatCanBeDeserializedForRuleEvaluationModel()
+    {
+        // Arrange
+        SetupBaseDependencies();
+
+        _ollamaService
+            .Setup(s =>
+                s.SuggestRulesAsync(
+                    It.IsAny<IReadOnlyList<RuleSuggestionInputRow>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                [
+                    new RuleSuggestionDraft(
+                        Name: "Fortis recurring utility payment",
+                        DescriptionContains: "FORTISBC ENERGY",
+                        MinAmount: 60.10m,
+                        MaxAmount: 70.25m,
+                        SuggestedCategoryName: "Utilities",
+                        Rationale: "Recurring utility payment"
+                    ),
+                ]
+            );
+
+        var handler = new SuggestCategorizationRulesFromDbCommandHandler(
+            _unitOfWork.Object,
+            _ollamaService.Object
+        );
+
+        var command = new SuggestCategorizationRulesFromDbCommand(_accountId, _userId, MaxSuggestions: 8);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(1);
+        var parsed = JsonSerializer.Deserialize<RuleConditionPayload>(result[0].Conditions);
+        parsed.Should().NotBeNull();
+        parsed!.DescriptionContains.Should().Be("FORTISBC ENERGY");
+        parsed.MinAmount.Should().Be(60.10m);
+        parsed.MaxAmount.Should().Be(70.25m);
+    }
+
     private void SetupBaseDependencies()
     {
         var account = new Account(
@@ -172,4 +296,10 @@ public class SuggestCategorizationRulesFromDbCommandTests
             )
             .ReturnsAsync(transactions);
     }
+
+    private sealed record RuleConditionPayload(
+        string DescriptionContains,
+        decimal? MinAmount,
+        decimal? MaxAmount
+    );
 }

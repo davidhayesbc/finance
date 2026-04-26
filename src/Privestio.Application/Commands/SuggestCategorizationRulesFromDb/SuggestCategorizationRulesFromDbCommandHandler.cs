@@ -1,5 +1,8 @@
 using System.Text.Json;
+using System.Diagnostics;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Privestio.Application.Interfaces;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Interfaces;
@@ -9,18 +12,24 @@ namespace Privestio.Application.Commands.SuggestCategorizationRulesFromDb;
 public class SuggestCategorizationRulesFromDbCommandHandler
     : IRequestHandler<SuggestCategorizationRulesFromDbCommand, IReadOnlyList<RuleSuggestionResponse>>
 {
-    private const int MaxRowsForPrompt = 60;
+    private const int MaxRowsForPrompt = 120;
+    private const int MinRowsForAiSample = 120;
+    private const int RowsPerRequestedSuggestion = 40;
+    private const int MaxRowsForAiSample = 300;
 
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOllamaRuleSuggestionService _ollamaService;
+    private readonly ILogger<SuggestCategorizationRulesFromDbCommandHandler> _logger;
 
     public SuggestCategorizationRulesFromDbCommandHandler(
         IUnitOfWork unitOfWork,
-        IOllamaRuleSuggestionService ollamaService
+        IOllamaRuleSuggestionService ollamaService,
+        ILogger<SuggestCategorizationRulesFromDbCommandHandler>? logger = null
     )
     {
         _unitOfWork = unitOfWork;
         _ollamaService = ollamaService;
+        _logger = logger ?? NullLogger<SuggestCategorizationRulesFromDbCommandHandler>.Instance;
     }
 
     public async Task<IReadOnlyList<RuleSuggestionResponse>> Handle(
@@ -28,7 +37,13 @@ public class SuggestCategorizationRulesFromDbCommandHandler
         CancellationToken cancellationToken
     )
     {
+        var overallStopwatch = Stopwatch.StartNew();
         var effectiveMaxSuggestions = Math.Max(1, Math.Min(request.MaxSuggestions, 4));
+        var rowsToFetch = Math.Clamp(
+            effectiveMaxSuggestions * RowsPerRequestedSuggestion,
+            MinRowsForAiSample,
+            MaxRowsForAiSample
+        );
 
         var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
         if (account is null)
@@ -40,7 +55,7 @@ public class SuggestCategorizationRulesFromDbCommandHandler
 
         var transactions = await _unitOfWork.Transactions.GetUncategorizedByAccountIdAsync(
             request.AccountId,
-            Math.Min(MaxRowsForPrompt, effectiveMaxSuggestions * 4),
+            rowsToFetch,
             cancellationToken
         );
 
@@ -64,11 +79,13 @@ public class SuggestCategorizationRulesFromDbCommandHandler
             .Take(MaxRowsForPrompt)
             .ToList();
 
+        var ollamaStopwatch = Stopwatch.StartNew();
         var drafts = await _ollamaService.SuggestRulesAsync(
             promptRows,
             effectiveMaxSuggestions,
             cancellationToken
         );
+        ollamaStopwatch.Stop();
 
         var uniqueDrafts = drafts
             .Where(d =>
@@ -110,6 +127,20 @@ public class SuggestCategorizationRulesFromDbCommandHandler
                 }
             );
         }
+
+        _logger.LogInformation(
+            "DB rule suggestion request completed. AccountId={AccountId}, RequestedMaxSuggestions={RequestedMaxSuggestions}, EffectiveMaxSuggestions={EffectiveMaxSuggestions}, RowsRequested={RowsRequested}, RowsFetched={RowsFetched}, PromptRows={PromptRows}, Drafts={Drafts}, Suggestions={Suggestions}, OllamaMs={OllamaMs}, ElapsedMs={ElapsedMs}",
+            request.AccountId,
+            request.MaxSuggestions,
+            effectiveMaxSuggestions,
+            rowsToFetch,
+            transactions.Count,
+            promptRows.Count,
+            drafts.Count,
+            suggestions.Count,
+            ollamaStopwatch.ElapsedMilliseconds,
+            overallStopwatch.ElapsedMilliseconds
+        );
 
         return suggestions;
     }

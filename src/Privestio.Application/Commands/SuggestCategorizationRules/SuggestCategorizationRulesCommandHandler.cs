@@ -1,5 +1,8 @@
 using System.Text.Json;
+using System.Diagnostics;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Privestio.Application.Interfaces;
 using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
@@ -16,18 +19,21 @@ public class SuggestCategorizationRulesCommandHandler
     private readonly IEnumerable<ITransactionImporter> _importers;
     private readonly IOllamaRuleSuggestionService _ollamaService;
     private readonly IPluginRegistryService _pluginRegistryService;
+    private readonly ILogger<SuggestCategorizationRulesCommandHandler> _logger;
 
     public SuggestCategorizationRulesCommandHandler(
         IUnitOfWork unitOfWork,
         IEnumerable<ITransactionImporter> importers,
         IOllamaRuleSuggestionService ollamaService,
-        IPluginRegistryService pluginRegistryService
+        IPluginRegistryService pluginRegistryService,
+        ILogger<SuggestCategorizationRulesCommandHandler>? logger = null
     )
     {
         _unitOfWork = unitOfWork;
         _importers = importers;
         _ollamaService = ollamaService;
         _pluginRegistryService = pluginRegistryService;
+        _logger = logger ?? NullLogger<SuggestCategorizationRulesCommandHandler>.Instance;
     }
 
     public async Task<IReadOnlyList<RuleSuggestionResponse>> Handle(
@@ -35,6 +41,7 @@ public class SuggestCategorizationRulesCommandHandler
         CancellationToken cancellationToken
     )
     {
+        var overallStopwatch = Stopwatch.StartNew();
         var account = await _unitOfWork.Accounts.GetByIdAsync(request.AccountId, cancellationToken);
         if (account is null)
             throw new KeyNotFoundException("Account not found.");
@@ -68,11 +75,13 @@ public class SuggestCategorizationRulesCommandHandler
             }
         }
 
+        var parseStopwatch = Stopwatch.StartNew();
         var parseResult = await importer.ParseAsync(
             request.FileStream,
             ToPluginImportMapping(mapping),
             cancellationToken
         );
+        parseStopwatch.Stop();
 
         var rows = parseResult
             .Rows.Where(r => !string.IsNullOrWhiteSpace(r.Description))
@@ -83,11 +92,13 @@ public class SuggestCategorizationRulesCommandHandler
         if (rows.Count == 0)
             return [];
 
+        var ollamaStopwatch = Stopwatch.StartNew();
         var drafts = await _ollamaService.SuggestRulesAsync(
             rows,
             request.MaxSuggestions,
             cancellationToken
         );
+        ollamaStopwatch.Stop();
 
         var uniqueDrafts = drafts
             .Where(d =>
@@ -127,6 +138,19 @@ public class SuggestCategorizationRulesCommandHandler
                 }
             );
         }
+
+        _logger.LogInformation(
+            "File rule suggestion request completed. AccountId={AccountId}, FileName={FileName}, ParsedRows={ParsedRows}, PromptRows={PromptRows}, ParseMs={ParseMs}, OllamaMs={OllamaMs}, Drafts={Drafts}, Suggestions={Suggestions}, ElapsedMs={ElapsedMs}",
+            request.AccountId,
+            request.FileName,
+            parseResult.Rows.Count,
+            rows.Count,
+            parseStopwatch.ElapsedMilliseconds,
+            ollamaStopwatch.ElapsedMilliseconds,
+            drafts.Count,
+            suggestions.Count,
+            overallStopwatch.ElapsedMilliseconds
+        );
 
         return suggestions;
     }

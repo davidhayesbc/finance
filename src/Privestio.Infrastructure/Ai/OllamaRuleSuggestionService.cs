@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,10 @@ namespace Privestio.Infrastructure.Ai;
 
 public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
 {
+    private const int MaxPromptRows = 60;
+    private const int MaxPromptCharacters = 5_500;
+    private const int MaxDescriptionLength = 80;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -39,14 +44,18 @@ public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
         if (rows.Count == 0)
             return [];
 
+        var overallStopwatch = Stopwatch.StartNew();
+        var profile = _options.ResolveProfile();
+        var userPrompt = BuildUserPrompt(rows, maxSuggestions, out var promptRowsCount);
+
         var payload = new OllamaChatRequest
         {
-            Model = _options.Model,
+            Model = profile.Model,
             Stream = false,
             Options = new OllamaModelOptions
             {
-                Temperature = _options.Temperature,
-                NumPredict = _options.MaxOutputTokens,
+                Temperature = profile.Temperature,
+                NumPredict = profile.MaxOutputTokens,
             },
             Messages =
             [
@@ -60,7 +69,7 @@ public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
                 new OllamaMessage
                 {
                     Role = "user",
-                    Content = BuildUserPrompt(rows, maxSuggestions),
+                    Content = userPrompt,
                 },
             ],
         };
@@ -92,7 +101,7 @@ public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
                     && responseText.Contains("not found", StringComparison.OrdinalIgnoreCase)
                 )
                 {
-                    var pulled = await TryPullModelAsync(cancellationToken);
+                    var pulled = await TryPullModelAsync(profile.Model, cancellationToken);
                     if (pulled)
                     {
                         HttpResponseMessage retryResponse;
@@ -121,7 +130,22 @@ public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
                                         JsonOptions,
                                         cancellationToken
                                     );
-                                return ParseSuggestions(retryChatResponse?.Message?.Content, maxSuggestions);
+                                var suggestions = ParseSuggestions(
+                                    retryChatResponse?.Message?.Content,
+                                    maxSuggestions
+                                );
+                                _logger.LogInformation(
+                                    "Ollama rule suggestions completed after retry. Profile={Profile}, Model={Model}, InputRows={InputRows}, PromptRows={PromptRows}, PromptChars={PromptChars}, MaxSuggestions={MaxSuggestions}, SuggestionsReturned={SuggestionsReturned}, ElapsedMs={ElapsedMs}",
+                                    profile.Name,
+                                    profile.Model,
+                                    rows.Count,
+                                    promptRowsCount,
+                                    userPrompt.Length,
+                                    maxSuggestions,
+                                    suggestions.Count,
+                                    overallStopwatch.ElapsedMilliseconds
+                                );
+                                return suggestions;
                             }
 
                             responseText = await retryResponse.Content.ReadAsStringAsync(cancellationToken);
@@ -152,33 +176,46 @@ public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
                 cancellationToken
             );
 
-            return ParseSuggestions(chatResponse?.Message?.Content, maxSuggestions);
+            var parsedSuggestions = ParseSuggestions(chatResponse?.Message?.Content, maxSuggestions);
+            _logger.LogInformation(
+                "Ollama rule suggestions completed. Profile={Profile}, Model={Model}, InputRows={InputRows}, PromptRows={PromptRows}, PromptChars={PromptChars}, MaxSuggestions={MaxSuggestions}, SuggestionsReturned={SuggestionsReturned}, ElapsedMs={ElapsedMs}",
+                profile.Name,
+                profile.Model,
+                rows.Count,
+                promptRowsCount,
+                userPrompt.Length,
+                maxSuggestions,
+                parsedSuggestions.Count,
+                overallStopwatch.ElapsedMilliseconds
+            );
+
+            return parsedSuggestions;
         }
     }
 
-    private async Task<bool> TryPullModelAsync(CancellationToken cancellationToken)
+    private async Task<bool> TryPullModelAsync(string model, CancellationToken cancellationToken)
     {
         _logger.LogInformation(
             "Ollama model '{Model}' was missing. Attempting to pull it automatically.",
-            _options.Model
+            model
         );
 
         using var pullResponse = await _httpClient.PostAsJsonAsync(
             "api/pull",
-            new OllamaPullRequest { Model = _options.Model, Stream = false },
+            new OllamaPullRequest { Model = model, Stream = false },
             cancellationToken
         );
 
         if (pullResponse.IsSuccessStatusCode)
         {
-            _logger.LogInformation("Ollama model pull completed for '{Model}'.", _options.Model);
+            _logger.LogInformation("Ollama model pull completed for '{Model}'.", model);
             return true;
         }
 
         var pullBody = await pullResponse.Content.ReadAsStringAsync(cancellationToken);
         _logger.LogWarning(
             "Ollama model pull failed for '{Model}': {StatusCode}, {Body}",
-            _options.Model,
+            model,
             (int)pullResponse.StatusCode,
             pullBody
         );
@@ -223,23 +260,60 @@ public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
             .ToList();
     }
 
-    private static string BuildUserPrompt(IReadOnlyList<RuleSuggestionInputRow> rows, int maxSuggestions)
+    private static string BuildUserPrompt(
+        IReadOnlyList<RuleSuggestionInputRow> rows,
+        int maxSuggestions,
+        out int promptRowsCount
+    )
     {
-        var rowLines = rows
-            .Take(60)
-            .Select(r => $"- Description: {r.Description}; Amount: {r.Amount}")
-            .ToList();
-
-        return
+        var header =
             "Given the imported transaction sample below, suggest up to "
             + maxSuggestions
             + " reusable categorization rules. Output STRICT JSON with this shape: "
             + "{\"suggestions\":[{\"name\":\"...\",\"descriptionContains\":\"...\",\"minAmount\":number|null,\"maxAmount\":number|null,\"suggestedCategoryName\":\"...\",\"rationale\":\"...\"}]}. "
             + "Do not include markdown or any text outside JSON."
             + Environment.NewLine
-            + Environment.NewLine
-            + string.Join(Environment.NewLine, rowLines);
+            + Environment.NewLine;
+
+        var dedupedRows = rows
+            .Where(r => !string.IsNullOrWhiteSpace(r.Description))
+            .Select(r =>
+                new RuleSuggestionInputRow(
+                    NormalizeDescription(r.Description),
+                    decimal.Round(r.Amount, 2, MidpointRounding.ToEven)
+                )
+            )
+            .GroupBy(r => new RulePromptGroupKey(r.Description, r.Amount))
+            .OrderByDescending(group => group.Count())
+            .Select(group => group.First())
+            .Take(MaxPromptRows)
+            .ToList();
+
+        var lines = new List<string>(dedupedRows.Count);
+        var currentLength = header.Length;
+        foreach (var row in dedupedRows)
+        {
+            var line = $"- Description: {Truncate(row.Description, MaxDescriptionLength)}; Amount: {row.Amount}";
+            var addedLength = line.Length + Environment.NewLine.Length;
+            if (currentLength + addedLength > MaxPromptCharacters)
+                break;
+
+            lines.Add(line);
+            currentLength += addedLength;
+        }
+
+        promptRowsCount = lines.Count;
+        return header + string.Join(Environment.NewLine, lines);
     }
+
+    private static string NormalizeDescription(string value) =>
+        string.Join(
+            ' ',
+            value.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        );
+
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..maxLength];
 
     private static AiSuggestionEnvelope? TryParseEnvelope(string? json)
     {
@@ -328,4 +402,6 @@ public class OllamaRuleSuggestionService : IOllamaRuleSuggestionService
         public string SuggestedCategoryName { get; init; } = string.Empty;
         public string? Rationale { get; init; }
     }
+
+    private sealed record RulePromptGroupKey(string Description, decimal Amount);
 }
