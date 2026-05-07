@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Privestio.Domain.ValueObjects;
@@ -11,18 +10,16 @@ using Privestio.Infrastructure.Data;
 
 #nullable disable
 
-namespace Privestio.Infrastructure.Data.Migrations
+namespace Privestio.Infrastructure.Migrations
 {
     [DbContext(typeof(PrivestioDbContext))]
-    [Migration("20260317234050_AddDefaultDateToImportMapping")]
-    partial class AddDefaultDateToImportMapping
+    partial class PrivestioDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.3")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -217,8 +214,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "CurrentBalance", "Privestio.Domain.Entities.Account.CurrentBalance#Money", b1 =>
                         {
@@ -287,8 +289,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "InterestAmount", "Privestio.Domain.Entities.AmortizationEntry.InterestAmount#Money", b1 =>
                         {
@@ -404,8 +411,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -453,11 +465,16 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
                     b.Property<int>("Year")
                         .HasColumnType("integer");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "Privestio.Domain.Entities.Budget.Amount#Money", b1 =>
                         {
@@ -528,8 +545,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -583,8 +605,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -619,11 +646,16 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
                     b.Property<int>("Year")
                         .HasColumnType("integer");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "AnnualLimit", "Privestio.Domain.Entities.ContributionRoom.AnnualLimit#Money", b1 =>
                         {
@@ -722,8 +754,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -774,8 +811,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -815,8 +857,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "ConvertedAmount", "Privestio.Domain.Entities.FxConversion.ConvertedAmount#Money", b1 =>
                         {
@@ -900,8 +947,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "AverageCostPerUnit", "Privestio.Domain.Entities.Holding.AverageCostPerUnit#Money", b1 =>
                         {
@@ -925,9 +977,109 @@ namespace Privestio.Infrastructure.Data.Migrations
                     b.HasIndex("SecurityId");
 
                     b.HasIndex("AccountId", "SecurityId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("Holdings");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HoldingSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("AsOfDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("numeric(18,8)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SecurityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SecurityName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "MarketValue", "Privestio.Domain.Entities.HoldingSnapshot.MarketValue#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("MarketValueAmount");
+
+                            b1.Property<string>("CurrencyCode")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("MarketValueCurrency");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "UnitPrice", "Privestio.Domain.Entities.HoldingSnapshot.UnitPrice#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,8)")
+                                .HasColumnName("UnitPriceAmount");
+
+                            b1.Property<string>("CurrencyCode")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("UnitPriceCurrency");
+                        });
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SecurityId");
+
+                    b.HasIndex("AccountId", "AsOfDate");
+
+                    b.HasIndex("AccountId", "SecurityId", "AsOfDate")
+                        .IsUnique();
+
+                    b.ToTable("HoldingSnapshots");
                 });
 
             modelBuilder.Entity("Privestio.Domain.Entities.Household", b =>
@@ -947,18 +1099,158 @@ namespace Privestio.Infrastructure.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OwnerId");
+
                     b.ToTable("Households");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HouseholdId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("InvitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InvitedEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("Token")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("HouseholdId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("InvitedEmail", "Status");
+
+                    b.ToTable("HouseholdInvitations");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HouseholdId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("InvitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("HouseholdId", "UserId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("HouseholdMembers");
                 });
 
             modelBuilder.Entity("Privestio.Domain.Entities.IdempotencyRecord", b =>
@@ -992,8 +1284,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1061,8 +1358,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1154,8 +1456,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1200,8 +1507,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "UnitCost", "Privestio.Domain.Entities.Lot.UnitCost#Money", b1 =>
                         {
@@ -1281,8 +1593,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1323,13 +1640,18 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
                     b.PrimitiveCollection<string>("_aliases")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("Aliases");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1383,8 +1705,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Price", "Privestio.Domain.Entities.PriceHistory.Price#Money", b1 =>
                         {
@@ -1455,8 +1782,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "StatementBalance", "Privestio.Domain.Entities.ReconciliationPeriod.StatementBalance#Money", b1 =>
                         {
@@ -1548,8 +1880,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "Privestio.Domain.Entities.RecurringTransaction.Amount#Money", b1 =>
                         {
@@ -1579,6 +1916,66 @@ namespace Privestio.Infrastructure.Data.Migrations
                     b.HasIndex("UserId", "IsActive");
 
                     b.ToTable("RecurringTransactions");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ReplacedByToken")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("Privestio.Domain.Entities.Security", b =>
@@ -1623,12 +2020,20 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.PrimitiveCollection<string>("PricingProviderOrder")
+                        .HasColumnType("jsonb");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1652,6 +2057,10 @@ namespace Privestio.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Exchange")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -1662,6 +2071,7 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Source")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -1674,17 +2084,76 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Symbol");
 
-                    b.HasIndex("SecurityId", "Symbol", "Source")
+                    b.HasIndex("Symbol", "Source", "Exchange");
+
+                    b.HasIndex("SecurityId", "Symbol", "Source", "Exchange")
                         .IsUnique();
 
                     b.ToTable("SecurityAliases");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.SecurityIdentifier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IdentifierType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("SecurityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdentifierType", "Value")
+                        .IsUnique();
+
+                    b.HasIndex("SecurityId", "IdentifierType", "Value")
+                        .IsUnique();
+
+                    b.ToTable("SecurityIdentifiers");
                 });
 
             modelBuilder.Entity("Privestio.Domain.Entities.SinkingFund", b =>
@@ -1730,8 +2199,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "AccumulatedAmount", "Privestio.Domain.Entities.SinkingFund.AccumulatedAmount#Money", b1 =>
                         {
@@ -1804,8 +2278,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1865,8 +2344,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1909,9 +2393,17 @@ namespace Privestio.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1951,8 +2443,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -2052,8 +2549,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "Privestio.Domain.Entities.Transaction.Amount#Money", b1 =>
                         {
@@ -2123,8 +2625,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "Privestio.Domain.Entities.TransactionSplit.Amount#Money", b1 =>
                         {
@@ -2230,8 +2737,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -2282,8 +2794,13 @@ namespace Privestio.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "EstimatedValue", "Privestio.Domain.Entities.Valuation.EstimatedValue#Money", b1 =>
                         {
@@ -2565,6 +3082,55 @@ namespace Privestio.Infrastructure.Data.Migrations
                     b.Navigation("Security");
                 });
 
+            modelBuilder.Entity("Privestio.Domain.Entities.HoldingSnapshot", b =>
+                {
+                    b.HasOne("Privestio.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Privestio.Domain.Entities.Security", "Security")
+                        .WithMany()
+                        .HasForeignKey("SecurityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Security");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdInvitation", b =>
+                {
+                    b.HasOne("Privestio.Domain.Entities.Household", "Household")
+                        .WithMany("Invitations")
+                        .HasForeignKey("HouseholdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Household");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.HouseholdMember", b =>
+                {
+                    b.HasOne("Privestio.Domain.Entities.Household", "Household")
+                        .WithMany("Members")
+                        .HasForeignKey("HouseholdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Privestio.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Household");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Privestio.Domain.Entities.ImportBatch", b =>
                 {
                     b.HasOne("Privestio.Domain.Entities.User", "User")
@@ -2686,6 +3252,17 @@ namespace Privestio.Infrastructure.Data.Migrations
                 {
                     b.HasOne("Privestio.Domain.Entities.Security", "Security")
                         .WithMany("Aliases")
+                        .HasForeignKey("SecurityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Security");
+                });
+
+            modelBuilder.Entity("Privestio.Domain.Entities.SecurityIdentifier", b =>
+                {
+                    b.HasOne("Privestio.Domain.Entities.Security", "Security")
+                        .WithMany("Identifiers")
                         .HasForeignKey("SecurityId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2820,7 +3397,7 @@ namespace Privestio.Infrastructure.Data.Migrations
             modelBuilder.Entity("Privestio.Domain.Entities.User", b =>
                 {
                     b.HasOne("Privestio.Domain.Entities.Household", "Household")
-                        .WithMany("Members")
+                        .WithMany()
                         .HasForeignKey("HouseholdId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -2857,12 +3434,16 @@ namespace Privestio.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Privestio.Domain.Entities.Household", b =>
                 {
+                    b.Navigation("Invitations");
+
                     b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Privestio.Domain.Entities.Security", b =>
                 {
                     b.Navigation("Aliases");
+
+                    b.Navigation("Identifiers");
                 });
 
             modelBuilder.Entity("Privestio.Domain.Entities.Tag", b =>
