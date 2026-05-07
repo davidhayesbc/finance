@@ -24,4 +24,5 @@ public record AccountSummary
     public string AccountType { get; init; } = string.Empty;
     public decimal Balance { get; init; }
     public string Currency { get; init; } = "CAD";
+    public bool IsActive { get; init; } = true;
 }

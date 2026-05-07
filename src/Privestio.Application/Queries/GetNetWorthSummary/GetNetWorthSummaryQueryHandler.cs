@@ -95,6 +95,7 @@ public class GetNetWorthSummaryQueryHandler
                 AccountType = x.Account.AccountType.ToString(),
                 Balance = x.Balance,
                 Currency = x.Account.Currency,
+                IsActive = x.Account.IsActive,
             })
             .ToList();
 

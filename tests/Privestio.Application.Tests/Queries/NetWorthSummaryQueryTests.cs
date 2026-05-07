@@ -6,6 +6,7 @@ using Privestio.Application.Interfaces;
 using Privestio.Application.Queries.GetNetWorthSummary;
 using Privestio.Application.Services;
 using Privestio.Application.Tests;
+using Privestio.Contracts.Responses;
 using Privestio.Domain.Entities;
 using Privestio.Domain.Enums;
 using Privestio.Domain.Interfaces;
@@ -350,6 +351,216 @@ public class NetWorthSummaryQueryTests
         result.AccountSummaries.Should().ContainSingle(a => a.Name == "Chequing" && a.Balance == 750m);
         result.AccountSummaries.Should().ContainSingle(a => a.Name == "Visa" && a.Balance == -1200m);
         result.AccountSummaries.Should().ContainSingle(a => a.Name == "House" && a.Balance == 850_000m);
+    }
+
+    [Fact]
+    public async Task GetNetWorthSummary_AccountSummaryCards_IncludeOnlyActiveAccountsAcrossAllAccountTypesWithDerivedBalances()
+    {
+        var userId = Guid.NewGuid();
+
+        var banking = CreateAccount(
+            userId,
+            "Daily Banking",
+            AccountType.Banking,
+            AccountSubType.Chequing,
+            1000.25m,
+            "CAD"
+        );
+        var credit = CreateAccount(
+            userId,
+            "Rewards Visa",
+            AccountType.Credit,
+            AccountSubType.CreditCard,
+            0m,
+            "CAD"
+        );
+        var investment = CreateAccount(
+            userId,
+            "TFSA Portfolio",
+            AccountType.Investment,
+            AccountSubType.TFSA,
+            0.01m,
+            "CAD"
+        );
+        var property = CreateAccount(
+            userId,
+            "Primary Residence",
+            AccountType.Property,
+            AccountSubType.RealEstate,
+            625_000m,
+            "CAD"
+        );
+        var loan = CreateAccount(
+            userId,
+            "Mortgage",
+            AccountType.Loan,
+            AccountSubType.Mortgage,
+            -410_000m,
+            "CAD"
+        );
+        var inactiveSavings = CreateAccount(
+            userId,
+            "Closed Savings",
+            AccountType.Banking,
+            AccountSubType.Savings,
+            9999m,
+            "CAD"
+        );
+        inactiveSavings.Deactivate();
+
+        AddValuation(property, 700_000m, new DateOnly(2026, 4, 30));
+
+        var security = SecurityTestHelper.CreateSecurity("XGRO", "iShares Core Growth ETF Portfolio");
+        var holding = SecurityTestHelper.CreateHolding(
+            investment.Id,
+            security,
+            125.5m,
+            new Money(20m, "CAD")
+        );
+
+        _accountRepoMock
+            .Setup(r => r.GetByOwnerIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([banking, credit, investment, property, loan, inactiveSavings]);
+
+        _transactionRepositoryMock
+            .Setup(x =>
+                x.GetSignedSumsByAccountIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                new Dictionary<Guid, decimal>
+                {
+                    [banking.Id] = 234.75m,
+                    [credit.Id] = -456.78m,
+                    [loan.Id] = 10_000m,
+                    [inactiveSavings.Id] = -9999m,
+                }
+            );
+
+        _holdingRepositoryMock
+            .Setup(x => x.GetByAccountIdAsync(investment.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([holding]);
+
+        _priceHistoryRepositoryMock
+            .Setup(x =>
+                x.GetLatestBySecurityIdsAsync(
+                    It.IsAny<IEnumerable<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (IReadOnlyDictionary<Guid, PriceHistory>)
+                    new Dictionary<Guid, PriceHistory>
+                    {
+                        [security.Id] = SecurityTestHelper.CreatePriceHistory(
+                            security,
+                            21.25m,
+                            new DateOnly(2026, 5, 1)
+                        ),
+                    }
+            );
+
+        var result = await CreateHandler()
+            .Handle(new GetNetWorthSummaryQuery(userId), CancellationToken.None);
+
+        result.AccountSummaries.Should().HaveCount(5);
+        result.AccountSummaries.Should().NotContain(card => card.AccountId == inactiveSavings.Id);
+        result.AccountSummaries.Should().OnlyContain(card => card.IsActive);
+
+        result.AccountSummaries
+            .Should()
+            .ContainEquivalentOf(
+                new AccountSummary
+                {
+                    AccountId = banking.Id,
+                    Name = "Daily Banking",
+                    AccountType = "Banking",
+                    Balance = 1235.00m,
+                    Currency = "CAD",
+                    IsActive = true,
+                }
+            );
+        result.AccountSummaries
+            .Should()
+            .ContainEquivalentOf(
+                new AccountSummary
+                {
+                    AccountId = credit.Id,
+                    Name = "Rewards Visa",
+                    AccountType = "Credit",
+                    Balance = -456.78m,
+                    Currency = "CAD",
+                    IsActive = true,
+                }
+            );
+        result.AccountSummaries
+            .Should()
+            .ContainEquivalentOf(
+                new AccountSummary
+                {
+                    AccountId = investment.Id,
+                    Name = "TFSA Portfolio",
+                    AccountType = "Investment",
+                    Balance = 2666.875m,
+                    Currency = "CAD",
+                    IsActive = true,
+                }
+            );
+        result.AccountSummaries
+            .Should()
+            .ContainEquivalentOf(
+                new AccountSummary
+                {
+                    AccountId = property.Id,
+                    Name = "Primary Residence",
+                    AccountType = "Property",
+                    Balance = 700_000m,
+                    Currency = "CAD",
+                    IsActive = true,
+                }
+            );
+        result.AccountSummaries
+            .Should()
+            .ContainEquivalentOf(
+                new AccountSummary
+                {
+                    AccountId = loan.Id,
+                    Name = "Mortgage",
+                    AccountType = "Loan",
+                    Balance = -400_000m,
+                    Currency = "CAD",
+                    IsActive = true,
+                }
+            );
+    }
+
+    [Fact]
+    public async Task GetNetWorthSummary_NoActiveAccounts_ReturnsGracefulEmptyAccountSummaries()
+    {
+        var userId = Guid.NewGuid();
+        var inactiveAccount = CreateAccount(
+            userId,
+            "Closed Chequing",
+            AccountType.Banking,
+            AccountSubType.Chequing,
+            125m
+        );
+        inactiveAccount.Deactivate();
+
+        _accountRepoMock
+            .Setup(r => r.GetByOwnerIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([inactiveAccount]);
+
+        var result = await CreateHandler()
+            .Handle(new GetNetWorthSummaryQuery(userId), CancellationToken.None);
+
+        result.TotalAssets.Should().Be(0m);
+        result.TotalLiabilities.Should().Be(0m);
+        result.NetWorth.Should().Be(0m);
+        result.AssetAllocation.Should().BeEmpty();
+        result.AccountSummaries.Should().BeEmpty();
     }
 
     [Fact]

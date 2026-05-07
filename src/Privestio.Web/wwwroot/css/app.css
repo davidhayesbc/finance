@@ -3417,6 +3417,82 @@ fluent-button[appearance="stealth"]:hover::part(control) {
     width: 100%;
 }
 
+.dashboard-account-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.dashboard-account-card {
+    display: grid;
+    gap: 18px;
+    min-height: 150px;
+    padding: 18px;
+    border: 1px solid color-mix(in srgb, var(--surface-border) 84%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    box-shadow: 0 14px 30px rgb(15 23 42 / 0.08);
+}
+
+.dashboard-account-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.dashboard-account-card__header div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.dashboard-account-card__header strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-strong);
+}
+
+.dashboard-account-card__header span {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.dashboard-account-card__status {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--text-strong) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.dashboard-account-card__balance {
+    font-family: var(--font-serif);
+    font-size: clamp(1.35rem, 2.6vw, 2rem);
+    font-weight: 700;
+}
+
+.dashboard-account-card__balance--gain {
+    color: var(--success-soft);
+}
+
+.dashboard-account-card__balance--risk {
+    color: var(--danger-soft);
+}
+
+.dashboard-account-card--loading {
+    min-height: 130px;
+}
+
+.dashboard-account-card--loading .dashboard-skeleton--value {
+    max-width: 70%;
+}
+
 .dashboard-plane .apexcharts-legend {
     justify-content: flex-start !important;
 }
