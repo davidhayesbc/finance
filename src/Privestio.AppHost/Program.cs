@@ -1,11 +1,24 @@
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Text;
 
 // Privestio .NET Aspire AppHost
 // Orchestrates the API, PostgreSQL, and Ollama for development.
 
 var builder = DistributedApplication.CreateBuilder(args);
+var strictDependencyHealth = string.Equals(
+    Environment.GetEnvironmentVariable("PRIVESTIO_STRICT_DEPENDENCY_HEALTH"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+
+// Reduce noisy Aspire dashboard gRPC stream debug logs.
+builder.Services.AddLogging(logging =>
+{
+    logging.AddFilter("Grpc.Net.Client", LogLevel.Warning);
+    logging.AddFilter("Grpc.Net.Client.Internal.GrpcCall", LogLevel.Warning);
+});
 
 // PostgreSQL database
 var postgres = builder.AddPostgres("postgres").WithPgAdmin().WithDataVolume();
@@ -75,15 +88,22 @@ var api = builder
     .AddProject("api", "../Privestio.Api/Privestio.Api.csproj")
     .WithReference(privestioDb)
     .WithEnvironment("Ollama__BaseUrl", ollama.GetEndpoint("http"))
-    .WithEnvironment("Ollama__DefaultProfile", defaultProfileName)
-    .WaitFor(privestioDb);
+    .WithEnvironment("Ollama__DefaultProfile", defaultProfileName);
+
+if (strictDependencyHealth)
+{
+    api = api.WaitFor(privestioDb);
+}
 
 foreach (var modelResource in modelResources.Values)
 {
     api = api.WithReference(modelResource);
 }
 
-api = api.WaitFor(defaultModelResource);
+if (strictDependencyHealth)
+{
+    api = api.WaitFor(defaultModelResource);
+}
 
 // Web (Blazor WASM PWA)
 builder

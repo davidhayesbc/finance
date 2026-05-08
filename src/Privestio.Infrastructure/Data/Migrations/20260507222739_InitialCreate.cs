@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -6,7 +6,7 @@ using Privestio.Domain.ValueObjects;
 
 #nullable disable
 
-namespace Privestio.Infrastructure.Migrations
+namespace Privestio.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
